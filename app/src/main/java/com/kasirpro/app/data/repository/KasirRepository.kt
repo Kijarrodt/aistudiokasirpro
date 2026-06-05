@@ -1862,7 +1862,9 @@ data class GoogleLoginResult(
         shiftId: String,
         finalTunai: Double,
         finalNonTunai: Double,
-        finalTxTotal: Double
+        finalTxTotal: Double,
+        actualDrawerCash: Double,
+        selisih: Double
     ): Boolean {
         return try {
             val updateMap = mapOf(
@@ -1870,7 +1872,9 @@ data class GoogleLoginResult(
                 "endTime" to System.currentTimeMillis(),
                 "totalTunai" to finalTunai,
                 "totalNonTunai" to finalNonTunai,
-                "totalTransaksi" to finalTxTotal
+                "totalTransaksi" to finalTxTotal,
+                "actualDrawerCash" to actualDrawerCash,
+                "selisih" to selisih
             )
             firestore.collection("shifts").document(shiftId).update(updateMap).await()
             true
@@ -1903,6 +1907,89 @@ data class GoogleLoginResult(
     }
 
     suspend fun correctTransaction(correctedTx: TransactionEntity) {
+        val oldTx = dao.getTransactionById(correctedTx.id)
+        
+        // 1. Revert old transaction stock (re-adds to stock)
+        if (oldTx != null) {
+            val oldLines = oldTx.itemsRaw.split(";").filter { it.isNotBlank() }
+            oldLines.forEach { line ->
+                val parts = line.split(":")
+                if (parts.size >= 3) {
+                    val pId = parts[0]
+                    val qty = parts[2].toIntOrNull() ?: 0
+                    if (qty > 0) {
+                        val product = getProductById(pId)
+                        if (product != null) {
+                            val stokSebelum = product.stok
+                            val stokSesudah = stokSebelum + qty
+                            val updatedProduct = product.copy(stok = stokSesudah)
+                            
+                            try {
+                                firestore.collection("products").document(updatedProduct.id).set(updatedProduct.toMap()).await()
+                            } catch (e: Exception) { e.printStackTrace() }
+                            dao.insertProduct(updatedProduct)
+
+                            // Restock movement log
+                            val hs = StockHistoryEntity(
+                                id = java.util.UUID.randomUUID().toString(),
+                                productId = pId,
+                                businessId = product.businessId,
+                                tipe = "masuk",
+                                jumlah = qty,
+                                stokSebelum = stokSebelum,
+                                stokSesudah = stokSesudah,
+                                keterangan = "Restorasi koreksi transaksi ${correctedTx.id}"
+                            )
+                            try {
+                                firestore.collection("stock_history").document(hs.id).set(hs.toMap()).await()
+                            } catch (e: Exception) { e.printStackTrace() }
+                            dao.insertStockHistory(hs)
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Apply new corrected transaction stock (deducts from stock)
+        val newLines = correctedTx.itemsRaw.split(";").filter { it.isNotBlank() }
+        newLines.forEach { line ->
+            val parts = line.split(":")
+            if (parts.size >= 3) {
+                val pId = parts[0]
+                val qty = parts[2].toIntOrNull() ?: 0
+                if (qty > 0) {
+                    val product = getProductById(pId)
+                    if (product != null) {
+                        val stokSebelum = product.stok
+                        val stokSesudah = (stokSebelum - qty).coerceAtLeast(0)
+                        val updatedProduct = product.copy(stok = stokSesudah)
+                        
+                        try {
+                            firestore.collection("products").document(updatedProduct.id).set(updatedProduct.toMap()).await()
+                        } catch (e: Exception) { e.printStackTrace() }
+                        dao.insertProduct(updatedProduct)
+
+                        // Deduct stock movement log
+                        val hs = StockHistoryEntity(
+                            id = java.util.UUID.randomUUID().toString(),
+                            productId = pId,
+                            businessId = product.businessId,
+                            tipe = "keluar",
+                            jumlah = qty,
+                            stokSebelum = stokSebelum,
+                            stokSesudah = stokSesudah,
+                            keterangan = "Pengurangan koreksi transaksi ${correctedTx.id}"
+                        )
+                        try {
+                            firestore.collection("stock_history").document(hs.id).set(hs.toMap()).await()
+                        } catch (e: Exception) { e.printStackTrace() }
+                        dao.insertStockHistory(hs)
+                    }
+                }
+            }
+        }
+
+        // 3. Save the corrected transaction
         dao.insertTransaction(correctedTx)
         try {
             val firestoreMap = correctedTx.toMap().toMutableMap()
@@ -1926,7 +2013,9 @@ data class ShiftReport(
     val totalTunai: Double = 0.0,
     val totalNonTunai: Double = 0.0,
     val totalTransaksi: Double = 0.0,
-    val status: String = "aktif"
+    val status: String = "aktif",
+    val actualDrawerCash: Double = 0.0,
+    val selisih: Double = 0.0
 ) {
     fun toMap(): Map<String, Any?> = mapOf(
         "id" to id,
@@ -1941,7 +2030,9 @@ data class ShiftReport(
         "totalTunai" to totalTunai,
         "totalNonTunai" to totalNonTunai,
         "totalTransaksi" to totalTransaksi,
-        "status" to status
+        "status" to status,
+        "actualDrawerCash" to actualDrawerCash,
+        "selisih" to selisih
     )
 
     companion object {
@@ -1959,7 +2050,9 @@ data class ShiftReport(
                 totalTunai = (map["totalTunai"] as? Number)?.toDouble() ?: 0.0,
                 totalNonTunai = (map["totalNonTunai"] as? Number)?.toDouble() ?: 0.0,
                 totalTransaksi = (map["totalTransaksi"] as? Number)?.toDouble() ?: 0.0,
-                status = map["status"] as? String ?: "aktif"
+                status = map["status"] as? String ?: "aktif",
+                actualDrawerCash = (map["actualDrawerCash"] as? Number)?.toDouble() ?: 0.0,
+                selisih = (map["selisih"] as? Number)?.toDouble() ?: 0.0
             )
         }
     }

@@ -184,7 +184,7 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
 
     // Fetch user owner ID
     val ownerId = remember(user) {
-        if (user?.role == "kasir") user?.ownerId else user?.uid
+        if (user?.role == "kasir" || user?.role == "kasir_invited") user?.ownerId else user?.uid
     }
 
     // Dynamic, Real-time Expenses and Shifts from Firebase Firestore
@@ -706,8 +706,29 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                                     }
 
                                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("Uang Laci Fisik:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OrangePrimary)
-                                        Text(idrFormatter.format(shift.modalAwal + shift.totalTunai), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OrangePrimary)
+                                        Text("Teoritis Seharusnya (Sistem):", fontSize = 11.sp, color = Color.Gray)
+                                        Text(idrFormatter.format(shift.modalAwal + shift.totalTunai), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                    }
+
+                                    if (shift.status != "aktif") {
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text("Uang Fisik Dilaporkan:", fontSize = 11.sp, color = Color.Gray)
+                                            Text(idrFormatter.format(shift.actualDrawerCash), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                        }
+
+                                        val selisihVal = shift.selisih
+                                        val selisihColor = if (selisihVal == 0.0) Color.DarkGray else if (selisihVal > 0.0) Color(0xFF16A34A) else Color(0xFFDC2626)
+                                        val labelText = if (selisihVal == 0.0) {
+                                            "Sesuai (Rp 0)"
+                                        } else if (selisihVal > 0.0) {
+                                            "Surplus (+${idrFormatter.format(selisihVal)})"
+                                        } else {
+                                            "Defisit / Minus (${idrFormatter.format(selisihVal)})"
+                                        }
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text("Selisih Kas Laci Fisik:", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                            Text(labelText, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = selisihColor)
+                                        }
                                     }
                                 }
                             }
@@ -886,25 +907,16 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                             return@Button
                         }
 
-                        val idVal = java.util.UUID.randomUUID().toString()
-                        val exp = hashMapOf(
-                            "ownerId" to ownerId,
-                            "amount" to amt,
-                            "keterangan" to editExpenseKet,
-                            "createdAt" to System.currentTimeMillis()
-                        )
-                        db.collection("expenses")
-                            .document(idVal)
-                            .set(exp)
-                            .addOnSuccessListener {
+                        viewModel.recordExpense(amt, editExpenseKet) { success, error ->
+                            if (success) {
                                 showAddExpenseDialog = false
                                 editExpenseNominal = ""
                                 editExpenseKet = ""
                                 Toast.makeText(context, "Pengeluaran berhasil dicatat!", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "Gagal mencatatkan pengeluaran: $error", Toast.LENGTH_SHORT).show()
                             }
-                            .addOnFailureListener { e ->
-                                Toast.makeText(context, "Gagal mencatatkan pengeluaran: ${e.message}", Toast.LENGTH_SHORT).show()
-                            }
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
                     modifier = Modifier.testTag("submit_expense_btn")

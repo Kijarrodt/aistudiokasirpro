@@ -310,7 +310,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
         Scaffold(
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             topBar = {
-                val isKasir = user?.role == "kasir"
+                val isKasir = user?.role == "kasir" || user?.role == "kasir_invited"
                 TopAppBar(
                     title = { Text(if (isKasir) "Profil Kasir & Shift" else "Pengaturan & Profil", fontWeight = FontWeight.Bold) },
                     navigationIcon = {
@@ -323,7 +323,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                 )
             }
         ) { innerPadding ->
-            val isKasir = user?.role == "kasir"
+            val isKasir = user?.role == "kasir" || user?.role == "kasir_invited"
             if (isKasir) {
                 val activeShiftState by viewModel.activeShift.collectAsState()
                 val allTxs by viewModel.transactions.collectAsState()
@@ -354,9 +354,69 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                 val showShiftReportDialog = showShiftReportState.value
                 var shiftReportTransactions by remember { mutableStateOf<List<TransactionEntity>>(emptyList()) }
 
+                var showManualCashInputDialog by remember { mutableStateOf(false) }
+                var manualCashValue by remember { mutableStateOf("") }
+
                 val branchesList by viewModel.branches.collectAsState()
                 val branchName = remember(branchesList, user) {
                     branchesList.find { it.id == user?.assignedBranchId }?.namaCabang ?: "Cabang Utama"
+                }
+
+                // --- Live Cashier Shift Expenses Data & Dialog States ---
+                val ownerId = remember(user) {
+                    if (user?.role == "kasir" || user?.role == "kasir_invited") user?.ownerId else user?.uid
+                }
+
+                val expensesState = remember { mutableStateOf<List<LocalExpenseItem>>(emptyList()) }
+                var showAddExpenseDialogLocal by remember { mutableStateOf(false) }
+                var localExpenseNominal by remember { mutableStateOf("") }
+                var localExpenseKet by remember { mutableStateOf("") }
+
+                // Dialog states for receipt and supervisor validation code
+                var selectedTxForReceipt by remember { mutableStateOf<TransactionEntity?>(null) }
+                var showCorrectionAuthDialog by remember { mutableStateOf(false) }
+                var showCorrectionEditDialog by remember { mutableStateOf(false) }
+                var authCodeInput by remember { mutableStateOf("") }
+
+                DisposableEffect(ownerId) {
+                    if (ownerId.isNullOrBlank()) return@DisposableEffect onDispose {}
+                    val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                    val expensesListener = db.collection("expenses")
+                        .whereEqualTo("ownerId", ownerId)
+                        .addSnapshotListener { snapshot, error ->
+                            if (error == null && snapshot != null) {
+                                val list = snapshot.documents.map { doc ->
+                                    val amt = doc.getDouble("amount") 
+                                        ?: doc.getDouble("jumlah") 
+                                        ?: doc.getDouble("nominal") 
+                                        ?: doc.getLong("amount")?.toDouble() 
+                                        ?: doc.getLong("jumlah")?.toDouble() 
+                                        ?: doc.getLong("nominal")?.toDouble() 
+                                        ?: 0.0
+                                    val date = doc.getLong("createdAt") 
+                                        ?: doc.getLong("date") 
+                                        ?: doc.getTimestamp("createdAt")?.seconds?.times(1000) 
+                                        ?: doc.getTimestamp("date")?.seconds?.times(1000) 
+                                        ?: System.currentTimeMillis()
+                                    val ket = doc.getString("keterangan") ?: doc.getString("desc") ?: ""
+                                    LocalExpenseItem(doc.id, amt, date, ket)
+                                }
+                                expensesState.value = list
+                            }
+                        }
+                    onDispose {
+                        expensesListener.remove()
+                    }
+                }
+
+                val activeShiftExpenses = remember(activeShiftState, expensesState.value) {
+                    if (activeShiftState != null) {
+                        expensesState.value.filter { exp ->
+                            exp.createdAt >= activeShiftState!!.startTime
+                        }
+                    } else {
+                        emptyList()
+                    }
                 }
 
                 Column(
@@ -461,10 +521,9 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
 
                                 Button(
                                     onClick = {
-                                        shiftReportTransactions = activeShiftTxs
-                                        viewModel.endShift { reported ->
-                                            showShiftReportState.value = reported
-                                        }
+                                         showManualCashInputDialog = true
+                                         // Managed in modal dialog confirmation instead
+
                                     },
                                     modifier = Modifier.fillMaxWidth().testTag("end_shift_btn"),
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
@@ -475,6 +534,276 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                     Text("Akhiri Shift Kerja", fontWeight = FontWeight.Bold)
                                 }
                             }
+                        }
+
+                        // FEATURE: CATATAN PENGELUARAN SHIFT INI
+                        Card(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(imageVector = Icons.Default.Payments, contentDescription = null, tint = OrangePrimary)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Pengeluaran Kas Shift Ini", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                    }
+                                    Button(
+                                        onClick = { showAddExpenseDialogLocal = true },
+                                        colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary.copy(alpha = 0.15f), contentColor = OrangeDark),
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.height(32.dp)
+                                    ) {
+                                        Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Catat", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+
+                                HorizontalDivider()
+
+                                if (activeShiftExpenses.isEmpty()) {
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text("Belum ada pengeluaran kas selama shift ini.", color = Color.Gray, fontSize = 11.sp)
+                                    }
+                                } else {
+                                    activeShiftExpenses.forEach { exp ->
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(exp.keterangan, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                                val sdf = java.text.SimpleDateFormat("HH:mm", java.util.Locale("id", "ID"))
+                                                Text(sdf.format(java.util.Date(exp.createdAt)), fontSize = 10.sp, color = Color.Gray)
+                                            }
+                                            Text(idrFormatter.format(exp.amount), fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.Red)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // FEATURE: RIWAYAT TRANSAKSI SHIFT INI WITH CORRECTION INTERACTION
+                        Card(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(imageVector = Icons.Default.History, contentDescription = null, tint = OrangePrimary)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Riwayat Transaksi Shift Ini", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                }
+
+                                HorizontalDivider()
+
+                                if (activeShiftTxs.isEmpty()) {
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text("Belum ada transaksi penjualan selama shift ini.", color = Color.Gray, fontSize = 11.sp)
+                                    }
+                                } else {
+                                    val sortedTxs = remember(activeShiftTxs) {
+                                        activeShiftTxs.sortedByDescending { it.createdAt }
+                                    }
+                                    sortedTxs.forEach { tx ->
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable { selectedTxForReceipt = tx }
+                                                .padding(vertical = 8.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(tx.id, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = OrangePrimary)
+                                                val sdf = java.text.SimpleDateFormat("HH:mm", java.util.Locale("id", "ID"))
+                                                Text("${sdf.format(java.util.Date(tx.createdAt))} • ${tx.metodeBayar}", fontSize = 10.sp, color = Color.Gray)
+                                            }
+                                            Text(idrFormatter.format(tx.total), fontWeight = FontWeight.Bold, fontSize = 12.sp, color = if (tx.status == "lunas") Color(0xFF16A34A) else Color(0xFFEAB308))
+                                        }
+                                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                                    }
+                                }
+                            }
+                        }
+
+                        // Dialog Form untuk Catat Pengeluaran Local
+                        if (showAddExpenseDialogLocal) {
+                            val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                            AlertDialog(
+                                onDismissRequest = {
+                                    showAddExpenseDialogLocal = false
+                                    localExpenseNominal = ""
+                                    localExpenseKet = ""
+                                },
+                                title = { Text("Pencatatan Pengeluaran", fontWeight = FontWeight.Bold) },
+                                icon = { Icon(imageVector = Icons.Default.Payments, contentDescription = null, tint = OrangePrimary) },
+                                text = {
+                                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        Text("Catat uang keluar / operasional laci kasir selama shift saat ini.", fontSize = 11.sp, color = Color.Gray)
+                                        OutlinedTextField(
+                                            value = localExpenseNominal,
+                                            onValueChange = { localExpenseNominal = it.filter { c -> c.isDigit() } },
+                                            label = { Text("Nominal Pengeluaran (Rp) *") },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
+                                            singleLine = true
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        OutlinedTextField(
+                                            value = localExpenseKet,
+                                            onValueChange = { localExpenseKet = it },
+                                            label = { Text("Keterangan Pengeluaran *") },
+                                            placeholder = { Text("Contoh: Belanja es batu, Listrik") },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            singleLine = true
+                                        )
+                                    }
+                                },
+                                confirmButton = {
+                                    Button(
+                                        onClick = {
+                                            val amt = localExpenseNominal.toDoubleOrNull() ?: 0.0
+                                            if (amt <= 0 || localExpenseKet.isBlank()) {
+                                                Toast.makeText(context, "Semua kolom wajib diisi!", Toast.LENGTH_SHORT).show()
+                                                return@Button
+                                            }
+                                            viewModel.recordExpense(amt, localExpenseKet) { success, error ->
+                                                if (success) {
+                                                    showAddExpenseDialogLocal = false
+                                                    localExpenseNominal = ""
+                                                    localExpenseKet = ""
+                                                    Toast.makeText(context, "Pengeluaran berhasil dicatat!", Toast.LENGTH_SHORT).show()
+                                                } else {
+                                                    Toast.makeText(context, "Gagal mencatat pengeluaran: $error", Toast.LENGTH_LONG).show()
+                                                }
+                                            }
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+                                    ) {
+                                        Text("Simpan")
+                                    }
+                                },
+                                dismissButton = {
+                                    TextButton(
+                                        onClick = {
+                                            showAddExpenseDialogLocal = false
+                                            localExpenseNominal = ""
+                                            localExpenseKet = ""
+                                        }
+                                    ) {
+                                        Text("Batal")
+                                    }
+                                }
+                            )
+                        }
+
+                        // Dialog Struk Detail untuk Cashier
+                        if (selectedTxForReceipt != null) {
+                            val rx = selectedTxForReceipt!!
+                            AlertDialog(
+                                onDismissRequest = { selectedTxForReceipt = null },
+                                title = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(imageVector = Icons.Default.ReceiptLong, contentDescription = null, tint = OrangePrimary)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Detail Struk Penjualan", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                    }
+                                },
+                                text = {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(Color.White)
+                                            .padding(10.dp)
+                                            .verticalScroll(rememberScrollState()),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text(viewModel.currentBusiness.value?.namaBisnis ?: "KASIR PRO", fontWeight = FontWeight.Bold, color = Color.Black, fontSize = 13.sp, textAlign = TextAlign.Center)
+                                        Text("---------------------------------", color = Color.Black)
+                                        Text("No TRX: ${rx.id}", fontSize = 10.sp, color = Color.Black)
+                                        Text("Kasir: ${rx.kasirNama}", fontSize = 10.sp, color = Color.Black)
+                                        Text("---------------------------------", color = Color.Black)
+
+                                        val itemsSplit = rx.itemsRaw.split(";").filter { it.isNotBlank() }
+                                        itemsSplit.forEach { line ->
+                                            val parts = line.split(":")
+                                            if (parts.size >= 4) {
+                                                val name = parts.getOrNull(1).orEmpty()
+                                                val qty = parts.getOrNull(2)?.toIntOrNull() ?: 1
+                                                val price = parts.getOrNull(3)?.toDoubleOrNull() ?: 0.0
+                                                val disc = parts.getOrNull(5)?.toDoubleOrNull() ?: 0.0
+                                                val sat = parts.getOrNull(6).orEmpty().takeIf { it.isNotBlank() } ?: "Pcs"
+                                                val itemSub = (price - disc) * qty
+
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween
+                                                ) {
+                                                    Text("$name x$qty $sat", fontSize = 10.sp, color = Color.Black)
+                                                    Text(idrFormatter.format(itemSub), fontSize = 10.sp, color = Color.Black)
+                                                }
+                                            }
+                                        }
+
+                                        Text("---------------------------------", color = Color.Black)
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text("Subtotal", fontSize = 10.sp, color = Color.Black)
+                                            Text(idrFormatter.format(rx.subtotal), fontSize = 10.sp, color = Color.Black)
+                                        }
+                                        if (rx.diskonTotal > 0) {
+                                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                                Text("Diskon Promo", fontSize = 10.sp, color = Color.Black)
+                                                Text("-${idrFormatter.format(rx.diskonTotal)}", fontSize = 10.sp, color = Color.Black)
+                                            }
+                                        }
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text("TOTAL", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                                            Text(idrFormatter.format(rx.total), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                                        }
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text("DIBAYAR", fontSize = 10.sp, color = Color.Black)
+                                            Text(idrFormatter.format(rx.bayarNominal), fontSize = 10.sp, color = Color.Black)
+                                        }
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text("KEMBALI", fontSize = 10.sp, color = Color.Black)
+                                            Text(idrFormatter.format(rx.kembalian), fontSize = 10.sp, color = Color.Black)
+                                        }
+                                        Text("---------------------------------", color = Color.Black)
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .background(OrangeLight, shape = RoundedCornerShape(8.dp))
+                                                .padding(8.dp)
+                                        ) {
+                                            Text(
+                                                "Saran: Untuk mengoreksi transaksi ini, buka menu Kasir POS Penjualan lalu pilih ikon menu (titik tiga) di pojok kanan atas.",
+                                                fontSize = 11.sp,
+                                                color = OrangeDark,
+                                                textAlign = TextAlign.Center
+                                            )
+                                        }
+                                    }
+                                },
+                                confirmButton = {
+                                    TextButton(onClick = { selectedTxForReceipt = null }) {
+                                        Text("Tutup Struk")
+                                    }
+                                }
+                            )
                         }
                     } else {
                         Card(
@@ -517,6 +846,102 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             Text("Keluar dari Akun Kasir", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
                         }
                     }
+                }
+
+                if (showManualCashInputDialog && activeShiftState != null) {
+                    val expectedCash = activeShiftState!!.modalAwal + totalTunai
+                    val manualCashDouble = manualCashValue.toDoubleOrNull() ?: 0.0
+                    val selisih = manualCashDouble - expectedCash
+
+                    AlertDialog(
+                        onDismissRequest = {
+                            showManualCashInputDialog = false
+                            manualCashValue = ""
+                        },
+                        title = { Text("Tutup Shift & Hitung Uang Laci", fontWeight = FontWeight.Bold) },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text(
+                                    "Uang kasir Tunai secara sistem yang harus ada di laci saat ini:",
+                                    fontSize = 11.sp,
+                                    color = Color.Gray
+                                )
+                                Text(
+                                    idrFormatter.format(expectedCash),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    color = Color(0xFF16A34A)
+                                )
+
+                                OutlinedTextField(
+                                    value = manualCashValue,
+                                    onValueChange = { manualCashValue = it.filter { char -> char.isDigit() } },
+                                    label = { Text("Uang Fisik di Laci Laci (Rp) *") },
+                                    placeholder = { Text("Contoh: 150000") },
+                                    keyboardOptions = KeyboardOptions(
+                                        keyboardType = KeyboardType.Number,
+                                        imeAction = androidx.compose.ui.text.input.ImeAction.Done
+                                    ),
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth().testTag("manual_drawer_cash_input")
+                                )
+
+                                HorizontalDivider()
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Selisih Uang Laci:", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                    val selisihText = if (selisih == 0.0) {
+                                        "Sesuai (Rp 0)"
+                                    } else if (selisih > 0.0) {
+                                        "Surplus (+${idrFormatter.format(selisih)})"
+                                    } else {
+                                        "Minus (${idrFormatter.format(selisih)})"
+                                    }
+                                    val selisihColor = if (selisih == 0.0) {
+                                        Color.DarkGray
+                                    } else if (selisih > 0.0) {
+                                        Color(0xFF16A34A)
+                                    } else {
+                                        Color(0xFFDC2626)
+                                    }
+                                    Text(selisihText, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = selisihColor)
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    shiftReportTransactions = activeShiftTxs
+                                    viewModel.endShift(
+                                        actualDrawerCash = manualCashDouble,
+                                        selisih = selisih
+                                    ) { reported ->
+                                        showShiftReportState.value = reported
+                                        showManualCashInputDialog = false
+                                        manualCashValue = ""
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
+                                modifier = Modifier.testTag("confirm_end_shift_btn")
+                            ) {
+                                Text("Akhiri Shift & Simpan")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(
+                                onClick = {
+                                    showManualCashInputDialog = false
+                                    manualCashValue = ""
+                                }
+                            ) {
+                                Text("Batal")
+                            }
+                        }
+                    )
                 }
 
                 // Show Shift Report Modal popup on Shift end
@@ -591,8 +1016,27 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                 HorizontalDivider()
 
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text("Tunai Seharusnya di Laci:", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                    Text(idrFormatter.format(showShiftReportDialog.modalAwal + showShiftReportDialog.totalTunai), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF16A34A))
+                                    Text("Tunai Seharusnya di Laci:", fontSize = 11.sp, color = Color.Gray)
+                                    Text(idrFormatter.format(showShiftReportDialog.modalAwal + showShiftReportDialog.totalTunai), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color.DarkGray)
+                                }
+
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text("Jumlah Uang Fisik Laci:", fontSize = 11.sp, color = Color.Gray)
+                                    Text(idrFormatter.format(showShiftReportDialog.actualDrawerCash), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color.DarkGray)
+                                }
+
+                                val selisihVal = showShiftReportDialog.selisih
+                                val selisihColor = if (selisihVal == 0.0) Color.DarkGray else if (selisihVal > 0.0) Color(0xFF16A34A) else Color(0xFFDC2626)
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text("Selisih Uang Laci:", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    val labelText = if (selisihVal == 0.0) {
+                                        "Sesuai (Rp 0)"
+                                    } else if (selisihVal > 0.0) {
+                                        "Surplus (+${idrFormatter.format(selisihVal)})"
+                                    } else {
+                                        "Minus (${idrFormatter.format(selisihVal)})"
+                                    }
+                                    Text(labelText, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = selisihColor)
                                 }
 
                                 HorizontalDivider()
@@ -1141,3 +1585,10 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
         }
     }
 }
+
+data class LocalExpenseItem(
+    val id: String,
+    val amount: Double,
+    val createdAt: Long,
+    val keterangan: String
+)

@@ -300,15 +300,29 @@ fun ProductImage(
                     isLoading = false
                 } else if (fotoUrl.startsWith("http://") || fotoUrl.startsWith("https://")) {
                     resolvedUrl = fotoUrl
-                } else if (fotoUrl.startsWith("file://")) {
-                    // Try to guess by extracting productId from local path
+                } else if (fotoUrl.startsWith("file://") || (fotoUrl.contains("prod-") && fotoUrl.endsWith(".jpg"))) {
+                    // Try to guess by extracting productId from local path and resolving actual ownerId from Room/FirebaseAuth
                     var fallbackPath: String? = null
                     try {
                         val idStart = fotoUrl.indexOf("prod-")
                         val idEnd = fotoUrl.indexOf(".jpg")
                         if (idStart != -1 && idEnd != -1 && idEnd > idStart) {
                             val productId = fotoUrl.substring(idStart + 5, idEnd)
-                            fallbackPath = "products/owner-uid/$productId/photo.jpg"
+                            
+                            // Retrieve actual ownerId asynchronously from Room database
+                            val dbDao = com.kasirpro.app.data.local.KasirDatabase.getDatabase(context).kasirDao()
+                            val user = dbDao.getCurrentUserRaw()
+                            val activeOwnerId = if (user != null) {
+                                if (user.role == "kasir" || user.role == "kasir_invited") {
+                                    user.ownerId ?: user.uid
+                                } else {
+                                    user.uid
+                                }
+                            } else {
+                                com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: "owner-uid"
+                            }
+                            
+                            fallbackPath = "products/$activeOwnerId/$productId/photo.jpg"
                         }
                     } catch (e: Exception) {}
                     
