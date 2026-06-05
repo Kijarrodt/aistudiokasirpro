@@ -36,6 +36,7 @@ class MainActivity : ComponentActivity() {
                     val activeScreenState by viewModel.activeScreen.collectAsState()
 
                     Scaffold(
+                        contentWindowInsets = WindowInsets(0.dp),
                         bottomBar = {
                             val currUser by viewModel.currentUser.collectAsState()
                             val isKasir = currUser?.role == "kasir"

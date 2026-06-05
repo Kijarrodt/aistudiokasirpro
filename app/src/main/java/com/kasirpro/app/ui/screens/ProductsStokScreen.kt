@@ -413,6 +413,8 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
         var addImgUri by remember { mutableStateOf<Uri?>(null) }
         var isUploadingPhoto by remember { mutableStateOf(false) }
 
+        var showAddPhotoSourceDialog by remember { mutableStateOf(false) }
+
         val galleryLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.GetContent()
         ) { uri: Uri? ->
@@ -424,6 +426,17 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                 } else {
                     Toast.makeText(context, "Gagal memproses foto", Toast.LENGTH_SHORT).show()
                 }
+            }
+        }
+
+        val cameraLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.TakePicturePreview()
+        ) { bitmap: android.graphics.Bitmap? ->
+            if (bitmap != null) {
+                val stream = java.io.ByteArrayOutputStream()
+                bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, stream)
+                addImgBytes = stream.toByteArray()
+                addImgUri = null
             }
         }
 
@@ -446,13 +459,13 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                             .height(140.dp)
                             .clip(RoundedCornerShape(8.dp))
                             .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .clickable { galleryLauncher.launch("image/*") },
+                            .clickable { showAddPhotoSourceDialog = true },
                         contentAlignment = Alignment.Center
                     ) {
-                        if (addImgUri != null) {
+                        if (addImgUri != null || addImgBytes != null) {
                             Box(modifier = Modifier.fillMaxSize()) {
                                 AsyncImage(
-                                    model = addImgUri,
+                                    model = addImgUri ?: addImgBytes,
                                     contentDescription = "Preview",
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier.fillMaxSize()
@@ -628,6 +641,55 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
             }
         )
 
+        if (showAddPhotoSourceDialog) {
+            AlertDialog(
+                onDismissRequest = { showAddPhotoSourceDialog = false },
+                title = { Text("Pilih Sumber Foto", fontWeight = FontWeight.Bold) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Card(
+                            onClick = {
+                                cameraLauncher.launch(null)
+                                showAddPhotoSourceDialog = false
+                            },
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.PhotoCamera, contentDescription = null, tint = OrangePrimary)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text("Ambil Foto dari Kamera", fontWeight = FontWeight.Medium)
+                            }
+                        }
+
+                        Card(
+                            onClick = {
+                                galleryLauncher.launch("image/*")
+                                showAddPhotoSourceDialog = false
+                            },
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.Photo, contentDescription = null, tint = OrangePrimary)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text("Pilih dari Galeri", fontWeight = FontWeight.Medium)
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showAddPhotoSourceDialog = false }) { Text("Batal") }
+                }
+            )
+        }
+
         if (showBarcodeScannerSim) {
             AlertDialog(
                 onDismissRequest = { showBarcodeScannerSim = false },
@@ -765,6 +827,8 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
         var eFotoUrlState by remember { mutableStateOf(prod.fotoUrl) }
         var isEditingUploading by remember { mutableStateOf(false) }
 
+        var showEditPhotoSourceDialog by remember { mutableStateOf(false) }
+
         val editGalleryLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.GetContent()
         ) { uri: Uri? ->
@@ -776,6 +840,18 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                 } else {
                     Toast.makeText(context, "Gagal memproses foto", Toast.LENGTH_SHORT).show()
                 }
+            }
+        }
+
+        val editCameraLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.TakePicturePreview()
+        ) { bitmap: android.graphics.Bitmap? ->
+            if (bitmap != null) {
+                val stream = java.io.ByteArrayOutputStream()
+                bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, stream)
+                eImgBytes = stream.toByteArray()
+                eImgUri = null
+                eFotoUrlState = null
             }
         }
 
@@ -796,13 +872,13 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                             .height(140.dp)
                             .clip(RoundedCornerShape(8.dp))
                             .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .clickable { editGalleryLauncher.launch("image/*") },
+                            .clickable { showEditPhotoSourceDialog = true },
                         contentAlignment = Alignment.Center
                     ) {
-                        if (eImgUri != null) {
+                        if (eImgUri != null || eImgBytes != null) {
                             Box(modifier = Modifier.fillMaxSize()) {
                                 AsyncImage(
-                                    model = eImgUri,
+                                    model = eImgUri ?: eImgBytes,
                                     contentDescription = "Preview",
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier.fillMaxSize()
@@ -964,6 +1040,55 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                 TextButton(onClick = { if (!isEditingUploading) editProductItem = null }, enabled = !isEditingUploading) { Text("Batal") }
             }
         )
+
+        if (showEditPhotoSourceDialog) {
+            AlertDialog(
+                onDismissRequest = { showEditPhotoSourceDialog = false },
+                title = { Text("Pilih Sumber Foto", fontWeight = FontWeight.Bold) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Card(
+                            onClick = {
+                                editCameraLauncher.launch(null)
+                                showEditPhotoSourceDialog = false
+                            },
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.PhotoCamera, contentDescription = null, tint = OrangePrimary)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text("Ambil Foto dari Kamera", fontWeight = FontWeight.Medium)
+                            }
+                        }
+
+                        Card(
+                            onClick = {
+                                editGalleryLauncher.launch("image/*")
+                                showEditPhotoSourceDialog = false
+                            },
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.Photo, contentDescription = null, tint = OrangePrimary)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text("Pilih dari Galeri", fontWeight = FontWeight.Medium)
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showEditPhotoSourceDialog = false }) { Text("Batal") }
+                }
+            )
+        }
     }
 
     // Modal: Bulk Upload Products

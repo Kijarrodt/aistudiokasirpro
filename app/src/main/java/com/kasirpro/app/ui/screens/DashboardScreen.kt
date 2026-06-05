@@ -636,11 +636,45 @@ fun DashboardScreen(viewModel: KasirViewModel) {
     if (showCorrectionEditDialog && selectedTxForReceipt != null) {
         val rx = selectedTxForReceipt!!
         val context = LocalContext.current
-        var editTotalStr by remember { mutableStateOf(rx.total.toInt().toString()) }
+        val allProducts by viewModel.products.collectAsState()
+
+        // Parse items
+        val parsedItems = remember(rx.id) {
+            rx.itemsRaw.split(";").filter { it.isNotBlank() }.mapNotNull { line ->
+                val parts = line.split(":")
+                if (parts.size >= 4) {
+                    val id = parts[0]
+                    val nama = parts[1]
+                    val jumlah = parts[2].toIntOrNull() ?: 1
+                    val harga = parts[3].toDoubleOrNull() ?: 0.0
+                    val varianSelected = parts.getOrNull(4) ?: ""
+                    val diskon = parts.getOrNull(5)?.toDoubleOrNull() ?: 0.0
+                    val satuan = parts.getOrNull(6).orEmpty().takeIf { it.isNotBlank() } ?: "Pcs"
+                    CorrectionItem(id, nama, jumlah, harga, varianSelected, diskon, satuan)
+                } else null
+            }.toMutableStateList()
+        }
+
+        // Auto calculated totals from items
+        val calculatedSubtotal = parsedItems.sumOf { it.harga * it.jumlah }
+        val calculatedDiskon = parsedItems.sumOf { it.diskon * it.jumlah }
+        val calculatedTotal = (calculatedSubtotal - calculatedDiskon).coerceAtLeast(0.0)
+
+        var editTotalStr by remember { mutableStateOf(calculatedTotal.toInt().toString()) }
         var editBayarStr by remember { mutableStateOf(rx.bayarNominal.toInt().toString()) }
-        var editDiskonStr by remember { mutableStateOf(rx.diskonTotal.toInt().toString()) }
+        var editDiskonStr by remember { mutableStateOf(calculatedDiskon.toInt().toString()) }
         var editMetodeBayar by remember { mutableStateOf(rx.metodeBayar) }
         var editStatus by remember { mutableStateOf(rx.status) }
+
+        // Sync when products change
+        LaunchedEffect(parsedItems.toList()) {
+            editTotalStr = calculatedTotal.toInt().toString()
+            editDiskonStr = calculatedDiskon.toInt().toString()
+        }
+
+        var showAddProductMenu by remember { mutableStateOf(false) }
+        val idrFormatter = NumberFormat.getCurrencyInstance(Locale("id", "ID"))
+        idrFormatter.maximumFractionDigits = 0
 
         AlertDialog(
             onDismissRequest = { showCorrectionEditDialog = false },
@@ -652,6 +686,89 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                 ) {
                     Text("ID Transaksi: ${rx.id}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OrangePrimary)
                     
+                    Text("Detail Produk Struk", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = OrangePrimary)
+                    
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), shape = RoundedCornerShape(8.dp))
+                            .padding(8.dp)
+                    ) {
+                        if (parsedItems.isEmpty()) {
+                            Text("Tidak ada produk di struk", fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(8.dp))
+                        } else {
+                            parsedItems.forEachIndexed { index, item ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(item.nama, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Text("${idrFormatter.format(item.harga)} x ${item.jumlah}", fontSize = 10.sp, color = Color.Gray)
+                                    }
+                                    
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        // Reduce Qty Button
+                                        IconButton(
+                                            onClick = {
+                                                if (item.jumlah > 1) {
+                                                    parsedItems[index] = item.copy(jumlah = item.jumlah - 1)
+                                                } else {
+                                                    parsedItems.removeAt(index)
+                                                }
+                                            },
+                                            modifier = Modifier.size(28.dp)
+                                        ) {
+                                            Icon(imageVector = Icons.Default.RemoveCircle, contentDescription = "Kurang", tint = OrangePrimary)
+                                        }
+
+                                        Text("${item.jumlah}", fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp))
+
+                                        // Increase Qty Button
+                                        IconButton(
+                                            onClick = {
+                                                parsedItems[index] = item.copy(jumlah = item.jumlah + 1)
+                                            },
+                                            modifier = Modifier.size(28.dp)
+                                        ) {
+                                            Icon(imageVector = Icons.Default.AddCircle, contentDescription = "Tambah", tint = OrangePrimary)
+                                        }
+
+                                        // Delete Button
+                                        IconButton(
+                                            onClick = { parsedItems.removeAt(index) },
+                                            modifier = Modifier.size(28.dp)
+                                        ) {
+                                            Icon(imageVector = Icons.Default.Delete, contentDescription = "Hapus", tint = Color.Red)
+                                        }
+                                    }
+                                }
+                                if (index < parsedItems.lastIndex) {
+                                    Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                                }
+                            }
+                        }
+                    }
+
+                    // Button to add existing product to the receipt
+                    Button(
+                        onClick = { showAddProductMenu = true },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Tambah Produk ke Struk", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
                     OutlinedTextField(
                         value = editTotalStr,
                         onValueChange = { editTotalStr = it },
@@ -720,18 +837,30 @@ fun DashboardScreen(viewModel: KasirViewModel) {
             confirmButton = {
                 Button(
                     onClick = {
-                        val totalVal = editTotalStr.toDoubleOrNull() ?: rx.total
+                        val totalVal = editTotalStr.toDoubleOrNull() ?: calculatedTotal
                         val bayarVal = editBayarStr.toDoubleOrNull() ?: rx.bayarNominal
-                        val diskonVal = editDiskonStr.toDoubleOrNull() ?: rx.diskonTotal
+                        val diskonVal = editDiskonStr.toDoubleOrNull() ?: calculatedDiskon
 
                         if (bayarVal < totalVal && editStatus == "lunas") {
                             Toast.makeText(context, "Nominal bayar kurang dari total untuk status lunas!", Toast.LENGTH_SHORT).show()
                             return@Button
                         }
 
+                        if (parsedItems.isEmpty()) {
+                            Toast.makeText(context, "Struk tidak boleh kosong! Hapus transaksi jika ingin membatalkan.", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+
                         val calculatedKembalian = (bayarVal - totalVal).coerceAtLeast(0.0)
 
+                        // Serialize itemsRaw
+                        val updatedItemsString = parsedItems.joinToString(";") {
+                            "${it.id}:${it.nama}:${it.jumlah}:${it.harga}:${it.varianSelected}:${it.diskon}:${it.satuan}"
+                        }
+
                         val updatedTx = rx.copy(
+                            itemsRaw = updatedItemsString,
+                            subtotal = calculatedSubtotal,
                             total = totalVal,
                             bayarNominal = bayarVal,
                             diskonTotal = diskonVal,
@@ -757,5 +886,79 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                 }
             }
         )
+
+        // Nested dialog to search and pick a product to add
+        if (showAddProductMenu) {
+            var searchProdQuery by remember { mutableStateOf("") }
+            val filteredStoreProds = allProducts.filter { it.nama.contains(searchProdQuery, ignoreCase = true) }
+
+            AlertDialog(
+                onDismissRequest = { showAddProductMenu = false },
+                title = { Text("Pilih Produk", fontWeight = FontWeight.Bold) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.heightIn(max = 300.dp)) {
+                        OutlinedTextField(
+                            value = searchProdQuery,
+                            onValueChange = { searchProdQuery = it },
+                            placeholder = { Text("Cari Produk...") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        
+                        LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth().weight(1f)) {
+                            items(filteredStoreProds) { prod ->
+                                Card(
+                                    onClick = {
+                                        val existingIndex = parsedItems.indexOfFirst { it.id == prod.id && it.varianSelected.isEmpty() }
+                                        if (existingIndex >= 0) {
+                                            parsedItems[existingIndex] = parsedItems[existingIndex].copy(jumlah = parsedItems[existingIndex].jumlah + 1)
+                                        } else {
+                                            parsedItems.add(CorrectionItem(
+                                                id = prod.id,
+                                                nama = prod.nama,
+                                                jumlah = 1,
+                                                harga = prod.hargaJual,
+                                                varianSelected = "",
+                                                diskon = 0.0,
+                                                satuan = prod.satuan
+                                            ))
+                                        }
+                                        showAddProductMenu = false
+                                    },
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column {
+                                            Text(prod.nama, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                            Text("Stok: ${prod.stok}", fontSize = 10.sp, color = Color.Gray)
+                                        }
+                                        Text(idrFormatter.format(prod.hargaJual), fontWeight = FontWeight.Bold, color = OrangePrimary, fontSize = 12.sp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showAddProductMenu = false }) { Text("Batal") }
+                }
+            )
+        }
     }
 }
+
+data class CorrectionItem(
+    val id: String,
+    val nama: String,
+    val jumlah: Int,
+    val harga: Double,
+    val varianSelected: String,
+    val diskon: Double,
+    val satuan: String
+)

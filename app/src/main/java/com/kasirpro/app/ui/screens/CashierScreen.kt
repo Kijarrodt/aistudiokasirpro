@@ -121,7 +121,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
     }
     
     val context = LocalContext.current
-    val categories = listOf("Semua") + productsList.map { it.kategori }.distinct()
+    val categories = listOf("Semua") + productsList.map { it.kategori }.filter { !it.isNullOrBlank() }.distinct()
 
     val filteredProducts = productsList.filter {
         (selectedCategory == "Semua" || it.kategori == selectedCategory) &&
@@ -321,29 +321,40 @@ fun CashierScreen(viewModel: KasirViewModel) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                    .padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                Spacer(modifier = Modifier.width(16.dp))
                 categories.forEach { cat ->
                     val isSelected = selectedCategory == cat
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (isSelected) OrangePrimary else MaterialTheme.colorScheme.surface
-                        ),
-                        modifier = Modifier
-                            .clickable { selectedCategory = cat }
-                            .padding(bottom = 8.dp),
-                        shape = RoundedCornerShape(20.dp)
+                    Surface(
+                        onClick = { selectedCategory = cat },
+                        shape = RoundedCornerShape(24.dp),
+                        color = if (isSelected) OrangePrimary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier.height(36.dp)
                     ) {
-                        Text(
-                            text = cat,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (cat == "Semua") Icons.Default.GridView else Icons.Default.Folder,
+                                contentDescription = null,
+                                tint = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = cat,
+                                color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                fontSize = 13.sp
+                            )
+                        }
                     }
                 }
+                Spacer(modifier = Modifier.width(16.dp))
             }
 
             if (filteredProducts.isEmpty()) {
@@ -378,8 +389,6 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                     viewModel.showVarianDialog.value = item
                                 } else {
                                     viewModel.addToCart(item)
-                                    val currentCount = cart.filter { it.id == item.id }.sumOf { it.jumlah }
-                                    Toast.makeText(context, "${item.nama} ditambahkan ke keranjang (Banyaknya: ${currentCount + 1})", Toast.LENGTH_SHORT).show()
                                 }
                             },
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -440,13 +449,14 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                     Box(
                                         modifier = Modifier
                                             .align(Alignment.TopEnd)
-                                            .padding(6.dp)
-                                            .background(OrangePrimary, shape = RoundedCornerShape(12.dp))
-                                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                                            .padding(8.dp)
+                                            .size(24.dp)
+                                            .background(OrangePrimary, shape = CircleShape),
+                                        contentAlignment = Alignment.Center
                                     ) {
                                         Text(
                                             text = "$currentJumlahInCart",
-                                            fontSize = 10.sp,
+                                            fontSize = 11.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = Color.White
                                         )
