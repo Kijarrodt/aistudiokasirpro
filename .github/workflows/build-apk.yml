@@ -26,7 +26,6 @@ jobs:
       - name: Generate Gradlew if Missing
         run: |
           if [ ! -f "./gradlew" ]; then
-            echo "gradlew not found, generating..."
             gradle wrapper --gradle-version 9.3.1
           fi
           chmod +x ./gradlew
@@ -34,13 +33,22 @@ jobs:
       - name: Decode Debug Keystore
         run: |
           if [ -f "debug.keystore.base64" ]; then
-            base64 --decode debug.keystore.base64 > app/debug.keystore
+            base64 --decode debug.keystore.base64 > debug.keystore
+            echo "Keystore decoded to root"
+          fi
+
+      - name: Create .env file
+        run: |
+          if [ ! -f ".env" ] && [ -f ".env.example" ]; then
+            cp .env.example .env
+          elif [ ! -f ".env" ]; then
+            touch .env
           fi
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug --stacktrace
         env:
-          GRADLE_OPTS: -Dorg.gradle.daemon=false -Xmx4g
+          GRADLE_OPTS: -Dorg.gradle.daemon=false -Xmx4g -Djava.awt.headless=true
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
