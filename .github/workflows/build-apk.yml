@@ -1,4 +1,4 @@
-name: 🔨 Build APK Kasir Pro
+name: Build APK Kasir Pro
 
 on:
   push:
@@ -34,16 +34,10 @@ jobs:
         run: |
           if [ -f "debug.keystore.base64" ]; then
             base64 --decode debug.keystore.base64 > debug.keystore
-            echo "Keystore decoded to root"
           fi
-          
-          - name: Print SHA-1 Keystore
-        run: |
-          keytool -list -v \
-            -keystore debug.keystore \
-            -alias androiddebugkey \
-            -storepass android \
-            -keypass android | grep "SHA1"
+
+      - name: Print SHA-1 Keystore
+        run: keytool -list -v -keystore debug.keystore -alias androiddebugkey -storepass android -keypass android | grep "SHA1"
 
       - name: Create .env file
         run: |
