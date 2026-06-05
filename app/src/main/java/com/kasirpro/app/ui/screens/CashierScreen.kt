@@ -1300,6 +1300,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                 }
             )
         }
+    }
 
         // ================= TRANSAKSI TERBARU & KOREKSI DI ROLE KASIR =================
         if (showRecentTransactionsDialog) {
@@ -1875,7 +1876,6 @@ fun CashierScreen(viewModel: KasirViewModel) {
                 }
             )
         }
-    }
 }
 
 data class CorrectionItemCashier(

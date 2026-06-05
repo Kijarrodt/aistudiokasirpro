@@ -255,6 +255,30 @@ fun ProductImage(
                     if (localFile.exists()) {
                         localFileExists = true
                         localUriStr = android.net.Uri.fromFile(localFile).toString()
+                    } else {
+                        // Download from Firebase Storage proactively and save it in internal storage
+                        isLoading = true
+                        try {
+                            val storage = try {
+                                FirebaseStorage.getInstance("gs://kasir-pro-3b58b.firebasestorage.app")
+                            } catch (e: Exception) {
+                                try {
+                                    FirebaseStorage.getInstance("gs://kasir-pro-3b58b.appspot.com")
+                                } catch (e2: Exception) {
+                                    FirebaseStorage.getInstance()
+                                }
+                            }
+                            val ref = storage.reference.child(targetPath)
+                            localFile.parentFile?.mkdirs()
+                            ref.getFile(localFile).await()
+                            if (localFile.exists()) {
+                                localFileExists = true
+                                localUriStr = android.net.Uri.fromFile(localFile).toString()
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                        isLoading = false
                     }
                 }
             } else if (fotoUrl.startsWith("file://")) {
@@ -303,11 +327,13 @@ fun ProductImage(
                 } else if (fotoUrl.startsWith("file://") || (fotoUrl.contains("prod-") && fotoUrl.endsWith(".jpg"))) {
                     // Try to guess by extracting productId from local path and resolving actual ownerId from Room/FirebaseAuth
                     var fallbackPath: String? = null
+                    var productIdResolved: String? = null
                     try {
                         val idStart = fotoUrl.indexOf("prod-")
                         val idEnd = fotoUrl.indexOf(".jpg")
                         if (idStart != -1 && idEnd != -1 && idEnd > idStart) {
                             val productId = fotoUrl.substring(idStart + 5, idEnd)
+                            productIdResolved = productId
                             
                             // Retrieve actual ownerId asynchronously from Room database
                             val dbDao = com.kasirpro.app.data.local.KasirDatabase.getDatabase(context).kasirDao()
@@ -328,8 +354,41 @@ fun ProductImage(
                     
                     if (fallbackPath != null) {
                         isLoading = true
-                        val remoteUrl = ImageHelper.getDownloadUrl(fallbackPath)
-                        resolvedUrl = if (remoteUrl.isNotBlank()) remoteUrl else null
+                        if (productIdResolved != null) {
+                            try {
+                                val localFile = java.io.File(context.filesDir, "product_photos/prod-$productIdResolved.jpg")
+                                if (!localFile.exists()) {
+                                    val storage = try {
+                                        FirebaseStorage.getInstance("gs://kasir-pro-3b58b.firebasestorage.app")
+                                    } catch (e: Exception) {
+                                        try {
+                                            FirebaseStorage.getInstance("gs://kasir-pro-3b58b.appspot.com")
+                                        } catch (e2: Exception) {
+                                            FirebaseStorage.getInstance()
+                                        }
+                                    }
+                                    val ref = storage.reference.child(fallbackPath)
+                                    localFile.parentFile?.mkdirs()
+                                    ref.getFile(localFile).await()
+                                    if (localFile.exists()) {
+                                        localFileExists = true
+                                        localUriStr = android.net.Uri.fromFile(localFile).toString()
+                                    }
+                                } else {
+                                    localFileExists = true
+                                    localUriStr = android.net.Uri.fromFile(localFile).toString()
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+                        
+                        if (localFileExists && localUriStr != null) {
+                            resolvedUrl = localUriStr
+                        } else {
+                            val remoteUrl = ImageHelper.getDownloadUrl(fallbackPath)
+                            resolvedUrl = if (remoteUrl.isNotBlank()) remoteUrl else null
+                        }
                         isLoading = false
                     } else {
                         resolvedUrl = null
@@ -404,10 +463,29 @@ fun ShopLogoImage(
                             }
                         }
                         val ref = storage.reference.child(logoUrl)
-                        val url = ref.downloadUrl.await().toString()
-                        resolvedUrl = url
+                        localFile.parentFile?.mkdirs()
+                        ref.getFile(localFile).await()
+                        if (localFile.exists()) {
+                            resolvedUrl = android.net.Uri.fromFile(localFile).toString()
+                        } else {
+                            val url = ref.downloadUrl.await().toString()
+                            resolvedUrl = url
+                        }
                     } catch (e: Exception) {
                         e.printStackTrace()
+                        // Fallback fallback
+                        try {
+                            val storage = try {
+                                FirebaseStorage.getInstance("gs://kasir-pro-3b58b.firebasestorage.app")
+                            } catch (err: Exception) {
+                                FirebaseStorage.getInstance()
+                            }
+                            val ref = storage.reference.child(logoUrl)
+                            val url = ref.downloadUrl.await().toString()
+                            resolvedUrl = url
+                        } catch (ex: Exception) {
+                            ex.printStackTrace()
+                        }
                     } finally {
                         isLoading = false
                     }
