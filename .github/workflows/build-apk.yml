@@ -22,6 +22,10 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Decode Keystore
+        run: |
+          cat debug.keystore.base64 | base64 --decode > debug.keystore
+
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
