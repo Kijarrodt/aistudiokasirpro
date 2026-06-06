@@ -25,7 +25,8 @@ data class BusinessEntity(
     val logoUrl: String?,
     val alamat: String? = null,
     val noTelpon: String? = null,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val qrisUrl: String? = null
 )
 
 @Entity(tableName = "branches")

@@ -14,6 +14,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Fastfood
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.foundation.layout.Box
@@ -224,6 +225,37 @@ object ImageHelper {
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+
+    /**
+     * Uploads the shop Qris image to Firebase Storage and keeps a local copy.
+     */
+    suspend fun uploadQrisPhoto(context: Context, ownerId: String, bytes: ByteArray): String {
+        val path = "qris/$ownerId/qris.jpg"
+        try {
+            val storage = try {
+                FirebaseStorage.getInstance("gs://kasir-pro-3b58b.firebasestorage.app")
+            } catch (e: Exception) {
+                try {
+                    FirebaseStorage.getInstance("gs://kasir-pro-3b58b.appspot.com")
+                } catch (e2: Exception) {
+                    FirebaseStorage.getInstance()
+                }
+            }
+            val ref = storage.reference.child(path)
+            ref.putBytes(bytes).await()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        try {
+            val directory = java.io.File(context.filesDir, "qris_photos")
+            if (!directory.exists()) directory.mkdirs()
+            val file = java.io.File(directory, "qris-$ownerId.jpg")
+            file.writeBytes(bytes)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return path
     }
 }
 
@@ -517,6 +549,97 @@ fun ShopLogoImage(
                 contentDescription = null,
                 tint = OrangePrimary,
                 modifier = Modifier.size(28.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun ShopQrisImage(
+    qrisUrl: String?,
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    contentScale: ContentScale = ContentScale.Fit,
+    defaultIcon: ImageVector = Icons.Default.QrCodeScanner
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var resolvedUrl by remember(qrisUrl) { mutableStateOf<String?>(null) }
+    var isLoading by remember(qrisUrl) { mutableStateOf(false) }
+
+    LaunchedEffect(qrisUrl) {
+        if (!qrisUrl.isNullOrBlank()) {
+            if (qrisUrl.startsWith("qris/")) {
+                val parts = qrisUrl.split("/")
+                val ownerId = if (parts.size >= 2) parts[1] else "owner-main"
+                val localFile = java.io.File(context.filesDir, "qris_photos/qris-$ownerId.jpg")
+                if (localFile.exists()) {
+                    resolvedUrl = android.net.Uri.fromFile(localFile).toString()
+                } else {
+                    isLoading = true
+                    try {
+                        val storage = try {
+                            FirebaseStorage.getInstance("gs://kasir-pro-3b58b.firebasestorage.app")
+                        } catch (e: Exception) {
+                            try {
+                                FirebaseStorage.getInstance("gs://kasir-pro-3b58b.appspot.com")
+                            } catch (e2: Exception) {
+                                FirebaseStorage.getInstance()
+                            }
+                        }
+                        val ref = storage.reference.child(qrisUrl)
+                        localFile.parentFile?.mkdirs()
+                        ref.getFile(localFile).await()
+                        if (localFile.exists()) {
+                            resolvedUrl = android.net.Uri.fromFile(localFile).toString()
+                        } else {
+                            val url = ref.downloadUrl.await().toString()
+                            resolvedUrl = url
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        try {
+                            val storage = try {
+                                FirebaseStorage.getInstance("gs://kasir-pro-3b58b.firebasestorage.app")
+                            } catch (err: Exception) {
+                                FirebaseStorage.getInstance()
+                            }
+                            val ref = storage.reference.child(qrisUrl)
+                            val url = ref.downloadUrl.await().toString()
+                            resolvedUrl = url
+                        } catch (ex: Exception) {
+                            ex.printStackTrace()
+                        }
+                    } finally {
+                        isLoading = false
+                    }
+                }
+            } else {
+                resolvedUrl = qrisUrl
+            }
+        } else {
+            resolvedUrl = null
+        }
+    }
+
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        if (isLoading) {
+            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = OrangePrimary, strokeWidth = 2.dp)
+        } else if (!resolvedUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = resolvedUrl,
+                contentDescription = contentDescription,
+                contentScale = contentScale,
+                modifier = Modifier.fillMaxSize(),
+                onError = {
+                    resolvedUrl = null
+                }
+            )
+        } else {
+            Icon(
+                imageVector = defaultIcon,
+                contentDescription = null,
+                tint = OrangePrimary,
+                modifier = Modifier.size(48.dp)
             )
         }
     }

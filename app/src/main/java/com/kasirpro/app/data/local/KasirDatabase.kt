@@ -17,7 +17,7 @@ import androidx.room.RoomDatabase
         StockHistoryEntity::class,
         PromoEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class KasirDatabase : RoomDatabase() {

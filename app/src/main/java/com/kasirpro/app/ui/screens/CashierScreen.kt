@@ -3,6 +3,7 @@ package com.kasirpro.app.ui.screens
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -85,6 +86,7 @@ private fun triggerVibe(context: android.content.Context) {
 @Composable
 fun CashierScreen(viewModel: KasirViewModel) {
     val business by viewModel.currentBusiness.collectAsState()
+    val selectedPaymentMethod by viewModel.selectedPaymentMethod.collectAsState()
     val productsList by viewModel.products.collectAsState()
     val cart by viewModel.cartItems.collectAsState()
     val currentCustomer by viewModel.selectedCustomer.collectAsState()
@@ -766,72 +768,171 @@ fun CashierScreen(viewModel: KasirViewModel) {
                         }
                     }
 
-                    // Money calculator
+                    // Choice of Payment Method
                     item {
                         Column {
-                            Text("Nominal Pembayaran Tunai", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text("Metode Pembayaran", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                             Spacer(modifier = Modifier.height(4.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                OutlinedTextField(
-                                    value = if (cashPaid == 0.0) "" else cashPaid.toInt().toString(),
-                                    onValueChange = { viewModel.cashAmountPaid.value = it.toDoubleOrNull() ?: 0.0 },
-                                    placeholder = { Text("Bayar Pas: ${orderTotal.toInt()}") },
-                                    singleLine = true,
-                                    modifier = Modifier.weight(1f).testTag("cash_input_text")
-                                )
-                                Button(
-                                    onClick = { viewModel.cashAmountPaid.value = orderTotal },
-                                    colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
-                                ) {
-                                    Text("PAS", fontSize = 12.sp)
-                                }
-                            }
-                            // Quick select nominal bills helper
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                listOf(20000.0, 50000.0, 100000.0).forEach { bill ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                listOf("Tunai", "QRIS").forEach { m ->
                                     Card(
-                                        modifier = Modifier
-                                            .clickable { viewModel.cashAmountPaid.value = bill }
-                                            .weight(1f),
-                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                                        onClick = { viewModel.selectedPaymentMethod.value = m },
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = if (selectedPaymentMethod == m) OrangePrimary else MaterialTheme.colorScheme.surfaceVariant
+                                        ),
+                                        modifier = Modifier.weight(1f)
                                     ) {
-                                        Text(
-                                            idrFormatter.format(bill),
-                                            textAlign = TextAlign.Center,
-                                            modifier = Modifier.padding(8.dp).fillMaxWidth(),
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
+                                        Box(modifier = Modifier.padding(10.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                            Text(
+                                                m.uppercase(),
+                                                fontSize = 11.sp,
+                                                color = if (selectedPaymentMethod == m) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
                     }
 
-                    // Auto Change Kembalian calculation
-                    item {
-                        val diff = cashPaid - orderTotal
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = if (diff >= 0) "Kembalian Anda:" else "Sisa Piutang (Kekurangan):",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp
-                            )
-                            Text(
-                                text = idrFormatter.format(Math.abs(diff)),
-                                fontWeight = FontWeight.Bold,
-                                color = if (diff >= 0) Color(0xFF15803D) else Color.Red,
-                                fontSize = 14.sp
-                            )
+                    if (selectedPaymentMethod == "QRIS") {
+                        item {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .border(1.dp, Color.Gray.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                    .padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Text("SCAN QRIS TOKO", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = OrangePrimary)
+                                
+                                if (!business?.qrisUrl.isNullOrBlank()) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(220.dp)
+                                            .background(Color.White, RoundedCornerShape(8.dp))
+                                            .padding(8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        com.kasirpro.app.util.ShopQrisImage(
+                                            qrisUrl = business?.qrisUrl,
+                                            contentDescription = "QRIS Live",
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+                                    Text(
+                                        "Silakan pelanggan scan QRIS di atas untuk membayar sejumlah:",
+                                        fontSize = 11.sp,
+                                        color = Color.Gray,
+                                        textAlign = TextAlign.Center
+                                    )
+                                    Text(
+                                        idrFormatter.format(orderTotal),
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 18.sp,
+                                        color = Color.Black,
+                                        textAlign = TextAlign.Center
+                                    )
+                                } else {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        modifier = Modifier.padding(vertical = 12.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.QrCodeScanner,
+                                            contentDescription = null,
+                                            tint = Color.Gray,
+                                            modifier = Modifier.size(48.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            "Foto QRIS Belum Tersedia",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.Red
+                                        )
+                                        Text(
+                                            "Pemilik toko harus meng-upload QRIS di menu Pengaturan terlebih dahulu.",
+                                            fontSize = 10.sp,
+                                            color = Color.Gray,
+                                            textAlign = TextAlign.Center,
+                                            modifier = Modifier.padding(horizontal = 8.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // Money calculator
+                        item {
+                            Column {
+                                Text("Nominal Pembayaran Tunai", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    OutlinedTextField(
+                                        value = if (cashPaid == 0.0) "" else cashPaid.toInt().toString(),
+                                        onValueChange = { viewModel.cashAmountPaid.value = it.toDoubleOrNull() ?: 0.0 },
+                                        placeholder = { Text("Bayar Pas: ${orderTotal.toInt()}") },
+                                        singleLine = true,
+                                        modifier = Modifier.weight(1f).testTag("cash_input_text")
+                                    )
+                                    Button(
+                                        onClick = { viewModel.cashAmountPaid.value = orderTotal },
+                                        colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+                                    ) {
+                                        Text("PAS", fontSize = 12.sp)
+                                    }
+                                }
+                                // Quick select nominal bills helper
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    listOf(20000.0, 50000.0, 100000.0).forEach { bill ->
+                                        Card(
+                                            modifier = Modifier
+                                                .clickable { viewModel.cashAmountPaid.value = bill }
+                                                .weight(1f),
+                                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                                        ) {
+                                            Text(
+                                                idrFormatter.format(bill),
+                                                textAlign = TextAlign.Center,
+                                                modifier = Modifier.padding(8.dp).fillMaxWidth(),
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Auto Change Kembalian calculation
+                        item {
+                            val diff = cashPaid - orderTotal
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = if (diff >= 0) "Kembalian Anda:" else "Sisa Piutang (Kekurangan):",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp
+                                )
+                                Text(
+                                    text = idrFormatter.format(Math.abs(diff)),
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (diff >= 0) Color(0xFF15803D) else Color.Red,
+                                    fontSize = 14.sp
+                                )
+                            }
                         }
                     }
                 }

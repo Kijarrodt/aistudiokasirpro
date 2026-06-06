@@ -578,6 +578,13 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun updateBusinessQris(qrisUrl: String?, onComplete: () -> Unit = {}) {
+        viewModelScope.launch {
+            repository.updateBusinessQris(qrisUrl)
+            onComplete()
+        }
+    }
+
     fun getOwnerVerificationCode(): String {
         return repository.getOwnerVerificationCode()
     }

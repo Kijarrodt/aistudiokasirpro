@@ -69,7 +69,8 @@ fun BusinessEntity.toMap(): Map<String, Any?> = mapOf(
     "logoUrl" to logoUrl,
     "alamat" to alamat,
     "noTelpon" to noTelpon,
-    "createdAt" to createdAt
+    "createdAt" to createdAt,
+    "qrisUrl" to qrisUrl
 )
 
 fun BranchEntity.toMap(): Map<String, Any?> = mapOf(
@@ -276,6 +277,17 @@ class KasirRepository(private val context: Context) {
             noTelpon = noTelpon,
             logoUrl = logoUrl
         )
+        dao.insertBusiness(updated)
+        try {
+            firestore.collection("businesses").document(updated.id).set(updated.toMap()).await()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    suspend fun updateBusinessQris(qrisUrl: String?) {
+        val biz = getCurrentBusinessRaw() ?: return
+        val updated = biz.copy(qrisUrl = qrisUrl)
         dao.insertBusiness(updated)
         try {
             firestore.collection("businesses").document(updated.id).set(updated.toMap()).await()
@@ -1581,7 +1593,8 @@ data class GoogleLoginResult(
                                 logoUrl = doc.getString("logoUrl"),
                                 alamat = doc.getString("alamat"),
                                 noTelpon = doc.getString("noTelpon"),
-                                createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
+                                createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis(),
+                                qrisUrl = doc.getString("qrisUrl")
                             )
                             dao.insertBusiness(biz)
                             currentBusinessId = doc.id

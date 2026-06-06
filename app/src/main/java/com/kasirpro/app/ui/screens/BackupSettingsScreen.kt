@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -55,6 +56,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
 
     val business by viewModel.currentBusiness.collectAsState()
     var showEditShopProfile by remember { mutableStateOf(false) }
+    var showQrisSettings by remember { mutableStateOf(false) }
     var showOwnerCodeDialog by remember { mutableStateOf(false) }
     var showLanguagesPicker by remember { mutableStateOf(false) }
     var activeSettingSubScreen by remember { mutableStateOf<String?>(null) }
@@ -190,6 +192,133 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
             },
             dismissButton = {
                 TextButton(onClick = { if (!isUploadingLogo) showEditShopProfile = false }, enabled = !isUploadingLogo) {
+                    Text("Batal")
+                }
+            }
+        )
+    }
+
+    if (showQrisSettings) {
+        val biz = business
+        var qrisImgUri by remember { mutableStateOf<Uri?>(null) }
+        var qrisImgBytes by remember { mutableStateOf<ByteArray?>(null) }
+        var isUploadingQris by remember { mutableStateOf(false) }
+
+        val qrisPickerLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.GetContent()
+        ) { uri: Uri? ->
+            if (uri != null) {
+                qrisImgUri = uri
+                val compressed = com.kasirpro.app.util.ImageHelper.compressImageUri(context, uri)
+                if (compressed != null) {
+                    qrisImgBytes = compressed
+                }
+            }
+        }
+
+        AlertDialog(
+            onDismissRequest = { if (!isUploadingQris) showQrisSettings = false },
+            title = { Text("Pengaturan QRIS Pembayaran", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        "Upload kode QR QRIS toko Anda. QRIS ini akan ditampilkan kepada kasir atau pelanggan saat melakukan transaksi dengan metode pembayaran QRIS.",
+                        fontSize = 12.sp,
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .size(240.dp)
+                            .border(1.dp, Color.Gray.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .clickable { qrisPickerLauncher.launch("image/*") },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (qrisImgUri != null) {
+                            com.kasirpro.app.util.ShopQrisImage(
+                                qrisUrl = qrisImgUri.toString(),
+                                contentDescription = "QRIS Preview",
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else if (!biz?.qrisUrl.isNullOrBlank()) {
+                            com.kasirpro.app.util.ShopQrisImage(
+                                qrisUrl = biz?.qrisUrl,
+                                contentDescription = "QRIS Live",
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(16.dp)) {
+                                Icon(
+                                    imageVector = Icons.Default.QrCodeScanner,
+                                    contentDescription = null,
+                                    tint = OrangePrimary,
+                                    modifier = Modifier.size(48.dp)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("Pilih Foto QRIS", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text("Klik untuk memilih gambar", fontSize = 10.sp, color = Color.Gray)
+                            }
+                        }
+                    }
+
+                    if (qrisImgBytes != null) {
+                        val kbSize = qrisImgBytes!!.size / 1024
+                        Text("Ukuran gambar: ${kbSize} KB", fontSize = 11.sp, color = OrangePrimary)
+                    }
+
+                    if (isUploadingQris) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = OrangePrimary)
+                            Text("Mengupload foto QRIS...", fontSize = 11.sp, color = Color.Gray)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val ownerId = user?.uid ?: "owner-main"
+                        val bytes = qrisImgBytes
+                        if (bytes == null && biz?.qrisUrl == null) {
+                            Toast.makeText(context, "Silakan pilih foto QRIS terlebih dahulu", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        isUploadingQris = true
+                        scope.launch {
+                            var finalQrisUrl = biz?.qrisUrl
+                            if (bytes != null) {
+                                try {
+                                    finalQrisUrl = com.kasirpro.app.util.ImageHelper.uploadQrisPhoto(context, ownerId, bytes)
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
+                            }
+                            viewModel.updateBusinessQris(finalQrisUrl) {
+                                isUploadingQris = false
+                                showQrisSettings = false
+                                Toast.makeText(context, "Foto QRIS berhasil disimpan!", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    },
+                    enabled = !isUploadingQris,
+                    colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+                ) {
+                    Text("Simpan")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { if (!isUploadingQris) showQrisSettings = false }, enabled = !isUploadingQris) {
                     Text("Batal")
                 }
             }
@@ -1283,6 +1412,24 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                 Icon(imageVector = Icons.Default.Storefront, contentDescription = null, tint = OrangePrimary)
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text("Edit Profil Toko & Struk")
+                            }
+                            Icon(imageVector = Icons.Default.ArrowForward, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+                        }
+                        HorizontalDivider()
+
+                        // Pengaturan QRIS Pembayaran
+                        Row(
+                            modifier = Modifier
+                                .clickable { showQrisSettings = true }
+                                .padding(16.dp)
+                                .fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(imageVector = Icons.Default.QrCodeScanner, contentDescription = null, tint = OrangePrimary)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text("Pengaturan QRIS Pembayaran")
                             }
                             Icon(imageVector = Icons.Default.ArrowForward, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
                         }
