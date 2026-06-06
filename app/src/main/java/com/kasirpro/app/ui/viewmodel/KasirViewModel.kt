@@ -330,9 +330,9 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // BUSINESS & STORE ONBOARDING SETUP
-    fun onboardingStoreSetup(nama: String, alamat: String, logoUrl: String?) {
+    fun onboardingStoreSetup(nama: String, alamat: String, logoBase64: String?) {
         viewModelScope.launch {
-            repository.setupToko(nama, alamat, logoUrl)
+            repository.setupToko(nama, alamat, logoBase64)
             activeScreen.value = "home"
         }
     }
@@ -346,7 +346,7 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         stok: Int,
         stokMinimum: Int,
         barcode: String?,
-        fotoUrl: String?,
+        fotoBase64: String?,
         varianList: List<ProductVariant>,
         satuan: String = "Pcs"
     ) {
@@ -360,7 +360,7 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         viewModelScope.launch {
-            repository.insertProduct(nama, kategori, hargaJual, hargaModal, stok, stokMinimum, barcode, fotoUrl, varianList, satuan)
+            repository.insertProduct(nama, kategori, hargaJual, hargaModal, stok, stokMinimum, barcode, fotoBase64, varianList, satuan)
         }
     }
 
@@ -373,7 +373,7 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         stok: Int,
         stokMinimum: Int,
         barcode: String?,
-        fotoUrl: String?,
+        fotoBase64: String?,
         branchId: String,
         satuan: String = "Pcs",
         onComplete: (Boolean) -> Unit = {}
@@ -388,7 +388,7 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
                 stok = stok,
                 stokMinimum = stokMinimum,
                 barcode = barcode,
-                fotoUrl = fotoUrl,
+                fotoBase64 = fotoBase64,
                 branchId = branchId,
                 satuan = satuan
             )
@@ -571,16 +571,16 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         repository.setLanguage(lang)
     }
 
-    fun updateBusinessProfile(namaBisnis: String, alamat: String?, noTelpon: String?, logoUrl: String?, onComplete: () -> Unit = {}) {
+    fun updateBusinessProfile(namaBisnis: String, alamat: String?, noTelpon: String?, logoBase64: String?, onComplete: () -> Unit = {}) {
         viewModelScope.launch {
-            repository.updateBusinessProfile(namaBisnis, alamat, noTelpon, logoUrl)
+            repository.updateBusinessProfile(namaBisnis, alamat, noTelpon, logoBase64)
             onComplete()
         }
     }
 
-    fun updateBusinessQris(qrisUrl: String?, onComplete: () -> Unit = {}) {
+    fun updateBusinessQris(qrisBase64: String?, onComplete: () -> Unit = {}) {
         viewModelScope.launch {
-            repository.updateBusinessQris(qrisUrl)
+            repository.updateBusinessQris(qrisBase64)
             onComplete()
         }
     }

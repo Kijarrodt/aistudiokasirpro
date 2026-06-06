@@ -10,7 +10,6 @@ import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.*
@@ -66,11 +65,11 @@ fun BusinessEntity.toMap(): Map<String, Any?> = mapOf(
     "id" to id,
     "ownerId" to ownerId,
     "namaBisnis" to namaBisnis,
-    "logoUrl" to logoUrl,
+    "logoBase64" to logoBase64,
     "alamat" to alamat,
     "noTelpon" to noTelpon,
     "createdAt" to createdAt,
-    "qrisUrl" to qrisUrl
+    "qrisBase64" to qrisBase64
 )
 
 fun BranchEntity.toMap(): Map<String, Any?> = mapOf(
@@ -95,8 +94,7 @@ fun ProductEntity.toMap(): Map<String, Any?> = mapOf(
     "stok" to stok,
     "stokMinimum" to stokMinimum,
     "barcode" to barcode,
-    "fotoUrl" to fotoUrl,
-    "photoPath" to fotoUrl,
+    "fotoBase64" to fotoBase64,
     "varianRaw" to varianRaw,
     "satuan" to satuan,
     "isActive" to isActive,
@@ -269,13 +267,13 @@ class KasirRepository(private val context: Context) {
 
     suspend fun getCurrentBusinessRaw(): BusinessEntity? = dao.getCurrentBusinessRaw()
 
-    suspend fun updateBusinessProfile(namaBisnis: String, alamat: String?, noTelpon: String?, logoUrl: String?) {
+    suspend fun updateBusinessProfile(namaBisnis: String, alamat: String?, noTelpon: String?, logoBase64: String?) {
         val biz = getCurrentBusinessRaw() ?: return
         val updated = biz.copy(
             namaBisnis = namaBisnis,
             alamat = alamat,
             noTelpon = noTelpon,
-            logoUrl = logoUrl
+            logoBase64 = logoBase64
         )
         dao.insertBusiness(updated)
         try {
@@ -285,9 +283,9 @@ class KasirRepository(private val context: Context) {
         }
     }
 
-    suspend fun updateBusinessQris(qrisUrl: String?) {
+    suspend fun updateBusinessQris(qrisBase64: String?) {
         val biz = getCurrentBusinessRaw() ?: return
-        val updated = biz.copy(qrisUrl = qrisUrl)
+        val updated = biz.copy(qrisBase64 = qrisBase64)
         dao.insertBusiness(updated)
         try {
             firestore.collection("businesses").document(updated.id).set(updated.toMap()).await()
@@ -764,14 +762,14 @@ data class GoogleLoginResult(
     }
 
     // STORE ONBOARDING ACTIONS
-    suspend fun setupToko(namaToko: String, alamat: String, logoUrl: String?): Boolean {
+    suspend fun setupToko(namaToko: String, alamat: String, logoBase64: String?): Boolean {
         val uid = auth.currentUser?.uid ?: "owner-uid"
         val businessId = "biz-$uid"
         val business = BusinessEntity(
             id = businessId,
             ownerId = uid,
             namaBisnis = namaToko,
-            logoUrl = logoUrl
+            logoBase64 = logoBase64
         )
         try {
             firestore.collection("businesses").document(business.id).set(business.toMap()).await()
@@ -834,7 +832,7 @@ data class GoogleLoginResult(
                     stok = doc.getLong("stok")?.toInt() ?: 0,
                     stokMinimum = doc.getLong("stokMinimum")?.toInt() ?: 0,
                     barcode = doc.getString("barcode"),
-                    fotoUrl = doc.getString("photoPath") ?: doc.getString("fotoUrl"),
+                    fotoBase64 = doc.getString("fotoBase64"),
                     varianRaw = doc.getString("varianRaw") ?: "",
                     satuan = doc.getString("satuan") ?: "Pcs",
                     isActive = doc.getBoolean("isActive") ?: true,
@@ -858,7 +856,7 @@ data class GoogleLoginResult(
         stok: Int,
         stokMinimum: Int,
         barcode: String?,
-        fotoUrl: String?,
+        fotoBase64: String?,
         varianList: List<ProductVariant>,
         satuan: String = "Pcs"
     ): Boolean {
@@ -876,7 +874,7 @@ data class GoogleLoginResult(
             stok = stok,
             stokMinimum = stokMinimum,
             barcode = barcode,
-            fotoUrl = fotoUrl,
+            fotoBase64 = fotoBase64,
             varianRaw = varianString,
             satuan = satuan
         )
@@ -912,7 +910,7 @@ data class GoogleLoginResult(
         stok: Int,
         stokMinimum: Int,
         barcode: String?,
-        fotoUrl: String?,
+        fotoBase64: String?,
         branchId: String,
         satuan: String = "Pcs"
     ): Boolean {
@@ -929,7 +927,7 @@ data class GoogleLoginResult(
             stok = stok,
             stokMinimum = stokMinimum,
             barcode = barcode,
-            fotoUrl = fotoUrl,
+            fotoBase64 = fotoBase64,
             varianRaw = "",
             satuan = satuan
         )
@@ -1156,48 +1154,15 @@ data class GoogleLoginResult(
             }
         } catch (e: Exception) { e.printStackTrace() }
 
-        // 2. Sync products, especially those with local-only photos
+        // 2. Sync products
         try {
             val localProducts = dao.getAllProductsRaw()
-            val currentUser = dao.getCurrentUserRaw()
-            val ownerId = if (currentUser?.role == "kasir") currentUser.ownerId ?: "owner-main" else auth.currentUser?.uid ?: "owner-main"
-
             localProducts.forEach { p ->
-                var updated = p
-                // Check if there is a local photo for this product
-                val localPhotoFile = java.io.File(context.filesDir, "product_photos/prod-${p.id}.jpg")
-                if (localPhotoFile.exists()) {
-                    try {
-                        val bytes = localPhotoFile.readBytes()
-                        val path = "products/$ownerId/${p.id}/photo.jpg"
-
-                        val storage = try {
-                            FirebaseStorage.getInstance("gs://kasir-pro-3b58b.firebasestorage.app")
-                        } catch (e: Exception) {
-                            try {
-                                FirebaseStorage.getInstance("gs://kasir-pro-3b58b.appspot.com")
-                            } catch (e2: Exception) {
-                                FirebaseStorage.getInstance()
-                            }
-                        }
-
-                        val ref = storage.reference.child(path)
-                        ref.putBytes(bytes).await()
-
-                        // Update product image state locally and to firestore
-                        updated = p.copy(fotoUrl = path)
-                        dao.insertProduct(updated)
-                        syncCount++
-                    } catch (uploadEx: Exception) {
-                        android.util.Log.e("OFFLINE_SYNC", "Failed to upload photo for product ${p.nama}: ${uploadEx.message}")
-                    }
-                }
-
                 // Push metadata to Firestore
                 try {
-                    firestore.collection("products").document(updated.id).set(updated.toMap()).await()
+                    firestore.collection("products").document(p.id).set(p.toMap()).await()
                 } catch (dbEx: Exception) {
-                    android.util.Log.e("OFFLINE_SYNC", "Failed to sync product ${updated.nama} to Firestore: ${dbEx.message}")
+                    android.util.Log.e("OFFLINE_SYNC", "Failed to sync product ${p.nama} to Firestore: ${dbEx.message}")
                 }
             }
         } catch (e: Exception) {
@@ -1590,11 +1555,11 @@ data class GoogleLoginResult(
                                 id = doc.id,
                                 ownerId = targetOwnerId,
                                 namaBisnis = doc.getString("namaBisnis") ?: "",
-                                logoUrl = doc.getString("logoUrl"),
+                                logoBase64 = doc.getString("logoBase64"),
                                 alamat = doc.getString("alamat"),
                                 noTelpon = doc.getString("noTelpon"),
                                 createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis(),
-                                qrisUrl = doc.getString("qrisUrl")
+                                qrisBase64 = doc.getString("qrisBase64")
                             )
                             dao.insertBusiness(biz)
                             currentBusinessId = doc.id
@@ -1676,7 +1641,7 @@ data class GoogleLoginResult(
                                 stok = doc.getLong("stok")?.toInt() ?: 0,
                                 stokMinimum = doc.getLong("stokMinimum")?.toInt() ?: 0,
                                 barcode = doc.getString("barcode"),
-                                fotoUrl = doc.getString("photoPath") ?: doc.getString("fotoUrl"),
+                                fotoBase64 = doc.getString("fotoBase64"),
                                 varianRaw = doc.getString("varianRaw") ?: "",
                                 satuan = doc.getString("satuan") ?: "Pcs",
                                 isActive = doc.getBoolean("isActive") ?: true,

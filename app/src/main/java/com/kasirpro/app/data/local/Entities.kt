@@ -22,11 +22,11 @@ data class BusinessEntity(
     @PrimaryKey val id: String,
     val ownerId: String,
     val namaBisnis: String,
-    val logoUrl: String?,
+    val logoBase64: String?,
     val alamat: String? = null,
     val noTelpon: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
-    val qrisUrl: String? = null
+    val qrisBase64: String? = null
 )
 
 @Entity(tableName = "branches")
@@ -51,7 +51,7 @@ data class ProductEntity(
     val stok: Int,
     val stokMinimum: Int,
     val barcode: String?,
-    val fotoUrl: String?,
+    val fotoBase64: String?,
     val varianRaw: String? = "", // JSON payload string containing variant definitions
     val satuan: String = "Pcs",
     val isActive: Boolean = true,

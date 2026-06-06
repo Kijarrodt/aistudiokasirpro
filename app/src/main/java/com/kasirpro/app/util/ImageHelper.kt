@@ -4,130 +4,71 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
-import com.google.firebase.storage.FirebaseStorage
-import kotlinx.coroutines.tasks.await
-import java.io.ByteArrayOutputStream
-import java.io.InputStream
-import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Fastfood
-import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Fastfood
+import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import com.kasirpro.app.ui.theme.OrangePrimary
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 
 object ImageHelper {
 
-    private val downloadUrlCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+    // Simple cache for decoded Bitmaps to prevent redundant decoding overhead
+    private val bitmapCache = java.util.concurrent.ConcurrentHashMap<String, Bitmap>()
 
     /**
-     * Extracts relative storage path (e.g. products/{ownerId}/{productId}/photo.jpg) from URL/path.
+     * Converts base64 string back to Bitmap using local in-memory caching.
      */
-    fun extractStoragePath(url: String): String? {
-        if (url.startsWith("products/")) return url
-        if (url.contains("products%2F")) {
-            try {
-                val idx = url.indexOf("products%2F")
-                val endIdx = url.indexOf("?", idx)
-                val sub = if (endIdx != -1) url.substring(idx, endIdx) else url.substring(idx)
-                return java.net.URLDecoder.decode(sub, "UTF-8")
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-        return null
-    }
-
-    /**
-     * Resolves a Firebase Storage path or download URL to a cached/latest download URL.
-     */
-    suspend fun getDownloadUrl(path: String): String {
-        if (path.isBlank()) return ""
-        if (!path.startsWith("products/")) {
-            return path
-        }
-        val cached = downloadUrlCache[path]
+    fun base64ToBitmap(base64Str: String?): Bitmap? {
+        if (base64Str.isNullOrBlank()) return null
+        val cached = bitmapCache[base64Str]
         if (cached != null) return cached
 
         return try {
-            val storage = try {
-                FirebaseStorage.getInstance("gs://kasir-pro-3b58b.firebasestorage.app")
-            } catch (e: Exception) {
-                try {
-                    FirebaseStorage.getInstance("gs://kasir-pro-3b58b.appspot.com")
-                } catch (e2: Exception) {
-                    FirebaseStorage.getInstance()
-                }
+            val decodedBytes = android.util.Base64.decode(base64Str, android.util.Base64.DEFAULT)
+            val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+            if (bitmap != null) {
+                bitmapCache[base64Str] = bitmap
             }
-            val ref = storage.reference.child(path)
-            val url = ref.downloadUrl.await().toString()
-            downloadUrlCache[path] = url
-            url
+            bitmap
         } catch (e: Exception) {
             e.printStackTrace()
-            ""
+            null
         }
     }
 
     /**
-     * Clear cash-ed URLs on Logout.
+     * Clear the local cache on Logout or App Close.
      */
     fun clearCache() {
-        downloadUrlCache.clear()
+        bitmapCache.clear()
     }
 
     /**
-     * Loads a Uri to a Bitmap, downsamples it to a maximum dimension of 1024px to conserve memory,
-     * and compresses it to a JPEG byte array under 500KB (512,000 bytes) progressively.
+     * Resizes and compresses an image selected from URI, ensuring it stays under 200KB and maximum 400x400 px.
+     * Returns a Base64 encoded string, or null if the photo is too large/invalid.
      */
-    fun compressImageUri(context: Context, uri: Uri): ByteArray? {
+    fun processAndConvertImageToBase64(context: Context, uri: Uri): String? {
         var inputStream: InputStream? = null
         try {
-            // Step 1: Decode bounds first
             inputStream = context.contentResolver.openInputStream(uri)
-            val options = BitmapFactory.Options().apply {
-                inJustDecodeBounds = true
-            }
-            BitmapFactory.decodeStream(inputStream, null, options)
+            val bitmap = BitmapFactory.decodeStream(inputStream) ?: return null
             inputStream?.close()
 
-            // Step 2: Determine downsampling ratio
-            val maxDimension = 1024
-            var scale = 1
-            if (options.outWidth > maxDimension || options.outHeight > maxDimension) {
-                val maxDim = Math.max(options.outWidth, options.outHeight)
-                scale = Math.ceil(maxDim.toDouble() / maxDimension.toDouble()).toInt()
-            }
-
-            // Step 3: Decode full scale downsampled Bitmap
-            val decodeOptions = BitmapFactory.Options().apply {
-                inSampleSize = scale
-            }
-            inputStream = context.contentResolver.openInputStream(uri)
-            val bitmap = BitmapFactory.decodeStream(inputStream, null, decodeOptions) ?: return null
-            inputStream?.close()
-
-            // Step 4: Iteratively compress JPEG stream until size < 500KB
-            var quality = 90
-            var bytes: ByteArray
-            do {
-                val outputStream = ByteArrayOutputStream()
-                bitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
-                bytes = outputStream.toByteArray()
-                quality -= 10
-            } while (bytes.size > 500 * 1024 && quality > 10)
-
-            bitmap.recycle()
-            return bytes
+            val base64 = processBitmapToBase64(bitmap)
+            return base64
         } catch (e: Exception) {
             e.printStackTrace()
             return null
@@ -137,319 +78,93 @@ object ImageHelper {
     }
 
     /**
-     * Saves the photo locally in the app's internal storage as a backup/fallback,
-     * returning the local file URI string.
+     * Resizes and compresses a raw JPEG ByteArray, ensuring it stays under 200KB and maximum 400x400 px.
+     * Returns a Base64 encoded string, or null if the photo is too large/invalid.
      */
-    fun saveImageLocally(context: Context, productId: String, bytes: ByteArray): String? {
-        return try {
-            val directory = java.io.File(context.filesDir, "product_photos")
-            if (!directory.exists()) {
-                directory.mkdirs()
-            }
-            val file = java.io.File(directory, "prod-$productId.jpg")
-            file.writeBytes(bytes)
-            Uri.fromFile(file).toString()
+    fun processAndConvertBytesToBase64(bytes: ByteArray): String? {
+        try {
+            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return null
+            val base64 = processBitmapToBase64(bitmap)
+            return base64
         } catch (e: Exception) {
             e.printStackTrace()
-            null
+            return null
         }
     }
 
     /**
-     * Uploads the JPEG byte array directly to Firebase Storage and returns the public relative storage path.
-     * Always saves a local copy in the app's internal storage for super-fast offline display.
+     * Common method to resize to max 400x400 and compress to under 200KB.
      */
-    suspend fun uploadProductImage(context: Context, ownerId: String, productId: String, bytes: ByteArray): String {
-        val path = "products/$ownerId/$productId/photo.jpg"
+    private fun processBitmapToBase64(bitmap: Bitmap): String? {
         try {
-            val storage = try {
-                FirebaseStorage.getInstance("gs://kasir-pro-3b58b.firebasestorage.app")
-            } catch (e: Exception) {
-                try {
-                    FirebaseStorage.getInstance("gs://kasir-pro-3b58b.appspot.com")
-                } catch (e2: Exception) {
-                    FirebaseStorage.getInstance()
+            val width = bitmap.width
+            val height = bitmap.height
+            val maxDimension = 400
+            val resizedBitmap = if (width > maxDimension || height > maxDimension) {
+                val ratio = width.toFloat() / height.toFloat()
+                val (newWidth, newHeight) = if (ratio > 1) {
+                    Pair(maxDimension, (maxDimension / ratio).toInt())
+                } else {
+                    Pair((maxDimension * ratio).toInt(), maxDimension)
                 }
+                Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
+            } else {
+                bitmap
             }
-            val ref = storage.reference.child(path)
-            ref.putBytes(bytes).await()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        // Always save locally as well for fast local display
-        saveImageLocally(context, productId, bytes)
-        // Always return the standard relative Firebase path so that it synchronises across all devices and remains recoverable
-        return path
-    }
 
-    /**
-     * Uploads the shop logo to Firebase Storage and keeps a local copy.
-     */
-    suspend fun uploadShopLogo(context: Context, ownerId: String, bytes: ByteArray): String {
-        val path = "logos/$ownerId/logo.jpg"
-        try {
-            val storage = try {
-                FirebaseStorage.getInstance("gs://kasir-pro-3b58b.firebasestorage.app")
-            } catch (e: Exception) {
-                try {
-                    FirebaseStorage.getInstance("gs://kasir-pro-3b58b.appspot.com")
-                } catch (e2: Exception) {
-                    FirebaseStorage.getInstance()
-                }
-            }
-            val ref = storage.reference.child(path)
-            ref.putBytes(bytes).await()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        try {
-            val directory = java.io.File(context.filesDir, "logo_photos")
-            if (!directory.exists()) directory.mkdirs()
-            val file = java.io.File(directory, "logo-$ownerId.jpg")
-            file.writeBytes(bytes)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        return path
-    }
-    
-    /**
-     * Deletes the product image from Firebase Storage if it exists.
-     */
-    suspend fun deleteProductImage(ownerId: String, productId: String) {
-        try {
-            FirebaseStorage.getInstance().reference
-                .child("products/$ownerId/$productId/photo.jpg")
-                .delete()
-                .await()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
+            var quality = 90
+            var compressedBytes: ByteArray
+            do {
+                val outputStream = ByteArrayOutputStream()
+                resizedBitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
+                compressedBytes = outputStream.toByteArray()
+                quality -= 10
+            } while (compressedBytes.size > 200 * 1024 && quality > 10)
 
-    /**
-     * Uploads the shop Qris image to Firebase Storage and keeps a local copy.
-     */
-    suspend fun uploadQrisPhoto(context: Context, ownerId: String, bytes: ByteArray): String {
-        val path = "qris/$ownerId/qris.jpg"
-        try {
-            val storage = try {
-                FirebaseStorage.getInstance("gs://kasir-pro-3b58b.firebasestorage.app")
-            } catch (e: Exception) {
-                try {
-                    FirebaseStorage.getInstance("gs://kasir-pro-3b58b.appspot.com")
-                } catch (e2: Exception) {
-                    FirebaseStorage.getInstance()
+            if (compressedBytes.size > 200 * 1024) {
+                if (resizedBitmap != bitmap) {
+                    resizedBitmap.recycle()
                 }
+                bitmap.recycle()
+                return null
             }
-            val ref = storage.reference.child(path)
-            ref.putBytes(bytes).await()
+
+            if (resizedBitmap != bitmap) {
+                resizedBitmap.recycle()
+            }
+            bitmap.recycle()
+
+            return android.util.Base64.encodeToString(compressedBytes, android.util.Base64.DEFAULT)
         } catch (e: Exception) {
             e.printStackTrace()
+            return null
         }
-        try {
-            val directory = java.io.File(context.filesDir, "qris_photos")
-            if (!directory.exists()) directory.mkdirs()
-            val file = java.io.File(directory, "qris-$ownerId.jpg")
-            file.writeBytes(bytes)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        return path
     }
 }
 
 @Composable
 fun ProductImage(
-    fotoUrl: String?,
+    fotoBase64: String?,
     contentDescription: String?,
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,
     defaultIcon: ImageVector = Icons.Default.Fastfood
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    var resolvedUrl by remember(fotoUrl) { mutableStateOf<String?>(null) }
-    var isLoading by remember(fotoUrl) { mutableStateOf(false) }
-
-    LaunchedEffect(fotoUrl) {
-        if (!fotoUrl.isNullOrBlank()) {
-            val targetPath = ImageHelper.extractStoragePath(fotoUrl)
-            
-            // Try to see if there is a local copy of this product image
-            var localFileExists = false
-            var localUriStr: String? = null
-            
-            if (targetPath != null) {
-                val parts = targetPath.split("/")
-                if (parts.size >= 3) {
-                    val productId = parts[2]
-                    val localFile = java.io.File(context.filesDir, "product_photos/prod-$productId.jpg")
-                    if (localFile.exists()) {
-                        localFileExists = true
-                        localUriStr = android.net.Uri.fromFile(localFile).toString()
-                    } else {
-                        // Download from Firebase Storage proactively and save it in internal storage
-                        isLoading = true
-                        try {
-                            val storage = try {
-                                FirebaseStorage.getInstance("gs://kasir-pro-3b58b.firebasestorage.app")
-                            } catch (e: Exception) {
-                                try {
-                                    FirebaseStorage.getInstance("gs://kasir-pro-3b58b.appspot.com")
-                                } catch (e2: Exception) {
-                                    FirebaseStorage.getInstance()
-                                }
-                            }
-                            val ref = storage.reference.child(targetPath)
-                            localFile.parentFile?.mkdirs()
-                            ref.getFile(localFile).await()
-                            if (localFile.exists()) {
-                                localFileExists = true
-                                localUriStr = android.net.Uri.fromFile(localFile).toString()
-                            }
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                        isLoading = false
-                    }
-                }
-            } else if (fotoUrl.startsWith("file://")) {
-                try {
-                    val uri = android.net.Uri.parse(fotoUrl)
-                    val localFile = uri.path?.let { java.io.File(it) }
-                    if (localFile != null && localFile.exists()) {
-                        localFileExists = true
-                        localUriStr = fotoUrl
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            } else if (fotoUrl.contains("prod-") && fotoUrl.endsWith(".jpg")) {
-                try {
-                    val idStart = fotoUrl.indexOf("prod-")
-                    val idEnd = fotoUrl.indexOf(".jpg")
-                    if (idStart != -1 && idEnd != -1 && idEnd > idStart) {
-                        val productId = fotoUrl.substring(idStart + 5, idEnd)
-                        val localFile = java.io.File(context.filesDir, "product_photos/prod-$productId.jpg")
-                        if (localFile.exists()) {
-                            localFileExists = true
-                            localUriStr = android.net.Uri.fromFile(localFile).toString()
-                        }
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
-
-            if (localFileExists && localUriStr != null) {
-                resolvedUrl = localUriStr
-            } else {
-                // If not found locally, load from Firebase Storage if it's a relative path, or load string URL directly
-                if (targetPath != null) {
-                    isLoading = true
-                    val remoteUrl = ImageHelper.getDownloadUrl(targetPath)
-                    if (remoteUrl.isNotBlank()) {
-                        resolvedUrl = remoteUrl
-                    } else {
-                        resolvedUrl = null
-                    }
-                    isLoading = false
-                } else if (fotoUrl.startsWith("http://") || fotoUrl.startsWith("https://")) {
-                    resolvedUrl = fotoUrl
-                } else if (fotoUrl.startsWith("file://") || (fotoUrl.contains("prod-") && fotoUrl.endsWith(".jpg"))) {
-                    // Try to guess by extracting productId from local path and resolving actual ownerId from Room/FirebaseAuth
-                    var fallbackPath: String? = null
-                    var productIdResolved: String? = null
-                    try {
-                        val idStart = fotoUrl.indexOf("prod-")
-                        val idEnd = fotoUrl.indexOf(".jpg")
-                        if (idStart != -1 && idEnd != -1 && idEnd > idStart) {
-                            val productId = fotoUrl.substring(idStart + 5, idEnd)
-                            productIdResolved = productId
-                            
-                            // Retrieve actual ownerId asynchronously from Room database
-                            val dbDao = com.kasirpro.app.data.local.KasirDatabase.getDatabase(context).kasirDao()
-                            val user = dbDao.getCurrentUserRaw()
-                            val activeOwnerId = if (user != null) {
-                                if (user.role == "kasir" || user.role == "kasir_invited") {
-                                    user.ownerId ?: user.uid
-                                } else {
-                                    user.uid
-                                }
-                            } else {
-                                com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: "owner-uid"
-                            }
-                            
-                            fallbackPath = "products/$activeOwnerId/$productId/photo.jpg"
-                        }
-                    } catch (e: Exception) {}
-                    
-                    if (fallbackPath != null) {
-                        isLoading = true
-                        if (productIdResolved != null) {
-                            try {
-                                val localFile = java.io.File(context.filesDir, "product_photos/prod-$productIdResolved.jpg")
-                                if (!localFile.exists()) {
-                                    val storage = try {
-                                        FirebaseStorage.getInstance("gs://kasir-pro-3b58b.firebasestorage.app")
-                                    } catch (e: Exception) {
-                                        try {
-                                            FirebaseStorage.getInstance("gs://kasir-pro-3b58b.appspot.com")
-                                        } catch (e2: Exception) {
-                                            FirebaseStorage.getInstance()
-                                        }
-                                    }
-                                    val ref = storage.reference.child(fallbackPath)
-                                    localFile.parentFile?.mkdirs()
-                                    ref.getFile(localFile).await()
-                                    if (localFile.exists()) {
-                                        localFileExists = true
-                                        localUriStr = android.net.Uri.fromFile(localFile).toString()
-                                    }
-                                } else {
-                                    localFileExists = true
-                                    localUriStr = android.net.Uri.fromFile(localFile).toString()
-                                }
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                            }
-                        }
-                        
-                        if (localFileExists && localUriStr != null) {
-                            resolvedUrl = localUriStr
-                        } else {
-                            val remoteUrl = ImageHelper.getDownloadUrl(fallbackPath)
-                            resolvedUrl = if (remoteUrl.isNotBlank()) remoteUrl else null
-                        }
-                        isLoading = false
-                    } else {
-                        resolvedUrl = null
-                    }
-                } else {
-                    resolvedUrl = null
-                }
-            }
+    val bitmap = remember(fotoBase64) {
+        if (!fotoBase64.isNullOrBlank()) {
+            ImageHelper.base64ToBitmap(fotoBase64)
         } else {
-            resolvedUrl = null
+            null
         }
     }
 
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        if (isLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(24.dp),
-                color = OrangePrimary,
-                strokeWidth = 2.dp
-            )
-        } else if (!resolvedUrl.isNullOrBlank()) {
-            AsyncImage(
-                model = resolvedUrl,
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap.asImageBitmap(),
                 contentDescription = contentDescription,
                 contentScale = contentScale,
-                modifier = Modifier.fillMaxSize(),
-                onError = {
-                    resolvedUrl = null
-                }
+                modifier = Modifier.fillMaxSize()
             )
         } else {
             Icon(
@@ -464,84 +179,27 @@ fun ProductImage(
 
 @Composable
 fun ShopLogoImage(
-    logoUrl: String?,
+    logoBase64: String?,
     contentDescription: String?,
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,
     defaultIcon: ImageVector = Icons.Default.Fastfood
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    var resolvedUrl by remember(logoUrl) { mutableStateOf<String?>(null) }
-    var isLoading by remember(logoUrl) { mutableStateOf(false) }
-
-    LaunchedEffect(logoUrl) {
-        if (!logoUrl.isNullOrBlank()) {
-            if (logoUrl.startsWith("logos/")) {
-                val parts = logoUrl.split("/")
-                val ownerId = if (parts.size >= 2) parts[1] else "owner-main"
-                val localFile = java.io.File(context.filesDir, "logo_photos/logo-$ownerId.jpg")
-                if (localFile.exists()) {
-                    resolvedUrl = android.net.Uri.fromFile(localFile).toString()
-                } else {
-                    isLoading = true
-                    try {
-                        val storage = try {
-                            FirebaseStorage.getInstance("gs://kasir-pro-3b58b.firebasestorage.app")
-                        } catch (e: Exception) {
-                            try {
-                                FirebaseStorage.getInstance("gs://kasir-pro-3b58b.appspot.com")
-                            } catch (e2: Exception) {
-                                FirebaseStorage.getInstance()
-                            }
-                        }
-                        val ref = storage.reference.child(logoUrl)
-                        localFile.parentFile?.mkdirs()
-                        ref.getFile(localFile).await()
-                        if (localFile.exists()) {
-                            resolvedUrl = android.net.Uri.fromFile(localFile).toString()
-                        } else {
-                            val url = ref.downloadUrl.await().toString()
-                            resolvedUrl = url
-                        }
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                        // Fallback fallback
-                        try {
-                            val storage = try {
-                                FirebaseStorage.getInstance("gs://kasir-pro-3b58b.firebasestorage.app")
-                            } catch (err: Exception) {
-                                FirebaseStorage.getInstance()
-                            }
-                            val ref = storage.reference.child(logoUrl)
-                            val url = ref.downloadUrl.await().toString()
-                            resolvedUrl = url
-                        } catch (ex: Exception) {
-                            ex.printStackTrace()
-                        }
-                    } finally {
-                        isLoading = false
-                    }
-                }
-            } else {
-                resolvedUrl = logoUrl
-            }
+    val bitmap = remember(logoBase64) {
+        if (!logoBase64.isNullOrBlank()) {
+            ImageHelper.base64ToBitmap(logoBase64)
         } else {
-            resolvedUrl = null
+            null
         }
     }
 
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        if (isLoading) {
-            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = OrangePrimary, strokeWidth = 2.dp)
-        } else if (!resolvedUrl.isNullOrBlank()) {
-            AsyncImage(
-                model = resolvedUrl,
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap.asImageBitmap(),
                 contentDescription = contentDescription,
                 contentScale = contentScale,
-                modifier = Modifier.fillMaxSize(),
-                onError = {
-                    resolvedUrl = null
-                }
+                modifier = Modifier.fillMaxSize()
             )
         } else {
             Icon(
@@ -556,83 +214,27 @@ fun ShopLogoImage(
 
 @Composable
 fun ShopQrisImage(
-    qrisUrl: String?,
+    qrisBase64: String?,
     contentDescription: String?,
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Fit,
     defaultIcon: ImageVector = Icons.Default.QrCodeScanner
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    var resolvedUrl by remember(qrisUrl) { mutableStateOf<String?>(null) }
-    var isLoading by remember(qrisUrl) { mutableStateOf(false) }
-
-    LaunchedEffect(qrisUrl) {
-        if (!qrisUrl.isNullOrBlank()) {
-            if (qrisUrl.startsWith("qris/")) {
-                val parts = qrisUrl.split("/")
-                val ownerId = if (parts.size >= 2) parts[1] else "owner-main"
-                val localFile = java.io.File(context.filesDir, "qris_photos/qris-$ownerId.jpg")
-                if (localFile.exists()) {
-                    resolvedUrl = android.net.Uri.fromFile(localFile).toString()
-                } else {
-                    isLoading = true
-                    try {
-                        val storage = try {
-                            FirebaseStorage.getInstance("gs://kasir-pro-3b58b.firebasestorage.app")
-                        } catch (e: Exception) {
-                            try {
-                                FirebaseStorage.getInstance("gs://kasir-pro-3b58b.appspot.com")
-                            } catch (e2: Exception) {
-                                FirebaseStorage.getInstance()
-                            }
-                        }
-                        val ref = storage.reference.child(qrisUrl)
-                        localFile.parentFile?.mkdirs()
-                        ref.getFile(localFile).await()
-                        if (localFile.exists()) {
-                            resolvedUrl = android.net.Uri.fromFile(localFile).toString()
-                        } else {
-                            val url = ref.downloadUrl.await().toString()
-                            resolvedUrl = url
-                        }
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                        try {
-                            val storage = try {
-                                FirebaseStorage.getInstance("gs://kasir-pro-3b58b.firebasestorage.app")
-                            } catch (err: Exception) {
-                                FirebaseStorage.getInstance()
-                            }
-                            val ref = storage.reference.child(qrisUrl)
-                            val url = ref.downloadUrl.await().toString()
-                            resolvedUrl = url
-                        } catch (ex: Exception) {
-                            ex.printStackTrace()
-                        }
-                    } finally {
-                        isLoading = false
-                    }
-                }
-            } else {
-                resolvedUrl = qrisUrl
-            }
+    val bitmap = remember(qrisBase64) {
+        if (!qrisBase64.isNullOrBlank()) {
+            ImageHelper.base64ToBitmap(qrisBase64)
         } else {
-            resolvedUrl = null
+            null
         }
     }
 
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        if (isLoading) {
-            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = OrangePrimary, strokeWidth = 2.dp)
-        } else if (!resolvedUrl.isNullOrBlank()) {
-            AsyncImage(
-                model = resolvedUrl,
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap.asImageBitmap(),
                 contentDescription = contentDescription,
                 contentScale = contentScale,
-                modifier = Modifier.fillMaxSize(),
-                onError = {
-                    resolvedUrl = null
-                }
+                modifier = Modifier.fillMaxSize()
             )
         } else {
             Icon(

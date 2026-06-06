@@ -67,17 +67,25 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
         var shopAddress by remember { mutableStateOf(biz?.alamat ?: "") }
         var shopPhone by remember { mutableStateOf(biz?.noTelpon ?: "") }
         var logoImgUri by remember { mutableStateOf<Uri?>(null) }
-        var logoImgBytes by remember { mutableStateOf<ByteArray?>(null) }
         var isUploadingLogo by remember { mutableStateOf(false) }
+        var finalLogoUrlState by remember { mutableStateOf(biz?.logoBase64) }
 
         val logoPickerLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.GetContent()
         ) { uri: Uri? ->
             if (uri != null) {
                 logoImgUri = uri
-                val compressed = ImageHelper.compressImageUri(context, uri)
-                if (compressed != null) {
-                    logoImgBytes = compressed
+                isUploadingLogo = true
+                val base64 = ImageHelper.processAndConvertImageToBase64(context, uri)
+                if (base64 != null) {
+                    finalLogoUrlState = base64
+                    viewModel.updateBusinessProfile(shopName, shopAddress.takeIf { it.isNotBlank() }, shopPhone.takeIf { it.isNotBlank() }, base64) {
+                        isUploadingLogo = false
+                        Toast.makeText(context, "Logo berhasil disimpan!", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    isUploadingLogo = false
+                    Toast.makeText(context, "Foto terlalu besar. Pilih foto yang lebih kecil.", Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -104,16 +112,15 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             .clickable { logoPickerLauncher.launch("image/*") },
                         contentAlignment = Alignment.Center
                     ) {
-                        if (logoImgUri != null) {
-                            AsyncImage(
-                                model = logoImgUri,
+                        if (logoImgUri != null && !finalLogoUrlState.isNullOrBlank()) {
+                            ShopLogoImage(
+                                logoBase64 = finalLogoUrlState,
                                 contentDescription = "Logo Preview",
-                                contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()
                             )
-                        } else if (!biz?.logoUrl.isNullOrBlank()) {
+                        } else if (!finalLogoUrlState.isNullOrBlank()) {
                             ShopLogoImage(
-                                logoUrl = biz?.logoUrl,
+                                logoBase64 = finalLogoUrlState,
                                 contentDescription = biz?.namaBisnis,
                                 modifier = Modifier.fillMaxSize()
                             )
@@ -153,7 +160,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                            Text("Mengupload logo toko...", fontSize = 11.sp, color = Color.Gray)
+                            Text("Menyimpan logo toko...", fontSize = 11.sp, color = Color.Gray)
                         }
                     }
                 }
@@ -167,17 +174,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                         }
                         isUploadingLogo = true
                         scope.launch {
-                            val ownerId = user?.uid ?: "owner-main"
-                            var finalLogoUrl = biz?.logoUrl
-                            val bytes = logoImgBytes
-                            if (bytes != null) {
-                                try {
-                                    finalLogoUrl = ImageHelper.uploadShopLogo(context, ownerId, bytes)
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                }
-                            }
-                            viewModel.updateBusinessProfile(shopName, shopAddress.takeIf { it.isNotBlank() }, shopPhone.takeIf { it.isNotBlank() }, finalLogoUrl) {
+                            viewModel.updateBusinessProfile(shopName, shopAddress.takeIf { it.isNotBlank() }, shopPhone.takeIf { it.isNotBlank() }, finalLogoUrlState) {
                                 isUploadingLogo = false
                                 showEditShopProfile = false
                                 Toast.makeText(context, "Profil Toko diperbarui!", Toast.LENGTH_SHORT).show()
@@ -201,17 +198,25 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
     if (showQrisSettings) {
         val biz = business
         var qrisImgUri by remember { mutableStateOf<Uri?>(null) }
-        var qrisImgBytes by remember { mutableStateOf<ByteArray?>(null) }
         var isUploadingQris by remember { mutableStateOf(false) }
+        var finalQrisUrlState by remember { mutableStateOf(biz?.qrisBase64) }
 
         val qrisPickerLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.GetContent()
         ) { uri: Uri? ->
             if (uri != null) {
                 qrisImgUri = uri
-                val compressed = com.kasirpro.app.util.ImageHelper.compressImageUri(context, uri)
-                if (compressed != null) {
-                    qrisImgBytes = compressed
+                isUploadingQris = true
+                val base64 = com.kasirpro.app.util.ImageHelper.processAndConvertImageToBase64(context, uri)
+                if (base64 != null) {
+                    finalQrisUrlState = base64
+                    viewModel.updateBusinessQris(base64) {
+                        isUploadingQris = false
+                        Toast.makeText(context, "Foto QRIS berhasil disimpan!", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    isUploadingQris = false
+                    Toast.makeText(context, "Foto terlalu besar. Pilih foto yang lebih kecil.", Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -242,15 +247,15 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             .clickable { qrisPickerLauncher.launch("image/*") },
                         contentAlignment = Alignment.Center
                     ) {
-                        if (qrisImgUri != null) {
+                        if (qrisImgUri != null && !finalQrisUrlState.isNullOrBlank()) {
                             com.kasirpro.app.util.ShopQrisImage(
-                                qrisUrl = qrisImgUri.toString(),
+                                qrisBase64 = finalQrisUrlState,
                                 contentDescription = "QRIS Preview",
                                 modifier = Modifier.fillMaxSize()
                             )
-                        } else if (!biz?.qrisUrl.isNullOrBlank()) {
+                        } else if (!finalQrisUrlState.isNullOrBlank()) {
                             com.kasirpro.app.util.ShopQrisImage(
-                                qrisUrl = biz?.qrisUrl,
+                                qrisBase64 = finalQrisUrlState,
                                 contentDescription = "QRIS Live",
                                 modifier = Modifier.fillMaxSize()
                             )
@@ -269,10 +274,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                         }
                     }
 
-                    if (qrisImgBytes != null) {
-                        val kbSize = qrisImgBytes!!.size / 1024
-                        Text("Ukuran gambar: ${kbSize} KB", fontSize = 11.sp, color = OrangePrimary)
-                    }
+                    // Technical size indicator removed to keep user interface clean and jargon-free
 
                     if (isUploadingQris) {
                         Row(
@@ -280,7 +282,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = OrangePrimary)
-                            Text("Mengupload foto QRIS...", fontSize = 11.sp, color = Color.Gray)
+                            Text("Menyimpan foto QRIS...", fontSize = 11.sp, color = Color.Gray)
                         }
                     }
                 }
@@ -288,23 +290,13 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
             confirmButton = {
                 Button(
                     onClick = {
-                        val ownerId = user?.uid ?: "owner-main"
-                        val bytes = qrisImgBytes
-                        if (bytes == null && biz?.qrisUrl == null) {
+                        if (finalQrisUrlState == null) {
                             Toast.makeText(context, "Silakan pilih foto QRIS terlebih dahulu", Toast.LENGTH_SHORT).show()
                             return@Button
                         }
                         isUploadingQris = true
                         scope.launch {
-                            var finalQrisUrl = biz?.qrisUrl
-                            if (bytes != null) {
-                                try {
-                                    finalQrisUrl = com.kasirpro.app.util.ImageHelper.uploadQrisPhoto(context, ownerId, bytes)
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                }
-                            }
-                            viewModel.updateBusinessQris(finalQrisUrl) {
+                            viewModel.updateBusinessQris(finalQrisUrlState) {
                                 isUploadingQris = false
                                 showQrisSettings = false
                                 Toast.makeText(context, "Foto QRIS berhasil disimpan!", Toast.LENGTH_SHORT).show()

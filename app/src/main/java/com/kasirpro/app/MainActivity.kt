@@ -22,11 +22,56 @@ import com.kasirpro.app.ui.screens.*
 class MainActivity : ComponentActivity() {
     private val viewModel: KasirViewModel by viewModels()
 
+    private fun hasNewVersion(current: String, latest: String): Boolean {
+        val curParts = current.split(".").mapNotNull { it.toIntOrNull() }
+        val latParts = latest.split(".").mapNotNull { it.toIntOrNull() }
+        val maxLen = maxOf(curParts.size, latParts.size)
+        for (i in 0 until maxLen) {
+            val curVal = curParts.getOrElse(i) { 0 }
+            val latVal = latParts.getOrElse(i) { 0 }
+            if (latVal > curVal) return true
+            if (curVal > latVal) return false
+        }
+        return false
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             val isDarkTheme by viewModel.isDarkMode.collectAsState()
+            
+            val context = androidx.compose.ui.platform.LocalContext.current
+            var showUpdateDialog by remember { mutableStateOf(false) }
+            var updateDownloadUrl by remember { mutableStateOf("") }
+            
+            LaunchedEffect(Unit) {
+                try {
+                    val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                    firestore.collection("app_config")
+                        .document("version")
+                        .get()
+                        .addOnSuccessListener { doc ->
+                            if (doc != null && doc.exists()) {
+                                val latestVersion = doc.getString("latestVersion") ?: ""
+                                val downloadUrl = doc.getString("downloadUrl") ?: ""
+                                
+                                val currentVersion = try {
+                                    context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0"
+                                } catch (e: Exception) {
+                                    "1.0"
+                                }
+                                
+                                if (latestVersion.isNotBlank() && hasNewVersion(currentVersion, latestVersion)) {
+                                    updateDownloadUrl = downloadUrl
+                                    showUpdateDialog = true
+                                }
+                            }
+                        }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
             
             MyApplicationTheme(darkTheme = isDarkTheme) {
                 Surface(
@@ -182,6 +227,35 @@ class MainActivity : ComponentActivity() {
                             dismissButton = {
                                 TextButton(onClick = { viewModel.showLimitPopup.value = null }) {
                                     Text("Nanti Saja")
+                                }
+                            }
+                        )
+                    }
+
+                    if (showUpdateDialog && updateDownloadUrl.isNotBlank()) {
+                        AlertDialog(
+                            onDismissRequest = { showUpdateDialog = false },
+                            title = { Text("Pembaruan Tersedia", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) },
+                            text = { Text("Versi terbaru aplikasi sudah tersedia. Update sekarang untuk mendapatkan fitur terbaru dan perbaikan bug.") },
+                            confirmButton = {
+                                Button(
+                                    onClick = {
+                                        try {
+                                            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(updateDownloadUrl))
+                                            context.startActivity(intent)
+                                        } catch (e: Exception) {
+                                            android.widget.Toast.makeText(context, "Tidak dapat membuka link download", android.widget.Toast.LENGTH_SHORT).show()
+                                        }
+                                        showUpdateDialog = false
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+                                ) {
+                                    Text("Update Sekarang")
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showUpdateDialog = false }) {
+                                    Text("Nanti")
                                 }
                             }
                         )

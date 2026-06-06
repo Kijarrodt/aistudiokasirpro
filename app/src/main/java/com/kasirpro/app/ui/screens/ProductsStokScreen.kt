@@ -239,7 +239,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                                 contentAlignment = Alignment.Center
                                             ) {
                                                 ProductImage(
-                                                    fotoUrl = prod.fotoUrl,
+                                                    fotoBase64 = prod.fotoBase64,
                                                     contentDescription = prod.nama,
                                                     modifier = Modifier.fillMaxSize()
                                                 )
@@ -409,22 +409,35 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
         var addBarcode by remember { mutableStateOf("") }
         var addSatuan by remember { mutableStateOf("Pcs") }
 
+        val ownerId = currentUserState?.uid ?: "owner-main"
+        val productId = remember { java.util.UUID.randomUUID().toString() }
+        var addUploadedFotoUrl by remember { mutableStateOf<String?>(null) }
         var addImgBytes by remember { mutableStateOf<ByteArray?>(null) }
         var addImgUri by remember { mutableStateOf<Uri?>(null) }
         var isUploadingPhoto by remember { mutableStateOf(false) }
 
         var showAddPhotoSourceDialog by remember { mutableStateOf(false) }
-
         val galleryLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.GetContent()
         ) { uri: Uri? ->
             if (uri != null) {
                 addImgUri = uri
-                val compressed = ImageHelper.compressImageUri(context, uri)
-                if (compressed != null) {
-                    addImgBytes = compressed
-                } else {
-                    Toast.makeText(context, "Gagal memproses foto", Toast.LENGTH_SHORT).show()
+                isUploadingPhoto = true
+                coroutineScope.launch {
+                    try {
+                        val base64 = ImageHelper.processAndConvertImageToBase64(context, uri)
+                        if (base64 != null) {
+                            addUploadedFotoUrl = base64
+                        } else {
+                            Toast.makeText(context, "Foto terlalu besar. Pilih foto yang lebih kecil.", Toast.LENGTH_LONG).show()
+                            addImgUri = null
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        Toast.makeText(context, "Gagal memproses foto", Toast.LENGTH_SHORT).show()
+                    } finally {
+                        isUploadingPhoto = false
+                    }
                 }
             }
         }
@@ -435,8 +448,25 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
             if (bitmap != null) {
                 val stream = java.io.ByteArrayOutputStream()
                 bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, stream)
-                addImgBytes = stream.toByteArray()
+                val bytes = stream.toByteArray()
                 addImgUri = null
+                isUploadingPhoto = true
+                coroutineScope.launch {
+                    try {
+                        val base64 = ImageHelper.processAndConvertBytesToBase64(bytes)
+                        if (base64 != null) {
+                            addUploadedFotoUrl = base64
+                            addImgBytes = bytes
+                        } else {
+                            Toast.makeText(context, "Foto terlalu besar. Pilih foto yang lebih kecil.", Toast.LENGTH_LONG).show()
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        Toast.makeText(context, "Gagal memproses foto", Toast.LENGTH_SHORT).show()
+                    } finally {
+                        isUploadingPhoto = false
+                    }
+                }
             }
         }
 
@@ -462,12 +492,11 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                             .clickable { showAddPhotoSourceDialog = true },
                         contentAlignment = Alignment.Center
                     ) {
-                        if (addImgUri != null || addImgBytes != null) {
+                        if (addImgUri != null || addImgBytes != null || addUploadedFotoUrl != null) {
                             Box(modifier = Modifier.fillMaxSize()) {
-                                AsyncImage(
-                                    model = addImgUri ?: addImgBytes,
+                                ProductImage(
+                                    fotoBase64 = addUploadedFotoUrl,
                                     contentDescription = "Preview",
-                                    contentScale = ContentScale.Crop,
                                     modifier = Modifier.fillMaxSize()
                                 )
                                 // Delete/Clear photo overlay
@@ -475,6 +504,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                     onClick = {
                                         addImgUri = null
                                         addImgBytes = null
+                                        addUploadedFotoUrl = null
                                     },
                                     colors = IconButtonDefaults.filledIconButtonColors(containerColor = Color.Red),
                                     modifier = Modifier
@@ -484,24 +514,21 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                 ) {
                                     Icon(imageVector = Icons.Default.Delete, contentDescription = "Clear", tint = Color.White, modifier = Modifier.size(18.dp))
                                 }
-
-                                // Size info badge
-                                val kbSize = (addImgBytes?.size ?: 0) / 1024
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.BottomStart)
-                                        .padding(8.dp)
-                                        .background(Color.Black.copy(alpha = 0.6f), shape = RoundedCornerShape(4.dp))
-                                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                                ) {
-                                    Text("Ukuran: ${kbSize}KB", fontSize = 10.sp, color = Color.White, fontWeight = FontWeight.Bold)
-                                }
                             }
                         } else {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(imageVector = Icons.Default.CloudUpload, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(36.dp))
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text("Pilih Foto dari Galeri (Max 500KB)", fontSize = 11.sp, color = Color.Gray)
+                                Text("Pilih / Ambil Foto Produk", fontSize = 11.sp, color = Color.Gray)
+                            }
+                        }
+
+                        if (isUploadingPhoto) {
+                            Box(
+                                modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = OrangePrimary)
                             }
                         }
                     }
@@ -575,7 +602,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = OrangePrimary)
-                            Text("Mengupload foto ke Fire Storage...", fontSize = 11.sp, color = Color.Gray)
+                            Text("Memproses foto produk...", fontSize = 11.sp, color = Color.Gray)
                         }
                     }
                 }
@@ -595,22 +622,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                             return@Button
                         }
 
-                        val ownerId = currentUserState?.uid ?: "owner-main"
-                        val productId = UUID.randomUUID().toString()
-
-                        isUploadingPhoto = true
                         coroutineScope.launch {
-                            var uploadedUrl: String? = null
-                            val bytes = addImgBytes
-                            if (bytes != null) {
-                                try {
-                                    uploadedUrl = ImageHelper.uploadProductImage(context, ownerId, productId, bytes)
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                    Toast.makeText(context, "Gagal mengupload foto: ${e.message}", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-
                             viewModel.addProductWithBranch(
                                 id = productId,
                                 nama = addNama,
@@ -620,11 +632,10 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                 stok = addStok.toIntOrNull() ?: 0,
                                 stokMinimum = addMinStok.toIntOrNull() ?: 5,
                                 barcode = if (addBarcode.isBlank()) null else addBarcode,
-                                fotoUrl = uploadedUrl,
+                                fotoBase64 = addUploadedFotoUrl,
                                 branchId = "branch-1-$ownerId", // default branch ID of owner
                                 satuan = addSatuan
                             )
-                            isUploadingPhoto = false
                             showAddProductDialog = false
                             Toast.makeText(context, "Menyimpan Produk", Toast.LENGTH_SHORT).show()
                         }
@@ -824,7 +835,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
         
         var eImgBytes by remember { mutableStateOf<ByteArray?>(null) }
         var eImgUri by remember { mutableStateOf<Uri?>(null) }
-        var eFotoUrlState by remember { mutableStateOf(prod.fotoUrl) }
+        var eFotoUrlState by remember { mutableStateOf(prod.fotoBase64) }
         var isEditingUploading by remember { mutableStateOf(false) }
 
         var showEditPhotoSourceDialog by remember { mutableStateOf(false) }
@@ -834,11 +845,24 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
         ) { uri: Uri? ->
             if (uri != null) {
                 eImgUri = uri
-                val compressed = ImageHelper.compressImageUri(context, uri)
-                if (compressed != null) {
-                    eImgBytes = compressed
-                } else {
-                    Toast.makeText(context, "Gagal memproses foto", Toast.LENGTH_SHORT).show()
+                isEditingUploading = true
+                coroutineScope.launch {
+                    try {
+                        val base64 = ImageHelper.processAndConvertImageToBase64(context, uri)
+                        if (base64 != null) {
+                            eFotoUrlState = base64
+                            val updated = prod.copy(fotoBase64 = base64)
+                            viewModel.editProduct(updated)
+                        } else {
+                            Toast.makeText(context, "Foto terlalu besar. Pilih foto yang lebih kecil.", Toast.LENGTH_LONG).show()
+                            eImgUri = null
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        Toast.makeText(context, "Gagal memproses foto", Toast.LENGTH_SHORT).show()
+                    } finally {
+                        isEditingUploading = false
+                    }
                 }
             }
         }
@@ -849,9 +873,28 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
             if (bitmap != null) {
                 val stream = java.io.ByteArrayOutputStream()
                 bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, stream)
-                eImgBytes = stream.toByteArray()
+                val bytes = stream.toByteArray()
                 eImgUri = null
-                eFotoUrlState = null
+                _root_ide_package_.android.util.Log.d("PHOTO", "Taking edited photo preview")
+                isEditingUploading = true
+                coroutineScope.launch {
+                    try {
+                        val base64 = ImageHelper.processAndConvertBytesToBase64(bytes)
+                        if (base64 != null) {
+                            eFotoUrlState = base64
+                            val updated = prod.copy(fotoBase64 = base64)
+                            viewModel.editProduct(updated)
+                            eImgBytes = bytes
+                        } else {
+                            Toast.makeText(context, "Foto terlalu besar. Pilih foto yang lebih kecil.", Toast.LENGTH_LONG).show()
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        Toast.makeText(context, "Gagal memproses foto", Toast.LENGTH_SHORT).show()
+                    } finally {
+                        isEditingUploading = false
+                    }
+                }
             }
         }
 
@@ -888,6 +931,8 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                         eImgUri = null
                                         eImgBytes = null
                                         eFotoUrlState = null
+                                        val updated = prod.copy(fotoBase64 = null)
+                                        viewModel.editProduct(updated)
                                     },
                                     colors = IconButtonDefaults.filledIconButtonColors(containerColor = Color.Red),
                                     modifier = Modifier
@@ -901,7 +946,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                         } else if (!eFotoUrlState.isNullOrBlank()) {
                             Box(modifier = Modifier.fillMaxSize()) {
                                 ProductImage(
-                                    fotoUrl = eFotoUrlState,
+                                    fotoBase64 = eFotoUrlState,
                                     contentDescription = prod.nama,
                                     modifier = Modifier.fillMaxSize()
                                 )
@@ -910,6 +955,8 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                         eFotoUrlState = null
                                         eImgBytes = null
                                         eImgUri = null
+                                        val updated = prod.copy(fotoBase64 = null)
+                                        viewModel.editProduct(updated)
                                     },
                                     colors = IconButtonDefaults.filledIconButtonColors(containerColor = Color.Red),
                                     modifier = Modifier
@@ -925,6 +972,15 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                 Icon(imageVector = Icons.Default.PhotoCamera, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(36.dp))
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text("Ganti atau Tambah Foto Produk", fontSize = 11.sp, color = Color.Gray)
+                            }
+                        }
+
+                        if (isEditingUploading) {
+                            Box(
+                                modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = OrangePrimary)
                             }
                         }
                     }
@@ -998,21 +1054,9 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                             return@Button
                         }
 
-                        val ownerId = currentUserState?.uid ?: "owner-main"
                         isEditingUploading = true
 
                         coroutineScope.launch {
-                            var finalFotoUrl = eFotoUrlState
-                            val bytes = eImgBytes
-                            if (bytes != null) {
-                                try {
-                                    finalFotoUrl = ImageHelper.uploadProductImage(context, ownerId, prod.id, bytes)
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                    Toast.makeText(context, "Gagal upload foto: ${e.message}", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-
                             val updated = prod.copy(
                                 nama = eNama,
                                 kategori = eKategori,
@@ -1021,7 +1065,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                 stok = eStok.toIntOrNull() ?: prod.stok,
                                 stokMinimum = eMinStok.toIntOrNull() ?: prod.stokMinimum,
                                 barcode = eBarcode.takeIf { it.isNotBlank() },
-                                fotoUrl = finalFotoUrl,
+                                fotoBase64 = eFotoUrlState,
                                 satuan = eSatuan
                             )
                             viewModel.editProduct(updated)
@@ -1362,8 +1406,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                 if (embeddedBytes != null) {
                                     uploadStatusText = "Memproses foto: ${p.nama}..."
                                     try {
-                                        val pId = UUID.randomUUID().toString()
-                                        imageUrl = ImageHelper.uploadProductImage(context, ownerId, pId, embeddedBytes)
+                                        imageUrl = ImageHelper.processAndConvertBytesToBase64(embeddedBytes)
                                     } catch (e: Exception) {
                                         e.printStackTrace()
                                     }
@@ -1376,14 +1419,10 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
 
                                     if (matchedUri != null) {
                                         uploadStatusText = "Memproses foto: ${p.fotoName}..."
-                                        val bytes = ImageHelper.compressImageUri(context, matchedUri)
-                                        if (bytes != null) {
-                                            try {
-                                                val pId = UUID.randomUUID().toString()
-                                                imageUrl = ImageHelper.uploadProductImage(context, ownerId, pId, bytes)
-                                            } catch (e: Exception) {
-                                                e.printStackTrace()
-                                            }
+                                        try {
+                                            imageUrl = ImageHelper.processAndConvertImageToBase64(context, matchedUri)
+                                        } catch (e: Exception) {
+                                            e.printStackTrace()
                                         }
                                     }
                                 }
@@ -1398,7 +1437,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                     stok = p.stok,
                                     stokMinimum = p.stokMinimum,
                                     barcode = p.barcode,
-                                    fotoUrl = imageUrl,
+                                    fotoBase64 = imageUrl,
                                     branchId = targetBranchId,
                                     satuan = p.satuan
                                 )

@@ -490,9 +490,9 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // Dynamic Logo
-                    if (!business?.logoUrl.isNullOrBlank()) {
+                    if (!business?.logoBase64.isNullOrBlank()) {
                         ShopLogoImage(
-                            logoUrl = business?.logoUrl,
+                            logoBase64 = business?.logoBase64,
                             contentDescription = business?.namaBisnis,
                             modifier = Modifier
                                 .size(48.dp)

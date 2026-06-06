@@ -446,7 +446,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                         contentAlignment = Alignment.Center
                                     ) {
                                         ProductImage(
-                                            fotoUrl = item.fotoUrl,
+                                            fotoBase64 = item.fotoBase64,
                                             contentDescription = item.nama,
                                             modifier = Modifier.fillMaxSize()
                                         )
@@ -809,7 +809,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                             ) {
                                 Text("SCAN QRIS TOKO", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = OrangePrimary)
                                 
-                                if (!business?.qrisUrl.isNullOrBlank()) {
+                                if (!business?.qrisBase64.isNullOrBlank()) {
                                     Box(
                                         modifier = Modifier
                                             .size(220.dp)
@@ -818,7 +818,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                         contentAlignment = Alignment.Center
                                     ) {
                                         com.kasirpro.app.util.ShopQrisImage(
-                                            qrisUrl = business?.qrisUrl,
+                                            qrisBase64 = business?.qrisBase64,
                                             contentDescription = "QRIS Live",
                                             modifier = Modifier.fillMaxSize()
                                         )
@@ -1255,9 +1255,9 @@ fun CashierScreen(viewModel: KasirViewModel) {
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // Dynamic Shop Logo
-                    if (!business?.logoUrl.isNullOrBlank()) {
+                    if (!business?.logoBase64.isNullOrBlank()) {
                         ShopLogoImage(
-                            logoUrl = business?.logoUrl,
+                            logoBase64 = business?.logoBase64,
                             contentDescription = business?.namaBisnis,
                             modifier = Modifier
                                 .size(56.dp)
