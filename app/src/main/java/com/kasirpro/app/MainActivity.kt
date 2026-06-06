@@ -34,8 +34,34 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val activeScreenState by viewModel.activeScreen.collectAsState()
+                    val currUser by viewModel.currentUser.collectAsState()
+                    val isKasir = currUser?.role == "kasir"
+
+                    // Intercept back-button clicks to handle in-app screen stacks
+                    val enabledBack = activeScreenState !in listOf("splash", "login", "onboarding") &&
+                            !(isKasir && activeScreenState == "cashier") &&
+                            !(!isKasir && activeScreenState == "home")
+
+                    androidx.activity.compose.BackHandler(enabled = enabledBack) {
+                        when (activeScreenState) {
+                            "register", "forgot_password", "setup_toko" -> {
+                                viewModel.activeScreen.value = "login"
+                            }
+                            "premium_pricing" -> {
+                                viewModel.activeScreen.value = "settings"
+                            }
+                            else -> {
+                                if (isKasir) {
+                                    viewModel.activeScreen.value = "cashier"
+                                } else {
+                                    viewModel.activeScreen.value = "home"
+                                }
+                            }
+                        }
+                    }
 
                     Scaffold(
+                        contentWindowInsets = WindowInsets(0.dp),
                         bottomBar = {
                             val currUser by viewModel.currentUser.collectAsState()
                             val isKasir = currUser?.role == "kasir"

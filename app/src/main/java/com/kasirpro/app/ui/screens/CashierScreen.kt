@@ -6,6 +6,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -96,7 +98,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
 
     val user by viewModel.currentUser.collectAsState()
     val activeShift by viewModel.activeShift.collectAsState()
-    val isKasir = user?.role == "kasir"
+    val isKasir = user?.role == "kasir" || user?.role == "kasir_invited"
     var modalInputVal by remember { mutableStateOf("") }
 
     var searchQuery by remember { mutableStateOf("") }
@@ -112,6 +114,16 @@ fun CashierScreen(viewModel: KasirViewModel) {
     var newCustNama by remember { mutableStateOf("") }
     var newCustHp by remember { mutableStateOf("") }
     var newCustAlamat by remember { mutableStateOf("") }
+
+    var showRecentTransactionsDialog by remember { mutableStateOf(false) }
+    var selectedTxForReceipt by remember { mutableStateOf<com.kasirpro.app.data.local.TransactionEntity?>(null) }
+    var showCorrectionAuthDialog by remember { mutableStateOf(false) }
+    var showCorrectionEditDialog by remember { mutableStateOf(false) }
+    var authCodeInput by remember { mutableStateOf("") }
+
+    var showAddExpenseDialog by remember { mutableStateOf(false) }
+    var editExpenseNominal by remember { mutableStateOf("") }
+    var editExpenseKet by remember { mutableStateOf("") }
     
     // Auto collapse checkout dialog if cart is fully emptied
     LaunchedEffect(cart) {
@@ -121,7 +133,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
     }
     
     val context = LocalContext.current
-    val categories = listOf("Semua") + productsList.map { it.kategori }.distinct()
+    val categories = listOf("Semua") + productsList.map { it.kategori }.filter { !it.isNullOrBlank() }.distinct()
 
     val filteredProducts = productsList.filter {
         (selectedCategory == "Semua" || it.kategori == selectedCategory) &&
@@ -211,6 +223,33 @@ fun CashierScreen(viewModel: KasirViewModel) {
                         IconButton(onClick = { viewModel.activeScreen.value = "home" }) {
                             Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
                         }
+                    }
+                },
+                actions = {
+                    var showMenu by remember { mutableStateOf(false) }
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(imageVector = Icons.Default.MoreVert, contentDescription = "Menu Kasir", tint = OrangePrimary)
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Transaksi Terbaru & Koreksi", fontWeight = FontWeight.Bold) },
+                            leadingIcon = { Icon(Icons.Default.History, contentDescription = null, tint = OrangePrimary) },
+                            onClick = {
+                                showMenu = false
+                                showRecentTransactionsDialog = true
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Catat Pengeluaran", fontWeight = FontWeight.Bold) },
+                            leadingIcon = { Icon(Icons.Default.Payments, contentDescription = null, tint = OrangePrimary) },
+                            onClick = {
+                                showMenu = false
+                                showAddExpenseDialog = true
+                            }
+                        )
                     }
                 }
             )
@@ -321,29 +360,40 @@ fun CashierScreen(viewModel: KasirViewModel) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                    .padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                Spacer(modifier = Modifier.width(16.dp))
                 categories.forEach { cat ->
                     val isSelected = selectedCategory == cat
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (isSelected) OrangePrimary else MaterialTheme.colorScheme.surface
-                        ),
-                        modifier = Modifier
-                            .clickable { selectedCategory = cat }
-                            .padding(bottom = 8.dp),
-                        shape = RoundedCornerShape(20.dp)
+                    Surface(
+                        onClick = { selectedCategory = cat },
+                        shape = RoundedCornerShape(24.dp),
+                        color = if (isSelected) OrangePrimary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier.height(36.dp)
                     ) {
-                        Text(
-                            text = cat,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (cat == "Semua") Icons.Default.GridView else Icons.Default.Folder,
+                                contentDescription = null,
+                                tint = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = cat,
+                                color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                fontSize = 13.sp
+                            )
+                        }
                     }
                 }
+                Spacer(modifier = Modifier.width(16.dp))
             }
 
             if (filteredProducts.isEmpty()) {
@@ -378,8 +428,6 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                     viewModel.showVarianDialog.value = item
                                 } else {
                                     viewModel.addToCart(item)
-                                    val currentCount = cart.filter { it.id == item.id }.sumOf { it.jumlah }
-                                    Toast.makeText(context, "${item.nama} ditambahkan ke keranjang (Banyaknya: ${currentCount + 1})", Toast.LENGTH_SHORT).show()
                                 }
                             },
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -440,13 +488,14 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                     Box(
                                         modifier = Modifier
                                             .align(Alignment.TopEnd)
-                                            .padding(6.dp)
-                                            .background(OrangePrimary, shape = RoundedCornerShape(12.dp))
-                                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                                            .padding(8.dp)
+                                            .size(24.dp)
+                                            .background(OrangePrimary, shape = CircleShape),
+                                        contentAlignment = Alignment.Center
                                     ) {
                                         Text(
                                             text = "$currentJumlahInCart",
-                                            fontSize = 10.sp,
+                                            fontSize = 11.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = Color.White
                                         )
@@ -1252,4 +1301,589 @@ fun CashierScreen(viewModel: KasirViewModel) {
             )
         }
     }
+
+        // ================= TRANSAKSI TERBARU & KOREKSI DI ROLE KASIR =================
+        if (showRecentTransactionsDialog) {
+            val transList by viewModel.transactions.collectAsState()
+            val recentList = remember(transList) {
+                transList.sortedByDescending { it.createdAt }.take(15)
+            }
+            AlertDialog(
+                onDismissRequest = { showRecentTransactionsDialog = false },
+                title = { Text("Transaksi Terbaru & Koreksi", fontWeight = FontWeight.Bold) },
+                text = {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 400.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        Text("Pilih transaksi untuk melihat detail struk atau melakukan perbaikan menggunakan authorization PIN pemilik toko.", fontSize = 11.sp, color = Color.Gray)
+                        if (recentList.isEmpty()) {
+                            Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                                Text("Tidak ada transaksi selama shift ini.", color = Color.Gray, fontSize = 11.sp)
+                            }
+                        } else {
+                            recentList.forEach { tx ->
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            selectedTxForReceipt = tx
+                                            showRecentTransactionsDialog = false
+                                        },
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(10.dp).fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(tx.id, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                                            Text(tx.metodeBayar, fontSize = 9.sp, color = Color.Gray)
+                                            val dateStr = remember(tx.createdAt) {
+                                                val sdf = java.text.SimpleDateFormat("dd MMM yyyy HH:mm", java.util.Locale("id", "ID"))
+                                                sdf.format(java.util.Date(tx.createdAt))
+                                            }
+                                            Text(dateStr, fontSize = 9.sp, color = Color.Gray)
+                                        }
+                                        Column(horizontalAlignment = Alignment.End) {
+                                            Text(idrFormatter.format(tx.total), fontWeight = FontWeight.Bold, fontSize = 12.sp, color = OrangePrimary)
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(4.dp))
+                                                    .background(if (tx.status == "lunas") Color(0xFFDCFCE7) else Color(0xFFFEE2E2))
+                                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                                            ) {
+                                                Text(
+                                                    text = tx.status.uppercase(),
+                                                    fontSize = 8.sp,
+                                                    color = if (tx.status == "lunas") Color(0xFF15803D) else Color(0xFFB91C1C),
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showRecentTransactionsDialog = false }) { Text("Tutup") }
+                }
+            )
+        }
+
+        // Receipt Details Dialog with Edit Corection Button
+        if (selectedTxForReceipt != null) {
+            val rx = selectedTxForReceipt!!
+            AlertDialog(
+                onDismissRequest = { selectedTxForReceipt = null },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(imageVector = Icons.Default.ReceiptLong, contentDescription = null, tint = OrangePrimary)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Detail Struk Transaksi", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    }
+                },
+                text = {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color.White)
+                            .padding(10.dp)
+                            .verticalScroll(rememberScrollState()),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(viewModel.currentBusiness.value?.namaBisnis ?: "KASIR PRO", fontWeight = FontWeight.Bold, color = Color.Black, fontSize = 13.sp, textAlign = TextAlign.Center)
+                        Text("---------------------------------", color = Color.Black)
+                        Text("No TRX: ${rx.id}", fontSize = 10.sp, color = Color.Black)
+                        Text("Kasir: ${rx.kasirNama}", fontSize = 10.sp, color = Color.Black)
+                        Text("---------------------------------", color = Color.Black)
+
+                        val itemsSplit = rx.itemsRaw.split(";").filter { it.isNotBlank() }
+                        itemsSplit.forEach { line ->
+                            val parts = line.split(":")
+                            if (parts.size >= 4) {
+                                val name = parts.getOrNull(1).orEmpty()
+                                val qty = parts.getOrNull(2)?.toIntOrNull() ?: 1
+                                val price = parts.getOrNull(3)?.toDoubleOrNull() ?: 0.0
+                                val disc = parts.getOrNull(5)?.toDoubleOrNull() ?: 0.0
+                                val sat = parts.getOrNull(6).orEmpty().takeIf { it.isNotBlank() } ?: "Pcs"
+                                val itemSub = (price - disc) * qty
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("$name x$qty $sat", fontSize = 10.sp, color = Color.Black)
+                                    Text(idrFormatter.format(itemSub), fontSize = 10.sp, color = Color.Black)
+                                }
+                            }
+                        }
+
+                        Text("---------------------------------", color = Color.Black)
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Subtotal", fontSize = 10.sp, color = Color.Black)
+                            Text(idrFormatter.format(rx.subtotal), fontSize = 10.sp, color = Color.Black)
+                        }
+                        if (rx.diskonTotal > 0) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("Diskon Promo", fontSize = 10.sp, color = Color.Black)
+                                Text("-${idrFormatter.format(rx.diskonTotal)}", fontSize = 10.sp, color = Color.Black)
+                            }
+                        }
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("TOTAL", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                            Text(idrFormatter.format(rx.total), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                        }
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("DIBAYAR", fontSize = 10.sp, color = Color.Black)
+                            Text(idrFormatter.format(rx.bayarNominal), fontSize = 10.sp, color = Color.Black)
+                        }
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("KEMBALI", fontSize = 10.sp, color = Color.Black)
+                            Text(idrFormatter.format(rx.kembalian), fontSize = 10.sp, color = Color.Black)
+                        }
+                        Text("---------------------------------", color = Color.Black)
+                    }
+                },
+                confirmButton = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        Button(
+                            onClick = {
+                                showCorrectionAuthDialog = true
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(imageVector = Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Koreksi Transaksi")
+                        }
+                        OutlinedButton(
+                            onClick = { selectedTxForReceipt = null },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Tutup")
+                        }
+                    }
+                }
+            )
+        }
+
+        // Owner verification code dialog
+        if (showCorrectionAuthDialog) {
+            AlertDialog(
+                onDismissRequest = { showCorrectionAuthDialog = false },
+                title = { Text("Otoritas Pemilik Diperlukan", fontWeight = FontWeight.Bold) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Masukkan kode otoritas/sandi pemilik warung untuk mengizinkan kasir mengedit data transaksi struk ini.", fontSize = 11.sp, color = Color.Gray)
+                        OutlinedTextField(
+                            value = authCodeInput,
+                            onValueChange = { authCodeInput = it },
+                            label = { Text("Kode Otoritas Pemilik") },
+                            modifier = Modifier.fillMaxWidth(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword)
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            val realCode = viewModel.getOwnerVerificationCode()
+                            if (authCodeInput == realCode) {
+                                showCorrectionAuthDialog = false
+                                showCorrectionEditDialog = true
+                                authCodeInput = ""
+                            } else {
+                                Toast.makeText(context, "Kode Otoritas salah! Akses Ditolak.", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+                    ) {
+                        Text("Verifikasi")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showCorrectionAuthDialog = false }) { Text("Batal") }
+                }
+            )
+        }
+
+        // Form Koreksi Transaksi (Edit & Save)
+        if (showCorrectionEditDialog && selectedTxForReceipt != null) {
+            val rx = selectedTxForReceipt!!
+            val allProducts by viewModel.products.collectAsState()
+
+            // Parse items
+            val parsedItems = remember(rx.id) {
+                rx.itemsRaw.split(";").filter { it.isNotBlank() }.mapNotNull { line ->
+                    val parts = line.split(":")
+                    if (parts.size >= 4) {
+                        val id = parts[0]
+                        val name = parts[1]
+                        val qty = parts[2].toIntOrNull() ?: 1
+                        val price = parts[3].toDoubleOrNull() ?: 0.0
+                        val vSelected = parts.getOrNull(4) ?: ""
+                        val disc = parts.getOrNull(5)?.toDoubleOrNull() ?: 0.0
+                        val sat = parts.getOrNull(6).orEmpty().takeIf { it.isNotBlank() } ?: "Pcs"
+                        CorrectionItemCashier(id, name, qty, price, vSelected, disc, sat)
+                    } else null
+                }.toMutableStateList()
+            }
+
+            val calculatedSub = parsedItems.sumOf { it.harga * it.jumlah }
+            val calculatedDisc = parsedItems.sumOf { it.diskon * it.jumlah }
+            val calculatedTot = (calculatedSub - calculatedDisc).coerceAtLeast(0.0)
+
+            var editTotalStr by remember { mutableStateOf(calculatedTot.toInt().toString()) }
+            var editBayarStr by remember { mutableStateOf(rx.bayarNominal.toInt().toString()) }
+            var editDiskonStr by remember { mutableStateOf(calculatedDisc.toInt().toString()) }
+            var editMetodeBayar by remember { mutableStateOf(rx.metodeBayar) }
+            var editStatus by remember { mutableStateOf(rx.status) }
+
+            LaunchedEffect(parsedItems.toList()) {
+                editTotalStr = calculatedTot.toInt().toString()
+                editDiskonStr = calculatedDisc.toInt().toString()
+            }
+
+            var showAddProductMenuComp by remember { mutableStateOf(false) }
+
+            AlertDialog(
+                onDismissRequest = { showCorrectionEditDialog = false },
+                title = { Text("Koreksi / Perbaikan Transaksi", fontWeight = FontWeight.Bold) },
+                text = {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+                    ) {
+                        Text("No TRX: ${rx.id}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OrangePrimary)
+                        Text("Edit Produk Struk", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), shape = RoundedCornerShape(8.dp))
+                                .padding(8.dp)
+                        ) {
+                            if (parsedItems.isEmpty()) {
+                                Text("Tidak ada produk di struk", fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(10.dp))
+                            } else {
+                                parsedItems.forEachIndexed { idx, item ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(item.nama, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                            Text("${idrFormatter.format(item.harga)} x ${item.jumlah}", fontSize = 10.sp, color = Color.Gray)
+                                        }
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            IconButton(
+                                                onClick = {
+                                                    if (item.jumlah > 1) {
+                                                        parsedItems[idx] = item.copy(jumlah = item.jumlah - 1)
+                                                    } else {
+                                                        parsedItems.removeAt(idx)
+                                                    }
+                                                },
+                                                modifier = Modifier.size(24.dp)
+                                            ) {
+                                                Icon(imageVector = Icons.Default.RemoveCircle, contentDescription = "Kurang", tint = OrangePrimary)
+                                            }
+                                            Text("${item.jumlah}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                            IconButton(
+                                                onClick = {
+                                                    parsedItems[idx] = item.copy(jumlah = item.jumlah + 1)
+                                                },
+                                                modifier = Modifier.size(24.dp)
+                                            ) {
+                                                Icon(imageVector = Icons.Default.AddCircle, contentDescription = "Tambah", tint = OrangePrimary)
+                                            }
+                                            IconButton(
+                                                onClick = { parsedItems.removeAt(idx) },
+                                                modifier = Modifier.size(24.dp)
+                                            ) {
+                                                Icon(imageVector = Icons.Default.Delete, contentDescription = "Hapus", tint = Color.Red)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Button(
+                            onClick = { showAddProductMenuComp = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Tambah Produk ke Struk Baru", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        OutlinedTextField(
+                            value = editTotalStr,
+                            onValueChange = { editTotalStr = it },
+                            label = { Text("Total Belanja Baru (Rp)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+
+                        OutlinedTextField(
+                            value = editDiskonStr,
+                            onValueChange = { editDiskonStr = it },
+                            label = { Text("Diskon Baru (Rp)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+
+                        OutlinedTextField(
+                            value = editBayarStr,
+                            onValueChange = { editBayarStr = it },
+                            label = { Text("Nominal Bayar Baru (Rp)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+
+                        Text("Metode Pembayaran", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
+                            listOf("Tunai", "QRIS", "Transfer", "Debit").forEach { m ->
+                                Card(
+                                    onClick = { editMetodeBayar = m },
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = if (editMetodeBayar == m) OrangePrimary else MaterialTheme.colorScheme.surfaceVariant
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Box(modifier = Modifier.padding(6.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                        Text(m, fontSize = 9.sp, color = if (editMetodeBayar == m) Color.White else Color.Black, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+
+                        Text("Status Pembayaran", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
+                            listOf("lunas", "dp").forEach { s ->
+                                Card(
+                                    onClick = { editStatus = s },
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = if (editStatus == s) OrangePrimary else MaterialTheme.colorScheme.surfaceVariant
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Box(modifier = Modifier.padding(6.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                        Text(s.uppercase(), fontSize = 9.sp, color = if (editStatus == s) Color.White else Color.Black, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            val totalVal = editTotalStr.toDoubleOrNull() ?: calculatedTot
+                            val bayarVal = editBayarStr.toDoubleOrNull() ?: rx.bayarNominal
+                            val diskonVal = editDiskonStr.toDoubleOrNull() ?: calculatedDisc
+
+                            if (bayarVal < totalVal && editStatus == "lunas") {
+                                Toast.makeText(context, "Nominal bayar kurang dari total untuk status lunas!", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
+                            if (parsedItems.isEmpty()) {
+                                Toast.makeText(context, "Struk tidak boleh kosong!", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
+
+                            val updatedItemsString = parsedItems.joinToString(";") {
+                                "${it.id}:${it.nama}:${it.jumlah}:${it.harga}:${it.varianSelected}:${it.diskon}:${it.satuan}"
+                            }
+
+                            val updatedTx = rx.copy(
+                                itemsRaw = updatedItemsString,
+                                subtotal = calculatedSub,
+                                total = totalVal,
+                                bayarNominal = bayarVal,
+                                diskonTotal = diskonVal,
+                                metodeBayar = editMetodeBayar,
+                                status = editStatus,
+                                kembalian = (bayarVal - totalVal).coerceAtLeast(0.0)
+                            )
+
+                            viewModel.correctTransaction(updatedTx) {
+                                showCorrectionEditDialog = false
+                                selectedTxForReceipt = null
+                                Toast.makeText(context, "Berhasil simpan koreksi transaksi!", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+                    ) {
+                        Text("Simpan Koreksi")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showCorrectionEditDialog = false }) { Text("Batal") }
+                }
+            )
+
+            if (showAddProductMenuComp) {
+                var searchProdQueryComp by remember { mutableStateOf("") }
+                val filteredStoreProdsComp = allProducts.filter { it.nama.contains(searchProdQueryComp, ignoreCase = true) }
+
+                AlertDialog(
+                    onDismissRequest = { showAddProductMenuComp = false },
+                    title = { Text("Pilih Produk", fontWeight = FontWeight.Bold) },
+                    text = {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.heightIn(max = 280.dp)) {
+                            OutlinedTextField(
+                                value = searchProdQueryComp,
+                                onValueChange = { searchProdQueryComp = it },
+                                label = { Text("Cari Produk...") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            androidx.compose.foundation.lazy.LazyColumn(
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                items(filteredStoreProdsComp) { prod ->
+                                    Card(
+                                        onClick = {
+                                            val existingIndex = parsedItems.indexOfFirst { it.id == prod.id && it.varianSelected.isEmpty() }
+                                            if (existingIndex >= 0) {
+                                                parsedItems[existingIndex] = parsedItems[existingIndex].copy(jumlah = parsedItems[existingIndex].jumlah + 1)
+                                            } else {
+                                                parsedItems.add(CorrectionItemCashier(
+                                                    id = prod.id,
+                                                    nama = prod.nama,
+                                                    jumlah = 1,
+                                                    harga = prod.hargaJual,
+                                                    varianSelected = "",
+                                                    diskon = 0.0,
+                                                    satuan = prod.satuan
+                                                ))
+                                            }
+                                            showAddProductMenuComp = false
+                                        },
+                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(10.dp).fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column {
+                                                Text(prod.nama, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
+                                                Text("Stok: ${prod.stok}", fontSize = 9.sp, color = Color.Gray)
+                                            }
+                                            Text(idrFormatter.format(prod.hargaJual), fontWeight = FontWeight.Bold, color = OrangePrimary, fontSize = 11.sp)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showAddProductMenuComp = false }) { Text("Batal") }
+                    }
+                )
+            }
+        }
+
+        // Catat Pengeluaran Dialogue
+        if (showAddExpenseDialog) {
+            val ownerId = remember(user) {
+                if (user?.role == "kasir" || user?.role == "kasir_invited") user?.ownerId else user?.uid
+            }
+            AlertDialog(
+                onDismissRequest = {
+                    showAddExpenseDialog = false
+                    editExpenseNominal = ""
+                    editExpenseKet = ""
+                },
+                title = { Text("Pencatatan Pengeluaran Kas", fontWeight = FontWeight.Bold) },
+                icon = { Icon(Icons.Default.Payments, contentDescription = null, tint = OrangePrimary) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Catat uang keluar / beban operasional toko selama shift saat ini.", fontSize = 11.sp, color = Color.Gray)
+                        OutlinedTextField(
+                            value = editExpenseNominal,
+                            onValueChange = { editExpenseNominal = it.filter { c -> c.isDigit() } },
+                            label = { Text("Nominal Pengeluaran (Rp) *") },
+                            modifier = Modifier.fillMaxWidth(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = editExpenseKet,
+                            onValueChange = { editExpenseKet = it },
+                            label = { Text("Keterangan Pengeluaran *") },
+                            placeholder = { Text("Contoh: Listrik, Belanja Plastik") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            val amt = editExpenseNominal.toDoubleOrNull() ?: 0.0
+                            if (amt <= 0 || editExpenseKet.isBlank()) {
+                                Toast.makeText(context, "Nominal & keterangan wajib diisi!", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
+                            viewModel.recordExpense(amt, editExpenseKet) { success, error ->
+                                if (success) {
+                                    showAddExpenseDialog = false
+                                    editExpenseNominal = ""
+                                    editExpenseKet = ""
+                                    Toast.makeText(context, "Pengeluaran kas berhasil dicatatkan!", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(context, "Gagal menyimpan pengeluaran: $error", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+                    ) {
+                        Text("Simpan Pengeluaran")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            showAddExpenseDialog = false
+                            editExpenseNominal = ""
+                            editExpenseKet = ""
+                        }
+                    ) {
+                        Text("Batal")
+                    }
+                }
+            )
+        }
 }
+
+data class CorrectionItemCashier(
+    val id: String,
+    val nama: String,
+    val jumlah: Int,
+    val harga: Double,
+    val varianSelected: String,
+    val diskon: Double,
+    val satuan: String
+)

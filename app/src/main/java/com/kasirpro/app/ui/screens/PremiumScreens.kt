@@ -3,6 +3,7 @@ package com.kasirpro.app.ui.screens
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -177,9 +178,13 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
     var selectedCashierId by remember { mutableStateOf("all") }
     var reportInterval by remember { mutableStateOf("BULANAN") } // HARIAN, MINGGUAN, BULANAN
 
+    var showAddExpenseDialog by remember { mutableStateOf(false) }
+    var editExpenseNominal by remember { mutableStateOf("") }
+    var editExpenseKet by remember { mutableStateOf("") }
+
     // Fetch user owner ID
     val ownerId = remember(user) {
-        if (user?.role == "kasir") user?.ownerId else user?.uid
+        if (user?.role == "kasir" || user?.role == "kasir_invited") user?.ownerId else user?.uid
     }
 
     // Dynamic, Real-time Expenses and Shifts from Firebase Firestore
@@ -499,6 +504,19 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                             Text("Laba Bersih Finansial:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
                             Text(idrFormatter.format(finalFinancialNet), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (finalFinancialNet >= 0) Color(0xFF15803D) else Color(0xFFB91C1C))
                         }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Button(
+                            onClick = { showAddExpenseDialog = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary.copy(alpha = 0.1f)),
+                            border = BorderStroke(1.dp, OrangePrimary),
+                            modifier = Modifier.fillMaxWidth().testTag("add_expense_btn"),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Tambah Pengeluaran", color = OrangePrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
                     }
                 }
 
@@ -688,8 +706,29 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                                     }
 
                                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("Uang Laci Fisik:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OrangePrimary)
-                                        Text(idrFormatter.format(shift.modalAwal + shift.totalTunai), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OrangePrimary)
+                                        Text("Teoritis Seharusnya (Sistem):", fontSize = 11.sp, color = Color.Gray)
+                                        Text(idrFormatter.format(shift.modalAwal + shift.totalTunai), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                    }
+
+                                    if (shift.status != "aktif") {
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text("Uang Fisik Dilaporkan:", fontSize = 11.sp, color = Color.Gray)
+                                            Text(idrFormatter.format(shift.actualDrawerCash), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                        }
+
+                                        val selisihVal = shift.selisih
+                                        val selisihColor = if (selisihVal == 0.0) Color.DarkGray else if (selisihVal > 0.0) Color(0xFF16A34A) else Color(0xFFDC2626)
+                                        val labelText = if (selisihVal == 0.0) {
+                                            "Sesuai (Rp 0)"
+                                        } else if (selisihVal > 0.0) {
+                                            "Surplus (+${idrFormatter.format(selisihVal)})"
+                                        } else {
+                                            "Defisit / Minus (${idrFormatter.format(selisihVal)})"
+                                        }
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text("Selisih Kas Laci Fisik:", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                            Text(labelText, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = selisihColor)
+                                        }
                                     }
                                 }
                             }
@@ -825,6 +864,72 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                 Text("Export PDF Laporan Kasir", fontWeight = FontWeight.Bold, color = Color.White)
             }
         }
+    }
+
+    if (showAddExpenseDialog) {
+        val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+        AlertDialog(
+            onDismissRequest = { showAddExpenseDialog = false },
+            title = { Text("Catat Pengeluaran Baru", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Catat pengeluaran finansial / biaya beban operasional toko Anda di bawah ini.", fontSize = 11.sp, color = Color.Gray)
+                    
+                    OutlinedTextField(
+                        value = editExpenseNominal,
+                        onValueChange = { editExpenseNominal = it },
+                        label = { Text("Nominal Pengeluaran (Rp) *") },
+                        singleLine = true,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth().testTag("expense_nominal_input")
+                    )
+
+                    OutlinedTextField(
+                        value = editExpenseKet,
+                        onValueChange = { editExpenseKet = it },
+                        label = { Text("Keterangan Operasional *") },
+                        placeholder = { Text("Contoh: Bayar Listrik, Gaji Karyawan, Sewa Tempat, dll.") },
+                        singleLine = false,
+                        modifier = Modifier.fillMaxWidth().testTag("expense_description_input")
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val amt = editExpenseNominal.toDoubleOrNull() ?: 0.0
+                        if (amt <= 0.0) {
+                            Toast.makeText(context, "Jumlah nominal pengeluaran harus valid!", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        if (editExpenseKet.isBlank()) {
+                            Toast.makeText(context, "Keterangan pengeluaran tidak boleh kosong!", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+
+                        viewModel.recordExpense(amt, editExpenseKet) { success, error ->
+                            if (success) {
+                                showAddExpenseDialog = false
+                                editExpenseNominal = ""
+                                editExpenseKet = ""
+                                Toast.makeText(context, "Pengeluaran berhasil dicatat!", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "Gagal mencatatkan pengeluaran: $error", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+                    modifier = Modifier.testTag("submit_expense_btn")
+                ) {
+                    Text("Simpan Pengeluaran")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddExpenseDialog = false }) {
+                    Text("Batal")
+                }
+            }
+        )
     }
 }
 

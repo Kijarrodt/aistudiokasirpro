@@ -85,6 +85,9 @@ interface KasirDao {
     @Query("SELECT * FROM transactions WHERE isOfflinePending = 1")
     suspend fun getOfflinePendingTransactions(): List<TransactionEntity>
 
+    @Query("SELECT * FROM transactions WHERE id = :id")
+    suspend fun getTransactionById(id: String): TransactionEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTransaction(transaction: TransactionEntity)
 

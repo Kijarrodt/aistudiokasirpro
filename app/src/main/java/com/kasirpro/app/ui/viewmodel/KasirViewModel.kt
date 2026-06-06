@@ -129,7 +129,7 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun endShift(onEnded: (ShiftReport) -> Unit) {
+    fun endShift(actualDrawerCash: Double, selisih: Double, onEnded: (ShiftReport) -> Unit) {
         val shift = activeShift.value ?: return
         viewModelScope.launch {
             val startTime = shift.startTime
@@ -151,7 +151,9 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
                 shiftId = shift.id,
                 finalTunai = totalTunai,
                 finalNonTunai = totalNonTunai,
-                finalTxTotal = totalTransaksi
+                finalTxTotal = totalTransaksi,
+                actualDrawerCash = actualDrawerCash,
+                selisih = selisih
             )
             if (success) {
                 val updatedReport = shift.copy(
@@ -159,7 +161,9 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
                     totalTunai = totalTunai,
                     totalNonTunai = totalNonTunai,
                     totalTransaksi = totalTransaksi,
-                    status = "selesai"
+                    status = "selesai",
+                    actualDrawerCash = actualDrawerCash,
+                    selisih = selisih
                 )
                 activeShift.value = null
                 onEnded(updatedReport)
@@ -586,6 +590,49 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.correctTransaction(correctedTx)
             onComplete()
+        }
+    }
+
+    fun recordExpense(amount: Double, keterangan: String, onComplete: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val user = repository.getCurrentUserRaw()
+                val ownerId = if (user != null) {
+                    if (user.role == "kasir" || user.role == "kasir_invited") {
+                        user.ownerId ?: user.uid
+                    } else {
+                        user.uid
+                    }
+                } else {
+                    com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: "owner-uid"
+                }
+
+                if (ownerId.isBlank()) {
+                    onComplete(false, "ID Pemilik tidak ditemukan.")
+                    return@launch
+                }
+
+                val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                val idVal = java.util.UUID.randomUUID().toString()
+                val exp = hashMapOf(
+                    "ownerId" to ownerId,
+                    "amount" to amount,
+                    "keterangan" to keterangan,
+                    "createdAt" to System.currentTimeMillis()
+                )
+
+                db.collection("expenses")
+                    .document(idVal)
+                    .set(exp)
+                    .addOnSuccessListener {
+                        onComplete(true, null)
+                    }
+                    .addOnFailureListener { e ->
+                        onComplete(false, e.localizedMessage)
+                    }
+            } catch (e: Exception) {
+                onComplete(false, e.localizedMessage)
+            }
         }
     }
 
