@@ -33,7 +33,7 @@ class ExampleRobolectricTest {
   fun `cashier screen render`() {
     val app = ApplicationProvider.getApplicationContext<Application>()
     val viewModel = KasirViewModel(app)
-    viewModel.populateDemoDataset()
+    viewModel.forceSyncFromFirestore()
     composeTestRule.setContent {
       MyApplicationTheme {
         CashierScreen(viewModel = viewModel)

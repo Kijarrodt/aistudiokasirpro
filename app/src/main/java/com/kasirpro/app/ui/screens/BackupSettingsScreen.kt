@@ -404,8 +404,8 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             Icon(imageVector = Icons.Default.Lock, contentDescription = null, tint = OrangePrimary)
                             Spacer(modifier = Modifier.width(8.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Mode Peninjauan (Demo Premium)", fontWeight = FontWeight.Bold, color = OrangeDark, fontSize = 12.sp)
-                                Text("Anda sedang melihat contoh fitur ini. Agar dapat menambah/menyimpan data secara realtime, silakan Upgrade ke Premium Pro.", fontSize = 11.sp, color = OrangeDark)
+                                Text("Fitur Premium Pro Terkunci", fontWeight = FontWeight.Bold, color = OrangeDark, fontSize = 12.sp)
+                                Text("Bagian ini hanya untuk pengguna Premium Pro. Silakan upgrade untuk membuka dan mengelola data secara real-time.", fontSize = 11.sp, color = OrangeDark)
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             Button(
@@ -1270,18 +1270,16 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             color = OrangeDark
                         )
                         Spacer(modifier = Modifier.height(12.dp))
-                        Button(
-                            onClick = {
-                                if (isPremium) {
-                                    scope.launch { viewModel.downgradeToFree() }
-                                } else {
+                        if (!isPremium) {
+                            Button(
+                                onClick = {
                                     viewModel.activeScreen.value = "premium_pricing"
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text(if (isPremium) "Kembalikan ke Gratis (Demo)" else "Upgrade Premium Sekarang")
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Upgrade Premium Sekarang")
+                            }
                         }
                     }
                 }
@@ -1925,9 +1923,9 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
                         Spacer(modifier = Modifier.height(20.dp))
 
                         Text(
-                            text = "Selamat! Anda Sekarang Premium",
+                            text = "Selamat! Akun Anda berhasil diaktifkan sebagai Premium",
                             fontWeight = FontWeight.ExtraBold,
-                            fontSize = 18.sp,
+                            fontSize = 16.sp,
                             color = Color.White,
                             textAlign = TextAlign.Center
                         )
@@ -2050,6 +2048,43 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                 }
             }
 
+            // Summary Stats Section
+            val totalActive = codes.count { !(it["isUsed"] as? Boolean ?: false) }
+            val totalUsed = codes.count { it["isUsed"] as? Boolean ?: false }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Card(
+                    modifier = Modifier.weight(1f),
+                    colors = CardDefaults.cardColors(containerColor = Slate800)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("Aktif (Belum Dipakai)", color = Color.Green, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("$totalActive", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                    }
+                }
+
+                Card(
+                    modifier = Modifier.weight(1f),
+                    colors = CardDefaults.cardColors(containerColor = Slate800)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("Terpakai (Sudah Aktif)", color = Color.Red, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("$totalUsed", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                    }
+                }
+            }
+
             Text("Daftar Kode Aktivasi (${codes.size})", color = Color.Gray, fontSize = 14.sp, fontWeight = FontWeight.Bold)
 
             if (codes.isEmpty()) {
@@ -2095,7 +2130,10 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                             )
                                         )
                                         Spacer(modifier = Modifier.height(4.dp))
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
                                             Box(
                                                 modifier = Modifier
                                                     .background(
@@ -2111,9 +2149,23 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                                     fontWeight = FontWeight.Bold
                                                 )
                                             }
-                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Box(
+                                                modifier = Modifier
+                                                    .background(
+                                                        if (isUsed) Color.Red.copy(alpha = 0.2f) else Color.Green.copy(alpha = 0.2f),
+                                                        RoundedCornerShape(4.dp)
+                                                    )
+                                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                                            ) {
+                                                Text(
+                                                    text = if (isUsed) "TERPAKAI" else "AKTIF",
+                                                    color = if (isUsed) Color.Red else Color.Green,
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
                                             Text(
-                                                text = "Dibuat: ${android.text.format.DateFormat.format("dd/MM/yyyy", createdAt)}",
+                                                text = "Dibuat: ${android.text.format.DateFormat.format("dd/MM", createdAt)}",
                                                 color = Color.Gray,
                                                 fontSize = 11.sp
                                             )

@@ -612,20 +612,14 @@ data class GoogleLoginResult(
 
     suspend fun loginWithGoogle(idToken: String): GoogleLoginResult {
         return try {
-            val finalUid = if (idToken == "sandbox-bypass") "google-offline-owner" else null
-            
-            val (resultUid, email, namaUser) = if (idToken == "sandbox-bypass") {
-                Triple("google-offline-owner", "sandbox.tester@kasirpro.id", "Sandbox Tester")
-            } else {
-                val credential = GoogleAuthProvider.getCredential(idToken, null)
-                val result = withTimeoutOrNull(10000L) {
-                    auth.signInWithCredential(credential).await()
-                }
-                val firebaseUid = result?.user?.uid ?: throw Exception("Auth failed or timed out")
-                val email = result?.user?.email ?: "google-user@kasirpro.id"
-                val namaUser = result?.user?.displayName ?: email.substringBefore("@").replaceFirstChar { it.uppercase() }
-                Triple(firebaseUid, email, namaUser)
+            val credential = GoogleAuthProvider.getCredential(idToken, null)
+            val result = withTimeoutOrNull(10000L) {
+                auth.signInWithCredential(credential).await()
             }
+            val firebaseUid = result?.user?.uid ?: throw Exception("Auth failed or timed out")
+            val email = result?.user?.email ?: "google-user@kasirpro.id"
+            val namaUser = result?.user?.displayName ?: email.substringBefore("@").replaceFirstChar { it.uppercase() }
+            val resultUid = firebaseUid
 
             setLoggedInDeviceUser(resultUid)
             android.util.Log.d("AUTH", "User UID: ${resultUid}")
@@ -634,54 +628,29 @@ data class GoogleLoginResult(
             var userExists = false
             var existingUser: UserEntity? = null
 
-            if (resultUid != "google-offline-owner") {
-                try {
-                    val doc = withTimeoutOrNull(5000L) {
-                        firestore.collection("users").document(resultUid).get().await()
-                    }
-                    if (doc != null && doc.exists()) {
-                        userExists = true
-                        android.util.Log.d("AUTH", "User exists in Firestore: true")
-                        existingUser = UserEntity(
-                            uid = resultUid,
-                            nama = doc.getString("nama") ?: namaUser,
-                            email = doc.getString("email") ?: email,
-                            role = doc.getString("role") ?: "owner",
-                            ownerId = doc.getString("ownerId"),
-                            assignedBranchId = doc.getString("assignedBranchId"),
-                            subscriptionStatus = doc.getString("subscriptionStatus") ?: "free",
-                            subscriptionStartDate = doc.getLong("subscriptionStartDate"),
-                            subscriptionEndDate = doc.getLong("subscriptionEndDate"),
-                            createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis(),
-                            lastActiveAt = System.currentTimeMillis()
-                        )
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
+            try {
+                val doc = withTimeoutOrNull(5000L) {
+                    firestore.collection("users").document(resultUid).get().await()
                 }
-            } else {
-                // For sandbox offline fallbacks, check firestore document as well
-                try {
-                    val doc = withTimeoutOrNull(3000L) {
-                        firestore.collection("users").document(resultUid).get().await()
-                    }
-                    if (doc != null && doc.exists()) {
-                        userExists = true
-                        existingUser = UserEntity(
-                            uid = resultUid,
-                            nama = doc.getString("nama") ?: namaUser,
-                            email = doc.getString("email") ?: email,
-                            role = doc.getString("role") ?: "owner",
-                            ownerId = doc.getString("ownerId"),
-                            assignedBranchId = doc.getString("assignedBranchId"),
-                            subscriptionStatus = doc.getString("subscriptionStatus") ?: "free",
-                            subscriptionStartDate = doc.getLong("subscriptionStartDate"),
-                            subscriptionEndDate = doc.getLong("subscriptionEndDate"),
-                            createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis(),
-                            lastActiveAt = System.currentTimeMillis()
-                        )
-                    }
-                } catch (e: Exception) {}
+                if (doc != null && doc.exists()) {
+                    userExists = true
+                    android.util.Log.d("AUTH", "User exists in Firestore: true")
+                    existingUser = UserEntity(
+                        uid = resultUid,
+                        nama = doc.getString("nama") ?: namaUser,
+                        email = doc.getString("email") ?: email,
+                        role = doc.getString("role") ?: "owner",
+                        ownerId = doc.getString("ownerId"),
+                        assignedBranchId = doc.getString("assignedBranchId"),
+                        subscriptionStatus = doc.getString("subscriptionStatus") ?: "free",
+                        subscriptionStartDate = doc.getLong("subscriptionStartDate"),
+                        subscriptionEndDate = doc.getLong("subscriptionEndDate"),
+                        createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis(),
+                        lastActiveAt = System.currentTimeMillis()
+                    )
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
 
             android.util.Log.d("AUTH", "User exists in Firestore: ${userExists}")
@@ -710,12 +679,10 @@ data class GoogleLoginResult(
                     lastActiveAt = System.currentTimeMillis()
                 )
                 // Write new user document to Firestore
-                if (resultUid != "google-offline-owner") {
-                    try {
-                        firestore.collection("users").document(resultUid).set(newUser.toMap()).await()
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
+                try {
+                    firestore.collection("users").document(resultUid).set(newUser.toMap()).await()
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
                 newUser
             }
@@ -724,9 +691,7 @@ data class GoogleLoginResult(
             dao.insertUser(user)
 
             try {
-                if (resultUid != "google-offline-owner") {
-                    syncFromFirestore(resultUid)
-                }
+                syncFromFirestore(resultUid)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
