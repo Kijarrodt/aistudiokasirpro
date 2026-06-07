@@ -272,6 +272,35 @@ class KasirRepository(private val context: Context) {
 
     suspend fun getCurrentBusinessRaw(): BusinessEntity? = dao.getCurrentBusinessRaw()
 
+    suspend fun getBusinessFromFirestore(ownerId: String): BusinessEntity? {
+        return try {
+            val bizSnap = firestore.collection("businesses")
+                .whereEqualTo("ownerId", ownerId)
+                .get()
+                .await()
+            if (!bizSnap.isEmpty) {
+                val doc = bizSnap.documents.first()
+                BusinessEntity(
+                    id = doc.id,
+                    ownerId = ownerId,
+                    namaBisnis = doc.getString("namaBisnis") ?: "Toko Kasir",
+                    logoBase64 = doc.getString("logoBase64"),
+                    alamat = doc.getString("alamat"),
+                    noTelpon = doc.getString("noTelpon"),
+                    createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis(),
+                    qrisBase64 = doc.getString("qrisBase64")
+                )
+            } else null
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    suspend fun insertBusinessLocal(business: BusinessEntity) {
+        dao.insertBusiness(business)
+    }
+
     suspend fun updateBusinessProfile(namaBisnis: String, alamat: String?, noTelpon: String?, logoBase64: String?) {
         val biz = getCurrentBusinessRaw() ?: return
         val updated = biz.copy(
@@ -645,9 +674,23 @@ data class GoogleLoginResult(
                     )
                 } else {
                     // Check by Email query as a fallback (for preexisting email/password registrations)
-                    val emailQuery = withTimeoutOrNull(5000L) {
-                        firestore.collection("users").whereEqualTo("email", email.trim().lowercase()).get().await()
+                    val cleanEmail = email.trim().lowercase()
+                    var emailQuery = withTimeoutOrNull(5000L) {
+                        firestore.collection("users").whereEqualTo("email", cleanEmail).get().await()
                     }
+                    if (emailQuery == null || emailQuery.isEmpty) {
+                        emailQuery = withTimeoutOrNull(5000L) {
+                            firestore.collection("users").whereEqualTo("email", email.trim()).get().await()
+                        }
+                    }
+                    if (emailQuery == null || emailQuery.isEmpty) {
+                        if (cleanEmail == "kikijarrodt@gmail.com") {
+                            emailQuery = withTimeoutOrNull(5000L) {
+                                firestore.collection("users").whereEqualTo("email", "kikijarrodt@gmail.com").get().await()
+                            }
+                        }
+                    }
+
                     if (emailQuery != null && !emailQuery.isEmpty) {
                         val firstDoc = emailQuery.documents.first()
                         userExists = true
@@ -656,7 +699,7 @@ data class GoogleLoginResult(
                         
                         existingUser = UserEntity(
                             uid = resultUid,
-                            nama = firstDoc.getString("nama") ?: namaUser,
+                            nama = firstDoc.getString("nama") ?: firstDoc.getString("name") ?: namaUser,
                             email = email,
                             role = firstDoc.getString("role") ?: "owner",
                             ownerId = firstDoc.getString("ownerId"),
@@ -702,12 +745,44 @@ data class GoogleLoginResult(
                                         firestore.collection("products").document(pDoc.id).set(productMap).await()
                                     }
                                     android.util.Log.d("AUTH", "Successfully copied associated products in Firestore")
+                                    
+                                    // Also copy transactions to new business ID
+                                    val transQuery = firestore.collection("transactions").whereEqualTo("businessId", oldBizId).get().await()
+                                    for (tDoc in transQuery.documents) {
+                                        val transMap = tDoc.data?.toMutableMap() ?: mutableMapOf()
+                                        transMap["id"] = tDoc.id
+                                        transMap["businessId"] = newBizId
+                                        firestore.collection("transactions").document(tDoc.id).set(transMap).await()
+                                    }
+                                    android.util.Log.d("AUTH", "Successfully copied associated transactions in Firestore")
                                 } catch (pe: Exception) {
                                     pe.printStackTrace()
                                 }
                             }
                         } catch (be: Exception) {
                             be.printStackTrace()
+                        }
+                    } else {
+                        // Double check if there is an existing business under this resultUid
+                        val bizCheck = withTimeoutOrNull(5000L) {
+                            firestore.collection("businesses").whereEqualTo("ownerId", resultUid).get().await()
+                        }
+                        if (bizCheck != null && !bizCheck.isEmpty) {
+                            userExists = true
+                            android.util.Log.d("AUTH", "No user doc, but business found in Firestore for resultUid: true")
+                            existingUser = UserEntity(
+                                uid = resultUid,
+                                nama = namaUser,
+                                email = email,
+                                role = "owner",
+                                ownerId = null,
+                                assignedBranchId = null,
+                                subscriptionStatus = "free",
+                                subscriptionStartDate = null,
+                                subscriptionEndDate = null,
+                                createdAt = System.currentTimeMillis(),
+                                lastActiveAt = System.currentTimeMillis()
+                            )
                         }
                     }
                 }
@@ -1556,13 +1631,14 @@ data class GoogleLoginResult(
     suspend fun generateActivationCode(type: String, durationDays: Int, createdByUid: String): Boolean {
         android.util.Log.d("ADMIN", "Generating code...")
         val suffix = (1..6).map { "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".random() }.joinToString("")
-        val codeId = "KASIRPRO-${type.uppercase()}-$suffix"
-        android.util.Log.d("ADMIN", "Code generated: $codeId")
+        val typeLabel = if (type.lowercase() == "tahunan") "TAHUNAN" else "BULANAN"
+        val kode = "KASIRPRO-$typeLabel-$suffix"
+        android.util.Log.d("ADMIN", "Code generated: $kode")
         android.util.Log.d("ADMIN", "Saving to Firestore...")
         return try {
             val now = System.currentTimeMillis()
             val codeMap = mapOf(
-                "id" to codeId,
+                "id" to kode,
                 "type" to type,
                 "durationDays" to durationDays,
                 "isUsed" to false,
@@ -1571,7 +1647,7 @@ data class GoogleLoginResult(
                 "createdAt" to now,
                 "createdBy" to createdByUid
             )
-            firestore.collection("activation_codes").document(codeId).set(codeMap).await()
+            firestore.collection("activation_codes").document(kode).set(codeMap).await()
             android.util.Log.d("ADMIN", "Save result: success")
             true
         } catch (e: Exception) {

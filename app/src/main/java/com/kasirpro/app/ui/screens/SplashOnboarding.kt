@@ -33,6 +33,7 @@ import com.kasirpro.app.ui.viewmodel.KasirViewModel
 import com.kasirpro.app.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 @Composable
 fun SplashScreen(viewModel: KasirViewModel) {
@@ -48,9 +49,27 @@ fun SplashScreen(viewModel: KasirViewModel) {
         // Check active user login status
         val current = viewModel.currentUser.value
         if (current != null) {
-            val biz = viewModel.currentBusiness.value
+            val biz = viewModel.repository.getCurrentBusinessRaw()
             if (biz == null && current.role == "owner") {
-                viewModel.activeScreen.value = "setup_toko"
+                // Check if a business already exists in Firestore for this owner
+                var onlineBizExists = false
+                try {
+                    val uid = current.uid
+                    val firestoreBiz = viewModel.repository.getBusinessFromFirestore(uid)
+                    if (firestoreBiz != null) {
+                        onlineBizExists = true
+                        viewModel.repository.insertBusinessLocal(firestoreBiz)
+                        android.util.Log.d("SPLASH", "Restore existing business from Firestore on splash screen: ${firestoreBiz.namaBisnis}")
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+
+                if (onlineBizExists) {
+                    viewModel.activeScreen.value = "home"
+                } else {
+                    viewModel.activeScreen.value = "setup_toko"
+                }
             } else if (current.role == "kasir") {
                 viewModel.activeScreen.value = "cashier"
             } else {
