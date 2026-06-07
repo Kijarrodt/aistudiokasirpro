@@ -117,6 +117,8 @@ fun CashierScreen(viewModel: KasirViewModel) {
     var newCustHp by remember { mutableStateOf("") }
     var newCustAlamat by remember { mutableStateOf("") }
 
+    var redeemPointsInput by remember { mutableStateOf("") }
+
     var showRecentTransactionsDialog by remember { mutableStateOf(false) }
     var selectedTxForReceipt by remember { mutableStateOf<com.kasirpro.app.data.local.TransactionEntity?>(null) }
     var showCorrectionAuthDialog by remember { mutableStateOf(false) }
@@ -142,6 +144,10 @@ fun CashierScreen(viewModel: KasirViewModel) {
         (it.nama.contains(searchQuery, ignoreCase = true) || (it.barcode ?: "").contains(searchQuery))
     }
 
+    val prefs = remember(context) { context.getSharedPreferences("kasir_pro_prefs", android.content.Context.MODE_PRIVATE) }
+    val isLoyaltyEnabled = remember(prefs) { prefs.getBoolean("is_loyalty_enabled", true) }
+    val pointRateValue = remember(prefs) { prefs.getFloat("point_rate", 100f) }
+
     val idrFormatter = NumberFormat.getCurrencyInstance(Locale("id", "ID"))
     idrFormatter.maximumFractionDigits = 0
 
@@ -157,7 +163,12 @@ fun CashierScreen(viewModel: KasirViewModel) {
         }
     } ?: 0.0
 
-    val orderTotal = (cartSubtotal - promoDiscountAmount).coerceAtLeast(0.0)
+    val pointsRedeemedAmountVal = if (isLoyaltyEnabled && currentCustomer != null) {
+        redeemPointsInput.toIntOrNull() ?: 0
+    } else 0
+    val pointsDiscountAmount = pointsRedeemedAmountVal * pointRateValue.toDouble()
+
+    val orderTotal = (cartSubtotal - promoDiscountAmount - pointsDiscountAmount).coerceAtLeast(0.0)
 
     // Shift modal lock popup
     if (isKasir && activeShift == null) {
@@ -734,7 +745,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                             Column {
                                 Text("Promo & Loyalty", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                                 if (currentCustomer != null) {
-                                    Text("Pelanggan: ${currentCustomer?.nama} (+${(orderTotal/10000).toInt()} Poin)", fontSize = 11.sp, color = OrangePrimary)
+                                    Text("Pelanggan: ${currentCustomer?.nama} (Stok: ${currentCustomer?.totalPoin} Poin, +${(orderTotal/10000).toInt()} Poin)", fontSize = 11.sp, color = OrangePrimary)
                                 }
                                 if (activePromo != null) {
                                     Text("Kupon: ${activePromo?.kode} (-${idrFormatter.format(promoDiscountAmount)})", fontSize = 11.sp, color = Color(0xFF15803D))
@@ -746,6 +757,55 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                 }
                                 IconButton(onClick = { showPromoPicker = true }) {
                                     Icon(imageVector = Icons.Default.ConfirmationNumber, contentDescription = "Promo", tint = OrangePrimary)
+                                }
+                            }
+                        }
+                    }
+
+                    if (isLoyaltyEnabled && currentCustomer != null && currentCustomer!!.totalPoin > 0) {
+                        item {
+                            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).background(OrangePrimary.copy(alpha = 0.05f)).padding(10.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Tukar Loyalty Poin (Maks ${currentCustomer!!.totalPoin} Poin)",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = OrangePrimary
+                                    )
+                                    Text(
+                                        text = "Nilai: ${idrFormatter.format(pointRateValue)}/Poin",
+                                        fontSize = 10.sp,
+                                        color = Color.Gray
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                OutlinedTextField(
+                                    value = redeemPointsInput,
+                                    onValueChange = { input ->
+                                        val filteredInput = input.filter { it.isDigit() }
+                                        val points = filteredInput.toIntOrNull() ?: 0
+                                        if (points <= currentCustomer!!.totalPoin) {
+                                            redeemPointsInput = filteredInput
+                                        }
+                                    },
+                                    label = { Text("Jumlah poin yang ditukar", fontSize = 11.sp) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true,
+                                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                                    placeholder = { Text("Masukkan poin, misal: 10") }
+                                )
+                                if (pointsDiscountAmount > 0.0) {
+                                    Text(
+                                        text = "Potongan Harga: -${idrFormatter.format(pointsDiscountAmount)}",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF15803D),
+                                        modifier = Modifier.padding(top = 4.dp)
+                                    )
                                 }
                             }
                         }
@@ -951,7 +1011,8 @@ fun CashierScreen(viewModel: KasirViewModel) {
                         }
 
                         // Execute checkout
-                        viewModel.processCheckout()
+                        viewModel.processCheckout(pointsRedeemedAmount = pointsRedeemedAmountVal, pointRateValue = pointRateValue.toDouble())
+                        redeemPointsInput = ""
                         showCheckoutDialog = false
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),

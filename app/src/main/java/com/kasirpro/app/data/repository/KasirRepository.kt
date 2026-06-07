@@ -1346,23 +1346,96 @@ data class GoogleLoginResult(
     }
 
     // KASIR MANAGEMENT
+    suspend fun isUsernameAvailable(username: String): Boolean {
+        val lowercaseUsername = username.trim().lowercase()
+        if (lowercaseUsername.isBlank()) return false
+        return try {
+            val queryCashiers = firestore.collection("cashiers")
+                .whereEqualTo("username", lowercaseUsername)
+                .get()
+                .await()
+            val queryUsers = firestore.collection("users")
+                .whereEqualTo("email", lowercaseUsername)
+                .get()
+                .await()
+            queryCashiers.isEmpty && queryUsers.isEmpty
+        } catch (e: Exception) {
+            e.printStackTrace()
+            true
+        }
+    }
+
+    suspend fun getCashierPassword(cashierId: String): String {
+        return try {
+            val doc = firestore.collection("cashiers").document(cashierId).get().await()
+            doc.getString("password") ?: ""
+        } catch (e: Exception) {
+            ""
+        }
+    }
+
+    suspend fun editCashier(cashierId: String, oldUsername: String, newNama: String, newUsername: String, newPass: String): Boolean {
+        val lowercaseOld = oldUsername.trim().lowercase()
+        val lowercaseNew = newUsername.trim().lowercase()
+        val ownerId = auth.currentUser?.uid ?: "owner-uid"
+
+        if (lowercaseOld != lowercaseNew) {
+            val available = isUsernameAvailable(lowercaseNew)
+            if (!available) {
+                return false
+            }
+        }
+
+        val user = getUserById(cashierId) ?: return false
+        val updatedUser = user.copy(
+            nama = newNama,
+            email = lowercaseNew
+        )
+
+        try {
+            val updateMap = mapOf(
+                "nama" to newNama,
+                "cashierName" to newNama,
+                "username" to lowercaseNew,
+                "password" to newPass
+            )
+            firestore.collection("cashiers").document(cashierId).update(updateMap).await()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            try {
+                val branchName = if (user.assignedBranchId != null) {
+                    dao.getBranchById(user.assignedBranchId)?.namaCabang ?: "Cabang Utama"
+                } else "Cabang Utama"
+                val cashierMap = mapOf(
+                    "ownerId" to ownerId,
+                    "cashierName" to newNama,
+                    "nama" to newNama,
+                    "username" to lowercaseNew,
+                    "password" to newPass,
+                    "branchId" to user.assignedBranchId,
+                    "branchName" to branchName,
+                    "status" to "aktif",
+                    "isActive" to true,
+                    "createdAt" to user.createdAt
+                )
+                firestore.collection("cashiers").document(cashierId).set(cashierMap).await()
+            } catch (ex: Exception) {
+                ex.printStackTrace()
+            }
+        }
+
+        dao.insertUser(updatedUser)
+        return true
+    }
+
     suspend fun addCashier(nama: String, username: String, pass: String, branchId: String): Boolean {
         val lowercaseUsername = username.trim().lowercase()
         val ownerId = auth.currentUser?.uid ?: "owner-uid"
         val docId = "${lowercaseUsername}_$ownerId"
 
-        // 1. Check uniqueness of username in Firestore collection "cashiers" under this owner
-        val exists = try {
-            val query = firestore.collection("cashiers")
-                .whereEqualTo("ownerId", ownerId)
-                .whereEqualTo("username", lowercaseUsername)
-                .get()
-                .await()
-            !query.isEmpty
-        } catch (e: Exception) {
-            false
-        }
-        if (exists) {
+        // Check global uniqueness of username
+        val available = isUsernameAvailable(lowercaseUsername)
+        if (!available) {
             return false
         }
 
@@ -1516,7 +1589,7 @@ data class GoogleLoginResult(
         return true
     }
 
-    // SUBSCRIPTION & MIDTRANS SIMULATOR
+    // SUBSCRIPTION & ACTIVATION CODES FLOW
     suspend fun upgradeUserSubscription(uid: String, status: String, isYearly: Boolean = false): Boolean {
         return try {
             val user = getUserById(uid) ?: return false

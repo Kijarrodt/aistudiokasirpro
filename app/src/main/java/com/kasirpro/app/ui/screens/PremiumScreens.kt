@@ -33,6 +33,13 @@ import com.kasirpro.app.data.repository.ShiftReport
 import com.kasirpro.app.ui.theme.*
 import java.text.NumberFormat
 import java.util.Locale
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Typeface
+import android.graphics.pdf.PdfDocument
+import androidx.core.content.FileProvider
+import java.io.File
+import java.io.FileOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -177,6 +184,7 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
     var selectedBranchId by remember { mutableStateOf("all") }
     var selectedCashierId by remember { mutableStateOf("all") }
     var reportInterval by remember { mutableStateOf("BULANAN") } // HARIAN, MINGGUAN, BULANAN
+    var isShiftsExpanded by remember { mutableStateOf(false) }
 
     var showAddExpenseDialog by remember { mutableStateOf(false) }
     var editExpenseNominal by remember { mutableStateOf("") }
@@ -645,7 +653,8 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                             Text("Belum ada pertanggungjawaban shift kasir tercatat sesuai filter saat ini.", fontSize = 11.sp, color = Color.Gray, textAlign = TextAlign.Center)
                         }
                     } else {
-                        filteredShifts.forEach { shift ->
+                        val displayShifts = if (isShiftsExpanded) filteredShifts else filteredShifts.take(3)
+                        displayShifts.forEach { shift ->
                             Card(
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
@@ -730,6 +739,34 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                                             Text(labelText, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = selisihColor)
                                         }
                                     }
+                                }
+                            }
+                        }
+
+                        if (filteredShifts.size > 3) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                            TextButton(
+                                onClick = { isShiftsExpanded = !isShiftsExpanded },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        text = if (isShiftsExpanded) "Sembunyikan Sesi Shift Kasir" else "Lihat Semua Sesi Shift Kasir (${filteredShifts.size})",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = OrangePrimary
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(
+                                        imageVector = if (isShiftsExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                        contentDescription = null,
+                                        tint = OrangePrimary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
                                 }
                             }
                         }
@@ -848,12 +885,40 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
         item {
             Button(
                 onClick = {
-                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, "KASIR PRO - LAPORAN KEUANGAN (${reportInterval})\nToko: ${user?.nama ?: "Toko Utama"}\n\nTotal Omset: ${idrFormatter.format(finalIncome)}\nTotal HPP: ${idrFormatter.format(calculatedCapital)}\nTotal Pengeluaran: ${idrFormatter.format(totalExpensesValue)}\nLaba Bersih Real: ${idrFormatter.format(finalFinancialNet)}")
+                    val pdfFile = generateLaporanKeuanganPdf(
+                        context = context,
+                        interval = reportInterval,
+                        storeName = user?.nama ?: "Toko Utama",
+                        omset = finalIncome,
+                        hpp = calculatedCapital,
+                        pengeluaran = totalExpensesValue,
+                        labaBersih = finalFinancialNet,
+                        transactionsCount = countTx,
+                        topProducts = topProducts,
+                        idrFormatter = idrFormatter
+                    )
+                    
+                    if (pdfFile != null && pdfFile.exists()) {
+                        try {
+                            val uri = FileProvider.getUriForFile(
+                                context,
+                                "com.kasirpro.app.fileprovider",
+                                pdfFile
+                            )
+                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "application/pdf"
+                                putExtra(Intent.EXTRA_STREAM, uri)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            context.startActivity(Intent.createChooser(shareIntent, "Export PDF Laporan Keuangan"))
+                            Toast.makeText(context, "Dokumen PDF Laporan berhasil dibuat!", Toast.LENGTH_SHORT).show()
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            Toast.makeText(context, "Error sharing PDF: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                        }
+                    } else {
+                        Toast.makeText(context, "Gagal memproses dokumen PDF!", Toast.LENGTH_SHORT).show()
                     }
-                    context.startActivity(Intent.createChooser(shareIntent, "Export PDF Laporan Keuangan"))
-                    Toast.makeText(context, "Dokumen PDF export sukses dibuat!", Toast.LENGTH_SHORT).show()
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
                 modifier = Modifier.fillMaxWidth(),
@@ -1469,6 +1534,47 @@ fun PremiumKasirTab(viewModel: KasirViewModel) {
     var cashierPassword by remember { mutableStateOf("") }
     var selectedBranchId by remember { mutableStateOf("") }
     
+    // Live Availability Check for Add Cashier
+    var isAddUsernameAvailable by remember { mutableStateOf<Boolean?>(null) }
+    var isCheckingAddUsername by remember { mutableStateOf(false) }
+
+    LaunchedEffect(cashierUsername) {
+        val clean = cashierUsername.trim().lowercase()
+        if (clean.isEmpty()) {
+            isAddUsernameAvailable = null
+            return@LaunchedEffect
+        }
+        isCheckingAddUsername = true
+        kotlinx.coroutines.delay(500)
+        viewModel.checkUsernameAvailability(clean) { available ->
+            isAddUsernameAvailable = available
+            isCheckingAddUsername = false
+        }
+    }
+
+    // Edit Cashier states
+    var editCashierTarget by remember { mutableStateOf<UserEntity?>(null) }
+    var editCashierName by remember { mutableStateOf("") }
+    var editCashierUsername by remember { mutableStateOf("") }
+    var editCashierOldUsername by remember { mutableStateOf("") }
+    var editCashierPassword by remember { mutableStateOf("") }
+    var isEditUsernameAvailable by remember { mutableStateOf<Boolean?>(null) }
+    var isCheckingEditUsername by remember { mutableStateOf(false) }
+
+    LaunchedEffect(editCashierUsername) {
+        val clean = editCashierUsername.trim().lowercase()
+        if (clean.isEmpty() || clean == editCashierOldUsername.trim().lowercase()) {
+            isEditUsernameAvailable = true
+            return@LaunchedEffect
+        }
+        isCheckingEditUsername = true
+        kotlinx.coroutines.delay(500)
+        viewModel.checkUsernameAvailability(clean, editCashierOldUsername) { available ->
+            isEditUsernameAvailable = available
+            isCheckingEditUsername = false
+        }
+    }
+    
     var assignBranchTarget by remember { mutableStateOf<UserEntity?>(null) }
     val context = LocalContext.current
 
@@ -1594,6 +1700,22 @@ fun PremiumKasirTab(viewModel: KasirViewModel) {
                                 ) {
                                     Text("Atur Cabang", fontSize = 10.sp, color = OrangePrimary, fontWeight = FontWeight.Bold)
                                 }
+
+                                IconButton(
+                                    onClick = {
+                                        editCashierTarget = cs
+                                        editCashierName = cs.nama
+                                        editCashierUsername = cs.email
+                                        editCashierOldUsername = cs.email
+                                        editCashierPassword = ""
+                                        viewModel.getCashierPassword(cs.uid) { pass ->
+                                            editCashierPassword = pass
+                                        }
+                                    },
+                                    modifier = Modifier.size(30.dp)
+                                ) {
+                                    Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit Kasir", tint = OrangePrimary, modifier = Modifier.size(18.dp))
+                                }
                                 
                                 IconButton(
                                     onClick = { 
@@ -1647,6 +1769,28 @@ fun PremiumKasirTab(viewModel: KasirViewModel) {
                         modifier = Modifier.fillMaxWidth().testTag("add_cashier_username")
                     )
 
+                    // Helper label for Add Cashier Username live check
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (isCheckingAddUsername) {
+                            CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 1.dp, color = OrangePrimary)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Memeriksa ketersediaan...", fontSize = 11.sp, color = Color.Gray)
+                        } else if (isAddUsernameAvailable != null) {
+                            if (isAddUsernameAvailable == true) {
+                                Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF15803D), modifier = Modifier.size(12.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Username tersedia & siap digunakan!", fontSize = 11.sp, color = Color(0xFF15803D))
+                            } else {
+                                Icon(imageVector = Icons.Default.Error, contentDescription = null, tint = Color.Red, modifier = Modifier.size(12.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Username sudah digunakan pengguna lain!", fontSize = 11.sp, color = Color.Red)
+                            }
+                        }
+                    }
+
                     OutlinedTextField(
                         value = cashierPassword,
                         onValueChange = { cashierPassword = it },
@@ -1695,6 +1839,10 @@ fun PremiumKasirTab(viewModel: KasirViewModel) {
                             Toast.makeText(context, "Password minimal 6 karakter!", Toast.LENGTH_SHORT).show()
                             return@Button
                         }
+                        if (isAddUsernameAvailable == false) {
+                            Toast.makeText(context, "Username tidak tersedia / sudah digunakan!", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
                         viewModel.addCashier(
                             nama = cashierName,
                             username = cashierUsername,
@@ -1720,6 +1868,110 @@ fun PremiumKasirTab(viewModel: KasirViewModel) {
             },
             dismissButton = {
                 TextButton(onClick = { showAddCashierDialog = false }) {
+                    Text("Batal")
+                }
+            }
+        )
+    }
+
+    if (editCashierTarget != null) {
+        AlertDialog(
+            onDismissRequest = { editCashierTarget = null },
+            title = { Text("Edit Akun Kasir", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text("Perbarui nama, login ID (username), dan password untuk kasir Anda.", fontSize = 12.sp, color = Color.Gray)
+                    
+                    OutlinedTextField(
+                        value = editCashierName,
+                        onValueChange = { editCashierName = it },
+                        label = { Text("Nama Kasir") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = editCashierUsername,
+                        onValueChange = { editCashierUsername = it },
+                        label = { Text("Username / ID Login (Unik)") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (isCheckingEditUsername) {
+                            CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 1.dp, color = OrangePrimary)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Memeriksa ketersediaan...", fontSize = 11.sp, color = Color.Gray)
+                        } else if (isEditUsernameAvailable != null) {
+                            if (isEditUsernameAvailable == true) {
+                                Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF15803D), modifier = Modifier.size(12.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Username tersedia!", fontSize = 11.sp, color = Color(0xFF15803D))
+                            } else {
+                                Icon(imageVector = Icons.Default.Error, contentDescription = null, tint = Color.Red, modifier = Modifier.size(12.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Username sudah digunakan pengguna lain!", fontSize = 11.sp, color = Color.Red)
+                            }
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = editCashierPassword,
+                        onValueChange = { editCashierPassword = it },
+                        label = { Text("Password Baru / Ubah") },
+                        placeholder = { Text("Minimal 6 karakter") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (editCashierName.isBlank() || editCashierUsername.isBlank() || editCashierPassword.isBlank()) {
+                            Toast.makeText(context, "Semua kolom harus diisi!", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        if (editCashierPassword.length < 6) {
+                            Toast.makeText(context, "Password minimal 6 karakter!", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        if (isEditUsernameAvailable == false) {
+                            Toast.makeText(context, "Username tidak dapat digunakan karena sudah dimiliki akun lain!", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        
+                        viewModel.editCashier(
+                            cashierId = editCashierTarget!!.uid,
+                            oldUsername = editCashierOldUsername,
+                            newNama = editCashierName,
+                            newUsername = editCashierUsername,
+                            newPass = editCashierPassword
+                        ) { success, msg ->
+                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                            if (success) {
+                                editCashierTarget = null
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Simpan Akun")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { editCashierTarget = null }) {
                     Text("Batal")
                 }
             }
@@ -1784,4 +2036,189 @@ fun formatRelativeTime(timestamp: Long): String {
 fun formatLastActiveString(timestamp: Long?): String {
     if (timestamp == null) return "Belum pernah aktif"
     return formatRelativeTime(timestamp)
+}
+
+fun generateLaporanKeuanganPdf(
+    context: android.content.Context,
+    interval: String,
+    storeName: String,
+    omset: Double,
+    hpp: Double,
+    pengeluaran: Double,
+    labaBersih: Double,
+    transactionsCount: Int,
+    topProducts: List<Pair<String, Int>>,
+    idrFormatter: java.text.NumberFormat
+): File? {
+    try {
+        val pdfDocument = PdfDocument()
+        val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create()
+        val page = pdfDocument.startPage(pageInfo)
+        val canvas: Canvas = page.canvas
+        
+        val paint = Paint()
+        var yPosition = 40f
+        
+        // Header Banner Background Accent
+        val headerPaint = Paint().apply {
+            color = android.graphics.Color.parseColor("#F97316")
+        }
+        canvas.drawRect(0f, 0f, 595f, 110f, headerPaint)
+        
+        // Header Text
+        val titlePaint = Paint().apply {
+            color = android.graphics.Color.WHITE
+            textSize = 20f
+            isAntiAlias = true
+            typeface = Typeface.create(Typeface.DEFAULT_BOLD, Typeface.BOLD)
+        }
+        canvas.drawText("KASIR PRO - LAPORAN KEUANGAN", 30f, 45f, titlePaint)
+        
+        val subtitlePaint = Paint().apply {
+            color = android.graphics.Color.WHITE
+            textSize = 11f
+            isAntiAlias = true
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+        }
+        canvas.drawText("Laporan Finansial Profesional Selang Waktu: $interval", 30f, 70f, subtitlePaint)
+        canvas.drawText("Toko / Mitra Warung: $storeName", 30f, 88f, subtitlePaint)
+        
+        yPosition = 150f
+        
+        // Section: Ringkasan Finansial
+        val sectionTitlePaint = Paint().apply {
+            color = android.graphics.Color.parseColor("#1E293B")
+            textSize = 13f
+            isAntiAlias = true
+            typeface = Typeface.create(Typeface.DEFAULT_BOLD, Typeface.BOLD)
+        }
+        
+        canvas.drawText("I. RINGKASAN FINANSIAL OUTLET", 30f, yPosition, sectionTitlePaint)
+        
+        val linePaint = Paint().apply {
+            color = android.graphics.Color.parseColor("#CBD5E1")
+            strokeWidth = 1f
+        }
+        yPosition += 8f
+        canvas.drawLine(30f, yPosition, 565f, yPosition, linePaint)
+        
+        yPosition += 25f
+        
+        val gridLabelPaint = Paint().apply {
+            color = android.graphics.Color.parseColor("#475569")
+            textSize = 11f
+            isAntiAlias = true
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+        }
+        
+        val gridValuePaint = Paint().apply {
+            color = android.graphics.Color.BLACK
+            textSize = 11f
+            isAntiAlias = true
+            typeface = Typeface.create(Typeface.DEFAULT_BOLD, Typeface.BOLD)
+        }
+        
+        val financials = listOf(
+            "Total Omset Penjualan" to idrFormatter.format(omset),
+            "Total Harga Pokok Penjualan (HPP)" to idrFormatter.format(hpp),
+            "Total Beban / Pengeluaran Toko" to idrFormatter.format(pengeluaran),
+            "Jumlah Transaksi Sukses" to "$transactionsCount Transaksi"
+        )
+        
+        financials.forEach { (label, value) ->
+            canvas.drawText(label, 40f, yPosition, gridLabelPaint)
+            val textWidth = gridValuePaint.measureText(value)
+            canvas.drawText(value, 555f - textWidth, yPosition, gridValuePaint)
+            yPosition += 22f
+        }
+        
+        yPosition += 10f
+        
+        // Highlight Card for net profit
+        val profitCardPaint = Paint().apply {
+            color = android.graphics.Color.parseColor("#DCFCE7")
+        }
+        canvas.drawRoundRect(30f, yPosition, 565f, yPosition + 45f, 6f, 6f, profitCardPaint)
+        
+        val netProfitLabelPaint = Paint().apply {
+            color = android.graphics.Color.parseColor("#166534")
+            textSize = 12f
+            isAntiAlias = true
+            typeface = Typeface.create(Typeface.DEFAULT_BOLD, Typeface.BOLD)
+        }
+        canvas.drawText("ESTIMASI LABA BERSIH", 45f, yPosition + 27f, netProfitLabelPaint)
+        
+        val netProfitVal = idrFormatter.format(labaBersih)
+        val netProfitValuePaint = Paint().apply {
+            color = android.graphics.Color.parseColor("#166534")
+            textSize = 14f
+            isAntiAlias = true
+            typeface = Typeface.create(Typeface.DEFAULT_BOLD, Typeface.BOLD)
+        }
+        val pWidth = netProfitValuePaint.measureText(netProfitVal)
+        canvas.drawText(netProfitVal, 550f - pWidth, yPosition + 28f, netProfitValuePaint)
+        
+        yPosition += 80f
+        
+        // Section: Produk Terlaris
+        canvas.drawText("II. DAFTAR PERINGKAT PRODUK TERLARIS (QTY)", 30f, yPosition, sectionTitlePaint)
+        yPosition += 8f
+        canvas.drawLine(30f, yPosition, 565f, yPosition, linePaint)
+        yPosition += 25f
+        
+        if (topProducts.isEmpty()) {
+            canvas.drawText("Belum ada data barang / produk terjual di selang waktu laporan keuangan ini.", 40f, yPosition, gridLabelPaint)
+            yPosition += 20f
+        } else {
+            val thPaint = Paint().apply {
+                color = android.graphics.Color.parseColor("#64748B")
+                textSize = 9f
+                isAntiAlias = true
+                typeface = Typeface.create(Typeface.DEFAULT_BOLD, Typeface.BOLD)
+            }
+            canvas.drawText("NAMA BARANG / PRODUK", 40f, yPosition, thPaint)
+            canvas.drawText("KUANTITAS TERJUAL", 440f, yPosition, thPaint)
+            yPosition += 12f
+            canvas.drawLine(30f, yPosition, 565f, yPosition, linePaint)
+            yPosition += 20f
+            
+            topProducts.forEach { (pName, qty) ->
+                if (yPosition < 770f) {
+                    canvas.drawText(pName, 40f, yPosition, gridLabelPaint)
+                    val qVal = "$qty Unit"
+                    val qWidth = gridValuePaint.measureText(qVal)
+                    canvas.drawText(qVal, 555f - qWidth, yPosition, gridValuePaint)
+                    yPosition += 20f
+                }
+            }
+        }
+        
+        // Footer Notes & Printing info
+        val footerLabelPaint = Paint().apply {
+            color = android.graphics.Color.parseColor("#94A3B8")
+            textSize = 8f
+            isAntiAlias = true
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+        }
+        canvas.drawText("Dokumen ini digenerasi murni oleh Kasir Pro Premium Laporan Keuangan.", 30f, 795f, footerLabelPaint)
+        
+        val dateFormatted = java.text.SimpleDateFormat("dd MMMM yyyy HH:mm:ss", java.util.Locale("id", "ID")).format(java.util.Date())
+        canvas.drawText("Waktu Cetak Dokumen: $dateFormatted WITA/WIB", 30f, 810f, footerLabelPaint)
+        
+        pdfDocument.finishPage(page)
+        
+        val cacheFile = File(context.cacheDir, "Laporan_Keuangan_KasirPro.pdf")
+        if (cacheFile.exists()) {
+            cacheFile.delete()
+        }
+        val fileOutputStream = FileOutputStream(cacheFile)
+        pdfDocument.writeTo(fileOutputStream)
+        pdfDocument.close()
+        fileOutputStream.close()
+        
+        return cacheFile
+    } catch (e: Exception) {
+        e.printStackTrace()
+        return null
+    }
 }

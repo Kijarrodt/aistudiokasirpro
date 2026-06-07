@@ -40,6 +40,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.LocalContext
 import com.kasirpro.app.data.local.TransactionEntity
 import com.kasirpro.app.util.ShopLogoImage
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.nativeCanvas
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,6 +77,29 @@ fun DashboardScreen(viewModel: KasirViewModel) {
     }
     val trxCount = todayTransactions.size
     val activeDebts = debtsList.filter { it.status == "belum" }.sumOf { it.jumlah }
+
+    // Last 7 days real revenue aggregation for the interactive financial graph
+    val last7DaysData = remember(transactionsList) {
+        val daysList = (0..6).map { i ->
+            val cal = java.util.Calendar.getInstance()
+            cal.add(java.util.Calendar.DAY_OF_YEAR, -i)
+            cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+            cal.set(java.util.Calendar.MINUTE, 0)
+            cal.set(java.util.Calendar.SECOND, 0)
+            cal.set(java.util.Calendar.MILLISECOND, 0)
+            cal
+        }.reversed()
+
+        daysList.map { cal ->
+            val dayStart = cal.timeInMillis
+            val dayEnd = dayStart + (24 * 60 * 60 * 1000)
+            val dayRevenue = transactionsList.filter { t -> t.createdAt in dayStart until dayEnd }.sumOf { it.total }
+            
+            val sdf = java.text.SimpleDateFormat("EEE", java.util.Locale("id", "ID"))
+            val label = sdf.format(cal.time)
+            Pair(label, dayRevenue)
+        }
+    }
 
     // Number format helper for IDR currency formatting
     val idrFormatter = NumberFormat.getCurrencyInstance(Locale("id", "ID"))
@@ -309,6 +337,10 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                         }
                     }
                 }
+            }
+
+            item {
+                InteractiveFinancialChart(data = last7DaysData, currencyFormatter = idrFormatter)
             }
 
             // Low Stock list tracking
@@ -962,3 +994,246 @@ data class CorrectionItem(
     val diskon: Double,
     val satuan: String
 )
+
+@Composable
+fun InteractiveFinancialChart(
+    data: List<Pair<String, Double>>,
+    currencyFormatter: NumberFormat
+) {
+    var selectedX by remember { mutableStateOf<Float?>(null) }
+    var selectedIndex by remember { mutableStateOf<Int?>(null) }
+
+    val primaryColor = OrangePrimary
+    val accentColor = OrangeDark
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "Grafik Keuangan (7 Hari Terakhir)",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                    Text(
+                        text = "Tekan & geser untuk detail interaktif",
+                        fontSize = 11.sp,
+                        color = Color.Gray
+                    )
+                }
+                
+                val labelShow = if (selectedIndex != null && selectedIndex!! in data.indices) {
+                    val p = data[selectedIndex!!]
+                    "${p.first}: ${currencyFormatter.format(p.second)}"
+                } else {
+                    val total7Days = data.sumOf { it.second }
+                    "Total: ${currencyFormatter.format(total7Days)}"
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(OrangeLight)
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = labelShow,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = OrangeDark
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            val maxVal = maxOf(data.maxOfOrNull { it.second } ?: 1.0, 1000.0)
+
+            androidx.compose.foundation.Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+                    .pointerInput(data) {
+                        detectTapGestures(
+                            onPress = { offset ->
+                                val width = size.width.toFloat()
+                                val stepX = width / (data.size - 1).coerceAtLeast(1).toFloat()
+                                val index = (offset.x / stepX).roundToInt().coerceIn(0, data.size - 1)
+                                selectedX = index * stepX
+                                selectedIndex = index
+                                tryAwaitRelease()
+                                selectedX = null
+                                selectedIndex = null
+                            }
+                        )
+                    }
+                    .pointerInput(data) {
+                        detectDragGestures(
+                            onDragStart = { offset ->
+                                val width = size.width.toFloat()
+                                val stepX = width / (data.size - 1).coerceAtLeast(1).toFloat()
+                                val index = (offset.x / stepX).roundToInt().coerceIn(0, data.size - 1)
+                                selectedX = index * stepX
+                                selectedIndex = index
+                            },
+                            onDrag = { change, _ ->
+                                change.consume()
+                                val offset = change.position
+                                val width = size.width.toFloat()
+                                val stepX = width / (data.size - 1).coerceAtLeast(1).toFloat()
+                                val index = (offset.x / stepX).roundToInt().coerceIn(0, data.size - 1)
+                                selectedX = index * stepX
+                                selectedIndex = index
+                            },
+                            onDragEnd = {
+                                selectedX = null
+                                selectedIndex = null
+                            },
+                            onDragCancel = {
+                                selectedX = null
+                                selectedIndex = null
+                            }
+                        )
+                    }
+            ) {
+                val canvasWidth = size.width
+                val canvasHeight = size.height
+                val graphHeight = canvasHeight - 30.dp.toPx()
+
+                val points = data.mapIndexed { idx, pair ->
+                    val x = if (data.size > 1) idx * (canvasWidth / (data.size - 1)) else canvasWidth / 2
+                    val ratio = (pair.second / maxVal).coerceIn(0.0, 1.0)
+                    val y = graphHeight - (ratio * (graphHeight - 20.dp.toPx())).toFloat()
+                    androidx.compose.ui.geometry.Offset(x, y)
+                }
+
+                // Draw background grid lines
+                val gridLines = 4
+                for (i in 0..gridLines) {
+                    val y = 20.dp.toPx() + i * (graphHeight - 20.dp.toPx()) / gridLines
+                    drawLine(
+                        color = Color.LightGray.copy(alpha = 0.4f),
+                        start = androidx.compose.ui.geometry.Offset(0f, y),
+                        end = androidx.compose.ui.geometry.Offset(canvasWidth, y),
+                        strokeWidth = 1.dp.toPx()
+                    )
+                }
+
+                // Draw curve path
+                val curvePath = androidx.compose.ui.graphics.Path().apply {
+                    if (points.isNotEmpty()) {
+                        moveTo(points[0].x, points[0].y)
+                        for (i in 1 until points.size) {
+                            val prev = points[i - 1]
+                            val curr = points[i]
+                            cubicTo(
+                                x1 = prev.x + (curr.x - prev.x) / 2f,
+                                y1 = prev.y,
+                                x2 = prev.x + (curr.x - prev.x) / 2f,
+                                y2 = curr.y,
+                                x3 = curr.x,
+                                y3 = curr.y
+                            )
+                        }
+                    }
+                }
+
+                // Gradient fill
+                val areaPath = androidx.compose.ui.graphics.Path().apply {
+                    addPath(curvePath)
+                    if (points.isNotEmpty()) {
+                        lineTo(points.last().x, graphHeight)
+                        lineTo(points.first().x, graphHeight)
+                        close()
+                    }
+                }
+
+                drawPath(
+                    path = areaPath,
+                    brush = Brush.verticalGradient(
+                        colors = listOf(primaryColor.copy(alpha = 0.25f), Color.Transparent),
+                        startY = 10.dp.toPx(),
+                        endY = graphHeight
+                    )
+                )
+
+                drawPath(
+                    path = curvePath,
+                    color = primaryColor,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(
+                        width = 3.dp.toPx(),
+                        cap = androidx.compose.ui.graphics.StrokeCap.Round
+                    )
+                )
+
+                // Draw labels
+                data.forEachIndexed { idx, pair ->
+                    val pt = points[idx]
+                    drawContext.canvas.nativeCanvas.drawText(
+                        pair.first,
+                        pt.x,
+                        canvasHeight - 6.dp.toPx(),
+                        android.graphics.Paint().apply {
+                            color = android.graphics.Color.GRAY
+                            textSize = 10.dp.toPx()
+                            textAlign = android.graphics.Paint.Align.CENTER
+                            isAntiAlias = true
+                        }
+                    )
+                }
+
+                // Draw circles inside points
+                points.forEach { pt ->
+                    drawCircle(
+                        color = primaryColor,
+                        radius = 4.dp.toPx(),
+                        center = pt
+                    )
+                    drawCircle(
+                        color = Color.White,
+                        radius = 1.5.dp.toPx(),
+                        center = pt
+                    )
+                }
+
+                // Vertical dash interaction line display
+                selectedX?.let { xVal ->
+                    drawLine(
+                        color = accentColor,
+                        start = androidx.compose.ui.geometry.Offset(xVal, 10.dp.toPx()),
+                        end = androidx.compose.ui.geometry.Offset(xVal, graphHeight),
+                        strokeWidth = 1.5.dp.toPx(),
+                        pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(
+                            floatArrayOf(10f, 10f), 0f
+                        )
+                    )
+
+                    selectedIndex?.let { sIdx ->
+                        if (sIdx in points.indices) {
+                            val activePt = points[sIdx]
+                            drawCircle(
+                                color = accentColor,
+                                radius = 7.dp.toPx(),
+                                center = activePt
+                            )
+                            drawCircle(
+                                color = Color.White,
+                                radius = 4.dp.toPx(),
+                                center = activePt
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

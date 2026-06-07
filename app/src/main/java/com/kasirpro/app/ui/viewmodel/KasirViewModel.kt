@@ -265,7 +265,7 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // CHECKOUT PROCESS
-    fun processCheckout(customDiscountPrice: Double = 0.0) {
+    fun processCheckout(customDiscountPrice: Double = 0.0, pointsRedeemedAmount: Int = 0, pointRateValue: Double = 100.0) {
         val user = currentUser.value
         val isPremium = user?.subscriptionStatus == "premium"
 
@@ -285,7 +285,8 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
                     p.nilai
                 }
             } ?: 0.0
-            val diskonTotal = promoDisc + customDiscountPrice
+            val pointsDiscount = pointsRedeemedAmount * pointRateValue
+            val diskonTotal = promoDisc + customDiscountPrice + pointsDiscount
             val total = (subtotal - diskonTotal).coerceAtLeast(0.0)
 
             val method = if (splitPaymentEnabled.value) {
@@ -322,7 +323,7 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
             selectedCustomer.value?.let { cust ->
                 val addedPoints = (total / 10000).toInt()
                 val updatedCustomer = cust.copy(
-                    totalPoin = cust.totalPoin + addedPoints,
+                    totalPoin = (cust.totalPoin - pointsRedeemedAmount + addedPoints).coerceAtLeast(0),
                     totalTransaksi = cust.totalTransaksi + 1
                 )
                 repository.updateCustomer(updatedCustomer)
@@ -468,6 +469,46 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // CASHIER MANAGEMENT METHODS
+    fun checkUsernameAvailability(username: String, currentUsername: String? = null, onResult: (Boolean) -> Unit) {
+        val clean = username.trim().lowercase()
+        if (clean.isBlank()) {
+            onResult(false)
+            return
+        }
+        if (clean == currentUsername?.trim()?.lowercase()) {
+            onResult(true)
+            return
+        }
+        viewModelScope.launch {
+            val available = repository.isUsernameAvailable(clean)
+            onResult(available)
+        }
+    }
+
+    fun getCashierPassword(cashierId: String, onResult: (String) -> Unit) {
+        viewModelScope.launch {
+            val password = repository.getCashierPassword(cashierId)
+            onResult(password)
+        }
+    }
+
+    fun editCashier(cashierId: String, oldUsername: String, newNama: String, newUsername: String, newPass: String, onResult: (Boolean, String) -> Unit) {
+        val isPremium = currentUser.value?.subscriptionStatus == "premium"
+        if (!isPremium) {
+            showLimitPopup.value = "Fitur ini hanya untuk pengguna Premium. Upgrade sekarang!"
+            onResult(false, "Fitur Premium")
+            return
+        }
+        viewModelScope.launch {
+            val success = repository.editCashier(cashierId, oldUsername, newNama, newUsername, newPass)
+            if (success) {
+                onResult(true, "Akun kasir berhasil diperbarui!")
+            } else {
+                onResult(false, "Mungkin username sudah digunakan, silakan pilih username yang lain.")
+            }
+        }
+    }
+
     fun addCashier(nama: String, username: String, pass: String, branchId: String, onResult: (Boolean, String) -> Unit) {
         val isPremium = currentUser.value?.subscriptionStatus == "premium"
         if (!isPremium) {

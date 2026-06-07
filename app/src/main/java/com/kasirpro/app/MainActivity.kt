@@ -37,6 +37,18 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Request launcher for camera and notification permissions when starting (Modern Android popup)
+        val permissionsToRequest = mutableListOf(android.Manifest.permission.CAMERA)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            permissionsToRequest.add(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+        try {
+            requestPermissions(permissionsToRequest.toTypedArray(), 101)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
         enableEdgeToEdge()
         setContent {
             val isDarkTheme by viewModel.isDarkMode.collectAsState()

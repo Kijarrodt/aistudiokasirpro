@@ -1247,30 +1247,29 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                 }
 
                 // Subscription Controller Info Card
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = if (isPremium) Color(0xFFDCFCE7) else OrangeLight),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = Icons.Default.Stars, contentDescription = null, tint = OrangePrimary)
-                            Spacer(modifier = Modifier.width(8.dp))
+                if (!isPremium) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = OrangeLight),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(imageVector = Icons.Default.Stars, contentDescription = null, tint = OrangePrimary)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Batas Fitur Gratis Terdeteksi",
+                                    fontWeight = FontWeight.Bold,
+                                    color = OrangeDark,
+                                    fontSize = 14.sp
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = if (isPremium) "Premium Pro Aktif" else "Batas Fitur Gratis Terdeteksi",
-                                fontWeight = FontWeight.Bold,
-                                color = OrangeDark,
-                                fontSize = 14.sp
+                                    text = "Maksimal 10 produk, 1 kasir, dan laporan hari ini harian saja. Upgrade hari ini untuk performa maksimal!",
+                                fontSize = 12.sp,
+                                color = OrangeDark
                             )
-                        }
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = if (isPremium) "Selamat! Seluruh batasan produk ditiadakan. Akses multi-cabang, loyalitas pelanggan dan cloud backup aktif!"
-                            else "Maksimal 10 produk, 1 kasir, dan laporan hari ini harian saja. Upgrade hari ini untuk performa maksimal!",
-                            fontSize = 12.sp,
-                            color = OrangeDark
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        if (!isPremium) {
+                            Spacer(modifier = Modifier.height(12.dp))
                             Button(
                                 onClick = {
                                     viewModel.activeScreen.value = "premium_pricing"
@@ -1620,11 +1619,10 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
     }
 }
 
-// ==== SIMULATION PREMIUM PRICING CARD LAYOUT WITH MIDTRANS PROMPTS ====
+// ==== PREMIUM PRICING CARD LAYOUT AND ACTIVATION CODES FLOW ====
 @Composable
 fun PremiumPricingView(viewModel: KasirViewModel) {
     val context = LocalContext.current
-    var isVerifyingPayment by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     var showActivationDialog by remember { mutableStateOf(false) }
@@ -1961,6 +1959,7 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
                         Button(
                             onClick = {
                                 showSuccessDialog = false
+                                Toast.makeText(context, "Premium Pro Aktif! Terima kasih atas dukungan Anda.", Toast.LENGTH_LONG).show()
                                 viewModel.activeScreen.value = "home"
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
