@@ -434,12 +434,6 @@ class KasirRepository(private val context: Context) {
     }
 
     suspend fun loginUser(email: String, pass: String): Boolean {
-        try {
-            withContext(Dispatchers.IO) {
-                database.clearAllTables()
-            }
-        } catch (e: Exception) { e.printStackTrace() }
-
         val cleanInput = email.trim().lowercase()
 
         // 1. Try to check if input is NOT an email (i.e. cashier login by custom username)
@@ -629,12 +623,13 @@ data class GoogleLoginResult(
             var existingUser: UserEntity? = null
 
             try {
+                // Check by UID first
                 val doc = withTimeoutOrNull(5000L) {
                     firestore.collection("users").document(resultUid).get().await()
                 }
                 if (doc != null && doc.exists()) {
                     userExists = true
-                    android.util.Log.d("AUTH", "User exists in Firestore: true")
+                    android.util.Log.d("AUTH", "User exists in Firestore by direct UID: true")
                     existingUser = UserEntity(
                         uid = resultUid,
                         nama = doc.getString("nama") ?: namaUser,
@@ -648,6 +643,73 @@ data class GoogleLoginResult(
                         createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis(),
                         lastActiveAt = System.currentTimeMillis()
                     )
+                } else {
+                    // Check by Email query as a fallback (for preexisting email/password registrations)
+                    val emailQuery = withTimeoutOrNull(5000L) {
+                        firestore.collection("users").whereEqualTo("email", email.trim().lowercase()).get().await()
+                    }
+                    if (emailQuery != null && !emailQuery.isEmpty) {
+                        val firstDoc = emailQuery.documents.first()
+                        userExists = true
+                        val oldId = firstDoc.id
+                        android.util.Log.d("AUTH", "User exists in Firestore by email lookup: true (old UID: $oldId)")
+                        
+                        existingUser = UserEntity(
+                            uid = resultUid,
+                            nama = firstDoc.getString("nama") ?: namaUser,
+                            email = email,
+                            role = firstDoc.getString("role") ?: "owner",
+                            ownerId = firstDoc.getString("ownerId"),
+                            assignedBranchId = firstDoc.getString("assignedBranchId"),
+                            subscriptionStatus = firstDoc.getString("subscriptionStatus") ?: "free",
+                            subscriptionStartDate = firstDoc.getLong("subscriptionStartDate"),
+                            subscriptionEndDate = firstDoc.getLong("subscriptionEndDate"),
+                            createdAt = firstDoc.getLong("createdAt") ?: System.currentTimeMillis(),
+                            lastActiveAt = System.currentTimeMillis()
+                        )
+
+                        // If they have a business under the old UID, copy and associate it with the new Google UID
+                        try {
+                            val bizQuery = withTimeoutOrNull(5000L) {
+                                firestore.collection("businesses").whereEqualTo("ownerId", oldId).get().await()
+                            }
+                            if (bizQuery != null && !bizQuery.isEmpty) {
+                                val oldBiz = bizQuery.documents.first()
+                                val newBiz = BusinessEntity(
+                                    id = "biz-$resultUid",
+                                    ownerId = resultUid,
+                                    namaBisnis = oldBiz.getString("namaBisnis") ?: "Toko Kasir",
+                                    logoBase64 = oldBiz.getString("logoBase64"),
+                                    alamat = oldBiz.getString("alamat"),
+                                    noTelpon = oldBiz.getString("noTelpon"),
+                                    createdAt = oldBiz.getLong("createdAt") ?: System.currentTimeMillis(),
+                                    qrisBase64 = oldBiz.getString("qrisBase64")
+                                )
+                                // Save to Firestore and local Room
+                                firestore.collection("businesses").document(newBiz.id).set(newBiz.toMap()).await()
+                                dao.insertBusiness(newBiz)
+                                android.util.Log.d("AUTH", "Migrated business info from $oldId to $resultUid")
+
+                                // Copy products to the new business ID block in Firestore
+                                val oldBizId = oldBiz.id
+                                val newBizId = newBiz.id
+                                try {
+                                    val productsQuery = firestore.collection("products").whereEqualTo("businessId", oldBizId).get().await()
+                                    for (pDoc in productsQuery.documents) {
+                                        val productMap = pDoc.data?.toMutableMap() ?: mutableMapOf()
+                                        productMap["id"] = pDoc.id
+                                        productMap["businessId"] = newBizId
+                                        firestore.collection("products").document(pDoc.id).set(productMap).await()
+                                    }
+                                    android.util.Log.d("AUTH", "Successfully copied associated products in Firestore")
+                                } catch (pe: Exception) {
+                                    pe.printStackTrace()
+                                }
+                            }
+                        } catch (be: Exception) {
+                            be.printStackTrace()
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -656,13 +718,14 @@ data class GoogleLoginResult(
             android.util.Log.d("AUTH", "User exists in Firestore: ${userExists}")
 
             val user = if (userExists && existingUser != null) {
-                // User already exists online! Update lastActiveAt in Firestore
+                // User already exists online! Update details and lastActiveAt on Firestore under Google login resultUid
+                val updatedUser = existingUser.copy(lastActiveAt = System.currentTimeMillis())
                 try {
-                    firestore.collection("users").document(resultUid).update("lastActiveAt", System.currentTimeMillis()).await()
+                    firestore.collection("users").document(resultUid).set(updatedUser.toMap()).await()
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
-                existingUser.copy(lastActiveAt = System.currentTimeMillis())
+                updatedUser
             } else {
                 // Truly a brand new user!
                 val newUser = UserEntity(

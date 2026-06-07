@@ -1502,7 +1502,9 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             )
                         }
 
-                        if (user?.email == "kikijarrodt@gmail.com") {
+                        val currentEmail = user?.email?.trim()?.lowercase() ?: ""
+                        val fbEmail = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.email?.trim()?.lowercase() ?: ""
+                        if (currentEmail == "kikijarrodt@gmail.com" || fbEmail == "kikijarrodt@gmail.com") {
                             HorizontalDivider()
 
                             Row(
