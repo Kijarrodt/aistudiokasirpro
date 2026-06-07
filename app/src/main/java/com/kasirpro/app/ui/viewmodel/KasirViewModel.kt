@@ -555,12 +555,13 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         codeRedeemResult.value = null
     }
 
-    fun generateCode(isYearly: Boolean) {
-        val user = currentUser.value ?: return
+    fun generateCode(isYearly: Boolean, onComplete: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
+            val uid = currentUser.value?.uid ?: com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: "admin-uid"
             val type = if (isYearly) "tahunan" else "bulanan"
             val durationDays = if (isYearly) 365 else 30
-            repository.generateActivationCode(type, durationDays, user.uid)
+            val success = repository.generateActivationCode(type, durationDays, uid)
+            onComplete(success)
         }
     }
 

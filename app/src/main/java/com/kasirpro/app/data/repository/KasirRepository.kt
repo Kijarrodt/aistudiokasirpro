@@ -1554,9 +1554,12 @@ data class GoogleLoginResult(
     }.flowOn(Dispatchers.IO)
 
     suspend fun generateActivationCode(type: String, durationDays: Int, createdByUid: String): Boolean {
+        android.util.Log.d("ADMIN", "Generating code...")
+        val suffix = (1..6).map { "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".random() }.joinToString("")
+        val codeId = "KASIRPRO-${type.uppercase()}-$suffix"
+        android.util.Log.d("ADMIN", "Code generated: $codeId")
+        android.util.Log.d("ADMIN", "Saving to Firestore...")
         return try {
-            val suffix = (1..6).map { "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".random() }.joinToString("")
-            val codeId = "KASIRPRO-${type.uppercase()}-$suffix"
             val now = System.currentTimeMillis()
             val codeMap = mapOf(
                 "id" to codeId,
@@ -1569,9 +1572,11 @@ data class GoogleLoginResult(
                 "createdBy" to createdByUid
             )
             firestore.collection("activation_codes").document(codeId).set(codeMap).await()
+            android.util.Log.d("ADMIN", "Save result: success")
             true
         } catch (e: Exception) {
             e.printStackTrace()
+            android.util.Log.d("ADMIN", "Save result: failed")
             false
         }
     }

@@ -1729,14 +1729,16 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
 
         Button(
             onClick = {
-                // Instantly trigger Midtrans API flow simulation
-                isVerifyingPayment = true
-                scope.launch {
-                    kotlinx.coroutines.delay(2000) // simulated network delay
-                    isVerifyingPayment = false
-                    viewModel.upgradeToPremium(selectedIsYearly)
-                    val label = if (selectedIsYearly) "Tahunan" else "Bulanan"
-                    Toast.makeText(context, "SINKRONISASI MIDTRANS: Transaksi Sukses! Akun Anda aktif sebagai Premium Pro ($label).", Toast.LENGTH_LONG).show()
+                val userId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: "unknown-id"
+                val label = if (selectedIsYearly) "Tahunan" else "Bulanan"
+                val message = "Saya ingin Berlangganan Kasir Pro ($label)\nID Pengguna: $userId"
+                val encodedMsg = java.net.URLEncoder.encode(message, "UTF-8")
+                val url = "https://wa.me/6289655751681?text=$encodedMsg"
+                try {
+                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                    context.startActivity(intent)
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Tidak dapat membuka WhatsApp. Silakan hubungi WA: 089655751681", Toast.LENGTH_LONG).show()
                 }
             },
             colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
@@ -1744,13 +1746,11 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp)
-                .testTag("midtrans_pay_trigger")
+                .testTag("whatsapp_pay_trigger")
         ) {
-            if (isVerifyingPayment) {
-                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-            } else {
-                Text("PILIH PAKET & BAYAR MIDTRANS", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            }
+            Icon(imageVector = Icons.Default.Send, contentDescription = null, tint = Color.White)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("HUBUNGI ADMIN VIA WHATSAPP", fontWeight = FontWeight.Bold, fontSize = 15.sp)
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -2025,8 +2025,13 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
             ) {
                 Button(
                     onClick = { 
-                        viewModel.generateCode(isYearly = false) 
-                        Toast.makeText(context, "Kode Bulanan berhasil digenerate!", Toast.LENGTH_SHORT).show()
+                        viewModel.generateCode(isYearly = false) { success ->
+                            if (success) {
+                                Toast.makeText(context, "Kode Bulanan berhasil digenerate!", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "Gagal generate kode Bulanan!", Toast.LENGTH_SHORT).show()
+                            }
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
                     modifier = Modifier.weight(1f)
@@ -2038,8 +2043,13 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
 
                 Button(
                     onClick = { 
-                        viewModel.generateCode(isYearly = true) 
-                        Toast.makeText(context, "Kode Tahunan berhasil digenerate!", Toast.LENGTH_SHORT).show()
+                        viewModel.generateCode(isYearly = true) { success ->
+                            if (success) {
+                                Toast.makeText(context, "Kode Tahunan berhasil digenerate!", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "Gagal generate kode Tahunan!", Toast.LENGTH_SHORT).show()
+                            }
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Green),
                     modifier = Modifier.weight(1f)
