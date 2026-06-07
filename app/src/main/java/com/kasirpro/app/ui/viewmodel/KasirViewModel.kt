@@ -594,7 +594,7 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // DATA FORCE REFRESH FROM CLOUD FIRESTORE
-    fun populateDemoDataset() {
+    fun forceSyncFromFirestore() {
         viewModelScope.launch {
             repository.syncFromFirestore()
         }

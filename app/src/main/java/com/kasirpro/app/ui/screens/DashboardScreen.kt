@@ -125,8 +125,8 @@ fun DashboardScreen(viewModel: KasirViewModel) {
 
                     // Active Firestore Sync trigger button
                     IconButton(
-                        onClick = { viewModel.populateDemoDataset() },
-                        modifier = Modifier.testTag("demo_populate_button")
+                        onClick = { viewModel.forceSyncFromFirestore() },
+                        modifier = Modifier.testTag("force_sync_button")
                     ) {
                         Icon(imageVector = Icons.Default.Refresh, contentDescription = "Sinkronkan dari Firebase", tint = OrangePrimary)
                     }

@@ -851,8 +851,6 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                         val base64 = ImageHelper.processAndConvertImageToBase64(context, uri)
                         if (base64 != null) {
                             eFotoUrlState = base64
-                            val updated = prod.copy(fotoBase64 = base64)
-                            viewModel.editProduct(updated)
                         } else {
                             Toast.makeText(context, "Foto terlalu besar. Pilih foto yang lebih kecil.", Toast.LENGTH_LONG).show()
                             eImgUri = null
@@ -882,8 +880,6 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                         val base64 = ImageHelper.processAndConvertBytesToBase64(bytes)
                         if (base64 != null) {
                             eFotoUrlState = base64
-                            val updated = prod.copy(fotoBase64 = base64)
-                            viewModel.editProduct(updated)
                             eImgBytes = bytes
                         } else {
                             Toast.makeText(context, "Foto terlalu besar. Pilih foto yang lebih kecil.", Toast.LENGTH_LONG).show()

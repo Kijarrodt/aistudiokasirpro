@@ -92,43 +92,6 @@ fun LoginScreen(viewModel: KasirViewModel) {
                             color = Color.Red,
                             style = MaterialTheme.typography.bodyMedium
                         )
-                        if (errorMessage?.contains("No credentials available", ignoreCase = true) == true) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.Red.copy(alpha = 0.2f)))
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Petunjuk Pengujian Cloud Sandbox:\nLayanan Google Play di emulator saat ini belum terhubung ke Akun Google mana pun. Di HP asli Anda, Google Sign-In akan berjalan normal dan otomatis memunculkan pilihan akun e-mail Anda.\n\nUntuk menguji masuk aplikasi via Google di emulator web ini sekarang, Anda dapat langsung mengklik tombol bypass:",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                            )
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Button(
-                                onClick = {
-                                    isLoading = true
-                                    errorMessage = null
-                                    scope.launch {
-                                        val loginResult = viewModel.repository.loginWithGoogle("sandbox-bypass")
-                                        isLoading = false
-                                        if (loginResult.success) {
-                                            if (loginResult.role == "kasir") {
-                                                viewModel.activeScreen.value = "cashier"
-                                            } else if (loginResult.isNewUser) {
-                                                viewModel.activeScreen.value = "setup_toko"
-                                            } else {
-                                                viewModel.activeScreen.value = "home"
-                                            }
-                                        } else {
-                                            errorMessage = "Gagal memproses sandbox bypass."
-                                        }
-                                    }
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.fillMaxWidth().height(42.dp)
-                            ) {
-                                Text("Masuk dengan Sandbox Tester (Offline)", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
                     }
                 }
             }

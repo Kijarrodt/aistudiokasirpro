@@ -1511,7 +1511,8 @@ data class GoogleLoginResult(
             .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    close(error)
+                    android.util.Log.e("FIRESTORE", "Error listening to activation_codes: ${error.message}")
+                    trySend(emptyList())
                     return@addSnapshotListener
                 }
                 val list = snapshot?.documents?.mapNotNull { doc ->

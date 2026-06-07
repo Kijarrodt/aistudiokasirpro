@@ -409,7 +409,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                         Icon(imageVector = Icons.Default.Inventory2, contentDescription = null, tint = Color.LightGray, modifier = Modifier.size(72.dp))
                         Spacer(modifier = Modifier.height(12.dp))
                         Text("Produk Kosong", fontWeight = FontWeight.Bold, color = Color.Gray)
-                        Text("Klik Mulai / Inject data di Beranda untuk demo instan!", fontSize = 12.sp, color = Color.Gray, textAlign = TextAlign.Center)
+                        Text("Silakan tambahkan produk baru di menu Kelola Produk terlebih dahulu.", fontSize = 12.sp, color = Color.Gray, textAlign = TextAlign.Center)
                     }
                 }
             } else {
@@ -559,11 +559,11 @@ fun CashierScreen(viewModel: KasirViewModel) {
         AlertDialog(
             onDismissRequest = { viewModel.showScanBarcodeDialog.value = false },
             icon = { Icon(Icons.Default.QrCodeScanner, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(48.dp)) },
-            title = { Text("Simulator Scan Barcode") },
+            title = { Text("Pindai Barcode Produk") },
             text = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        "Kamera membaca kode produk. Disini, Anda dapat memasukkan manual kode barcode untuk demo scan real-time.",
+                        "Masukkan manual kode barcode produk untuk memulai pencarian produk secara cepat.",
                         fontSize = 12.sp,
                         textAlign = TextAlign.Center
                     )
