@@ -30,6 +30,10 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
     val currentUser = repository.currentUser.stateIn(
         viewModelScope, SharingStarted.Eagerly, null
     )
+
+    val activationCodes = repository.getActivationCodesFlow().stateIn(
+        viewModelScope, SharingStarted.Eagerly, emptyList()
+    )
     
     val currentBusiness = repository.getCurrentBusiness().stateIn(
         viewModelScope, SharingStarted.Eagerly, null
@@ -530,6 +534,39 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
             val user = currentUser.value ?: return@launch
             repository.upgradeUserSubscription(user.uid, "premium", isYearly)
             activeScreen.value = "home"
+        }
+    }
+
+    val codeRedeemResult = MutableStateFlow<com.kasirpro.app.data.repository.RedeemResult?>(null)
+    val isRedeemingCode = MutableStateFlow(false)
+
+    fun redeemCode(code: String, onComplete: (com.kasirpro.app.data.repository.RedeemResult) -> Unit = {}) {
+        val user = currentUser.value ?: return
+        isRedeemingCode.value = true
+        viewModelScope.launch {
+            val result = repository.redeemActivationCode(user.uid, code)
+            codeRedeemResult.value = result
+            isRedeemingCode.value = false
+            onComplete(result)
+        }
+    }
+
+    fun clearRedeemResult() {
+        codeRedeemResult.value = null
+    }
+
+    fun generateCode(isYearly: Boolean) {
+        val user = currentUser.value ?: return
+        viewModelScope.launch {
+            val type = if (isYearly) "tahunan" else "bulanan"
+            val durationDays = if (isYearly) 365 else 30
+            repository.generateActivationCode(type, durationDays, user.uid)
+        }
+    }
+
+    fun deleteCode(codeId: String) {
+        viewModelScope.launch {
+            repository.deleteActivationCode(codeId)
         }
     }
 

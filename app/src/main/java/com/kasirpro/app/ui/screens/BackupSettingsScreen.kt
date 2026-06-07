@@ -60,6 +60,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
     var showOwnerCodeDialog by remember { mutableStateOf(false) }
     var showLanguagesPicker by remember { mutableStateOf(false) }
     var activeSettingSubScreen by remember { mutableStateOf<String?>(null) }
+    var showAdminPanel by remember { mutableStateOf(false) }
 
     if (showEditShopProfile) {
         val biz = business
@@ -360,6 +361,8 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
 
     if (viewModel.activeScreen.collectAsState().value == "premium_pricing") {
         PremiumPricingView(viewModel)
+    } else if (showAdminPanel) {
+        AdminPanelScreen(viewModel, onBack = { showAdminPanel = false })
     } else if (activeSettingSubScreen != null) {
         val defaultTitle = when (activeSettingSubScreen) {
             "PELANGGAN" -> "Loyalty Pelanggan & CRM"
@@ -1500,6 +1503,26 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                 fontSize = 13.sp
                             )
                         }
+
+                        if (user?.email == "kikijarrodt@gmail.com") {
+                            HorizontalDivider()
+
+                            Row(
+                                modifier = Modifier
+                                    .clickable { showAdminPanel = true }
+                                    .padding(16.dp)
+                                    .fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(imageVector = Icons.Default.SupervisorAccount, contentDescription = null, tint = OrangePrimary)
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text("Panel Admin (Kelola Kode)", fontWeight = FontWeight.Bold)
+                                }
+                                Icon(imageVector = Icons.Default.ArrowForward, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+                            }
+                        }
                     }
                 }
 
@@ -1603,6 +1626,13 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
     val context = LocalContext.current
     var isVerifyingPayment by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+
+    var showActivationDialog by remember { mutableStateOf(false) }
+    var activationCodeInput by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf("") }
+    var showSuccessDialog by remember { mutableStateOf(false) }
+    var successEndDateFormatted by remember { mutableStateOf("") }
+    val isRedeemingCode by viewModel.isRedeemingCode.collectAsState()
 
     Column(
         modifier = Modifier
@@ -1722,6 +1752,230 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
                 Text("PILIH PAKET & BAYAR MIDTRANS", fontWeight = FontWeight.Bold, fontSize = 15.sp)
             }
         }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        OutlinedButton(
+            onClick = { showActivationDialog = true },
+            border = androidx.compose.foundation.BorderStroke(1.5.dp, OrangePrimary),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+                .testTag("activate_code_trigger")
+        ) {
+            Icon(imageVector = Icons.Default.VpnKey, contentDescription = null, tint = OrangePrimary)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Aktifkan dengan Kode", fontWeight = FontWeight.Bold, color = OrangePrimary, fontSize = 15.sp)
+        }
+
+        if (showActivationDialog) {
+            AlertDialog(
+                onDismissRequest = { if (!isRedeemingCode) showActivationDialog = false },
+                title = {
+                    Text(
+                        text = "Aktifkan Premium Pro",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = Color.White
+                    )
+                },
+                containerColor = Slate800,
+                titleContentColor = Color.White,
+                textContentColor = Color.LightGray,
+                text = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            text = "Masukkan kode aktivasi Anda di bawah untuk mengaktifkan status Premium Pro.",
+                            fontSize = 12.sp,
+                            color = Color.LightGray
+                        )
+                        
+                        OutlinedTextField(
+                            value = activationCodeInput,
+                            onValueChange = { 
+                                activationCodeInput = it.uppercase() 
+                                errorMessage = ""
+                            },
+                            placeholder = { Text("KASIRPRO-BULANAN-XXXXXX", color = Color.Gray, fontSize = 13.sp) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(
+                                capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Characters,
+                                autoCorrectEnabled = false
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("activation_code_input_field"),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = OrangePrimary,
+                                unfocusedBorderColor = Color.Gray,
+                                focusedContainerColor = Slate900,
+                                unfocusedContainerColor = Slate900
+                            )
+                        )
+
+                        if (errorMessage.isNotEmpty()) {
+                            Text(
+                                text = errorMessage,
+                                color = Color.Red,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        if (isRedeemingCode) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(
+                                    color = OrangePrimary,
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Memverifikasi...", fontSize = 11.sp, color = Color.Gray)
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        enabled = activationCodeInput.isNotBlank() && !isRedeemingCode,
+                        onClick = {
+                            viewModel.redeemCode(activationCodeInput) { result ->
+                                when (result) {
+                                    is com.kasirpro.app.data.repository.RedeemResult.Success -> {
+                                        showActivationDialog = false
+                                        activationCodeInput = ""
+                                        errorMessage = ""
+                                        val sdf = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale("id", "ID"))
+                                        successEndDateFormatted = sdf.format(java.util.Date(result.endDate))
+                                        showSuccessDialog = true
+                                    }
+                                    is com.kasirpro.app.data.repository.RedeemResult.Error -> {
+                                        errorMessage = result.message
+                                    }
+                                }
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+                    ) {
+                        Text("Aktifkan", fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        enabled = !isRedeemingCode,
+                        onClick = { 
+                            showActivationDialog = false 
+                            activationCodeInput = ""
+                            errorMessage = ""
+                        }
+                    ) {
+                        Text("Batal", color = Color.Gray)
+                    }
+                }
+            )
+        }
+
+        if (showSuccessDialog) {
+            AlertDialog(
+                onDismissRequest = { 
+                    showSuccessDialog = false
+                    viewModel.activeScreen.value = "home"
+                },
+                containerColor = Slate900,
+                title = null,
+                text = {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        // Animasi bintang/konfeti representasi modern
+                        Box(contentAlignment = Alignment.Center) {
+                            // Decorative glowing concentric elements
+                            Box(
+                                modifier = Modifier
+                                    .size(90.dp)
+                                    .background(OrangePrimary.copy(alpha = 0.15f), CircleShape)
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(70.dp)
+                                    .background(OrangePrimary.copy(alpha = 0.25f), CircleShape)
+                            )
+                            Icon(
+                                imageVector = Icons.Default.Stars,
+                                contentDescription = "Success",
+                                tint = OrangePrimary,
+                                modifier = Modifier.size(52.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        Text(
+                            text = "Selamat! Anda Sekarang Premium",
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 18.sp,
+                            color = Color.White,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "Aktif hingga $successEndDateFormatted",
+                            fontSize = 13.sp,
+                            color = Color.Green,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text(
+                            text = "Semua fitur Premium Pro seperti Outlet Multi-Cabang, Manajemen Promo, database CRM Pelanggan, dan Backup Cloud Google Drive sekarang telah terbuka sepenuhnya untuk Anda.",
+                            fontSize = 11.sp,
+                            color = Color.LightGray,
+                            textAlign = TextAlign.Center,
+                            lineHeight = 16.sp
+                        )
+                    }
+                },
+                confirmButton = {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Button(
+                            onClick = {
+                                showSuccessDialog = false
+                                viewModel.activeScreen.value = "home"
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .fillMaxWidth(0.85f)
+                                .height(46.dp)
+                                .testTag("success_sub_dismiss_trigger")
+                        ) {
+                            Text("Mulai Gunakan", fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -1731,3 +1985,188 @@ data class LocalExpenseItem(
     val createdAt: Long,
     val keterangan: String
 )
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
+    val codes by viewModel.activationCodes.collectAsState()
+    val context = LocalContext.current
+    val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+    
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Panel Admin - Activation Codes", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Slate900,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
+                )
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Slate900)
+                .padding(paddingValues)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Action to create codes
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = { 
+                        viewModel.generateCode(isYearly = false) 
+                        Toast.makeText(context, "Kode Bulanan berhasil digenerate!", Toast.LENGTH_SHORT).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Generate Bulanan", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+
+                Button(
+                    onClick = { 
+                        viewModel.generateCode(isYearly = true) 
+                        Toast.makeText(context, "Kode Tahunan berhasil digenerate!", Toast.LENGTH_SHORT).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Green),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = Slate900)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Generate Tahunan", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Slate900)
+                }
+            }
+
+            Text("Daftar Kode Aktivasi (${codes.size})", color = Color.Gray, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+
+            if (codes.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize().weight(1f), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Default.VpnKey, contentDescription = null, tint = Color.DarkGray, modifier = Modifier.size(64.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text("Belum ada kode dibuat.", color = Color.Gray, fontSize = 14.sp)
+                    }
+                }
+            } else {
+                androidx.compose.foundation.lazy.LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(codes.size) { index ->
+                        val codeMap = codes[index]
+                        val codeId = codeMap["id"] as? String ?: ""
+                        val type = codeMap["type"] as? String ?: "bulanan"
+                        val isUsed = codeMap["isUsed"] as? Boolean ?: false
+                        val usedBy = codeMap["usedBy"] as? String
+                        val usedAt = (codeMap["usedAt"] as? Number)?.toLong()
+                        val createdAt = (codeMap["createdAt"] as? Number)?.toLong() ?: 0L
+                        
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = Slate800)
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = codeId,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 15.sp,
+                                            color = if (isUsed) Color.Gray else Color.White,
+                                            style = androidx.compose.ui.text.TextStyle(
+                                                textDecoration = if (isUsed) androidx.compose.ui.text.style.TextDecoration.LineThrough else null
+                                            )
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .background(
+                                                        if (type == "tahunan") Color.Green.copy(alpha = 0.2f) else OrangePrimary.copy(alpha = 0.2f),
+                                                        RoundedCornerShape(4.dp)
+                                                    )
+                                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                                            ) {
+                                                Text(
+                                                    text = type.uppercase(),
+                                                    color = if (type == "tahunan") Color.Green else OrangePrimary,
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = "Dibuat: ${android.text.format.DateFormat.format("dd/MM/yyyy", createdAt)}",
+                                                color = Color.Gray,
+                                                fontSize = 11.sp
+                                            )
+                                        }
+                                    }
+
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        // Copy Button
+                                        IconButton(
+                                            onClick = {
+                                                clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(codeId))
+                                                Toast.makeText(context, "Kode disalin: $codeId", Toast.LENGTH_SHORT).show()
+                                            }
+                                        ) {
+                                            Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = Color.LightGray)
+                                        }
+
+                                        // Delete Button (only if not used yet)
+                                        if (!isUsed) {
+                                            IconButton(
+                                                onClick = {
+                                                    viewModel.deleteCode(codeId)
+                                                    Toast.makeText(context, "Kode dihapus!", Toast.LENGTH_SHORT).show()
+                                                }
+                                            ) {
+                                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (isUsed) {
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    HorizontalDivider(color = Color.DarkGray)
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(
+                                        text = "Digunakan oleh: ${usedBy?.take(8) ?: "Unknown"}",
+                                        color = Color.LightGray,
+                                        fontSize = 11.sp
+                                    )
+                                    if (usedAt != null) {
+                                        Text(
+                                            text = "Pada tanggal: ${android.text.format.DateFormat.format("dd MMM yyyy HH:mm", usedAt)}",
+                                            color = Color.Gray,
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

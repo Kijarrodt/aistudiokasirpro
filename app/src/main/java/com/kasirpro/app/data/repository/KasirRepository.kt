@@ -16,6 +16,11 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
+sealed class RedeemResult {
+    data class Success(val endDate: Long) : RedeemResult()
+    data class Error(val message: String) : RedeemResult()
+}
+
 // Product Varian definition
 data class ProductVariant(
     val nama: String,
@@ -1447,6 +1452,109 @@ data class GoogleLoginResult(
 
     suspend fun processSubscription(packageName: String): Boolean {
         return true
+    }
+
+    suspend fun redeemActivationCode(uid: String, rawCode: String): RedeemResult {
+        return try {
+            val code = rawCode.trim().uppercase()
+            // Check if user is already premium
+            val user = getUserById(uid) ?: return RedeemResult.Error("Pengguna tidak ditemukan")
+            if (user.subscriptionStatus == "premium") {
+                return RedeemResult.Error("Kode tidak bisa dipakai oleh akun yang sudah premium")
+            }
+
+            // Get activation code from firestore
+            val docRef = firestore.collection("activation_codes").document(code)
+            val snapshot = docRef.get().await()
+            if (!snapshot.exists()) {
+                return RedeemResult.Error("Kode tidak valid. Periksa kembali kode Anda")
+            }
+
+            val isUsed = snapshot.getBoolean("isUsed") ?: false
+            if (isUsed) {
+                return RedeemResult.Error("Kode sudah pernah digunakan")
+            }
+
+            val durationDays = snapshot.getLong("durationDays") ?: 30L
+            val now = System.currentTimeMillis()
+            val endDate = now + (durationDays * 24L * 60L * 60L * 1000L)
+
+            // Update activation code status
+            docRef.update(
+                mapOf(
+                    "isUsed" to true,
+                    "usedBy" to uid,
+                    "usedAt" to now
+                )
+            ).await()
+
+            // Upgrade User to premium
+            val updatedUser = user.copy(
+                subscriptionStatus = "premium",
+                subscriptionStartDate = now,
+                subscriptionEndDate = endDate
+            )
+
+            // Save to Firestore & local DB
+            firestore.collection("users").document(uid).set(updatedUser.toMap()).await()
+            dao.insertUser(updatedUser)
+
+            RedeemResult.Success(endDate)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            RedeemResult.Error("Terjadi kesalahan: ${e.message}")
+        }
+    }
+
+    fun getActivationCodesFlow(): kotlinx.coroutines.flow.Flow<List<Map<String, Any?>>> = callbackFlow {
+        val listener = firestore.collection("activation_codes")
+            .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                val list = snapshot?.documents?.mapNotNull { doc ->
+                    val data = doc.data?.toMutableMap() ?: return@mapNotNull null
+                    data["id"] = doc.id
+                    data
+                } ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { listener.remove() }
+    }.flowOn(Dispatchers.IO)
+
+    suspend fun generateActivationCode(type: String, durationDays: Int, createdByUid: String): Boolean {
+        return try {
+            val suffix = (1..6).map { "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".random() }.joinToString("")
+            val codeId = "KASIRPRO-${type.uppercase()}-$suffix"
+            val now = System.currentTimeMillis()
+            val codeMap = mapOf(
+                "id" to codeId,
+                "type" to type,
+                "durationDays" to durationDays,
+                "isUsed" to false,
+                "usedBy" to null,
+                "usedAt" to null,
+                "createdAt" to now,
+                "createdBy" to createdByUid
+            )
+            firestore.collection("activation_codes").document(codeId).set(codeMap).await()
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+    suspend fun deleteActivationCode(codeId: String): Boolean {
+        return try {
+            firestore.collection("activation_codes").document(codeId).delete().await()
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
     }
 
     private fun getCurrentTimeString(): String {
