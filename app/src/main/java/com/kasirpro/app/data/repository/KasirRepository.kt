@@ -1738,6 +1738,8 @@ data class GoogleLoginResult(
             val localMatch = localList.find { (it["id"] as? String)?.trim()?.uppercase() == code }
 
             var durationDays = 30L
+            var checkedSuccessfully = false
+
             if (localMatch != null) {
                 val targetUid = (localMatch["targetUid"] as? String)?.trim() ?: ""
                 if (targetUid.isNotBlank() && !targetUid.equals(uid.trim(), ignoreCase = true)) {
@@ -1748,8 +1750,44 @@ data class GoogleLoginResult(
                     return RedeemResult.Error("Kode sudah pernah digunakan")
                 }
                 durationDays = (localMatch["durationDays"] as? Number)?.toLong() ?: 30L
-            } else {
-                // Try Firestore
+                checkedSuccessfully = true
+            }
+
+            // 1. Try to check the user's OWN document (/users/{uid}) first!
+            // This is completely free of PERMISSION_DENIED issues on 'activation_codes' collection!
+            if (!checkedSuccessfully) {
+                try {
+                    val userDocRef = firestore.collection("users").document(uid)
+                    val userSnapshot = userDocRef.get().await()
+                    if (userSnapshot.exists() && userSnapshot.contains("assignedCodes")) {
+                        val assignedCodes = userSnapshot.get("assignedCodes") as? Map<String, Any?>
+                        val codeInfo = assignedCodes?.get(code) as? Map<String, Any?>
+                        if (codeInfo != null) {
+                            val isUsed = codeInfo["isUsed"] as? Boolean ?: false
+                            if (isUsed) {
+                                return RedeemResult.Error("Kode sudah pernah digunakan")
+                            }
+                            durationDays = (codeInfo["durationDays"] as? Number)?.toLong() ?: 30L
+                            checkedSuccessfully = true
+
+                            // Mark it as used in user's own document
+                            val updatedCodes = assignedCodes.toMutableMap().apply {
+                                val currentCodeMap = (this[code] as? Map<String, Any?>)?.toMutableMap() ?: mutableMapOf()
+                                currentCodeMap["isUsed"] = true
+                                currentCodeMap["usedAt"] = System.currentTimeMillis()
+                                this[code] = currentCodeMap
+                            }
+                            userDocRef.update("assignedCodes", updatedCodes).await()
+                        }
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    android.util.Log.e("REDEEM", "Error reading/updating assignedCodes in users collection", e)
+                }
+            }
+
+            // 2. If not checked via local or user doc (e.g. old codes), fall back to standard activation_codes collection lookup
+            if (!checkedSuccessfully) {
                 try {
                     val docRef = firestore.collection("activation_codes").document(code)
                     val snapshot = docRef.get().await()
@@ -1763,10 +1801,19 @@ data class GoogleLoginResult(
                             return RedeemResult.Error("Kode sudah pernah digunakan")
                         }
                         durationDays = snapshot.getLong("durationDays") ?: 30L
+                        checkedSuccessfully = true
                     } else {
                         return RedeemResult.Error("Kode tidak valid atau belum didaftarkan oleh admin.")
                     }
                 } catch (e: Exception) {
+                    e.printStackTrace()
+                    val errorMsg = e.message ?: ""
+                    if (errorMsg.contains("PERMISSION_DENIED", ignoreCase = true) || errorMsg.contains("permission-denied", ignoreCase = true)) {
+                        return RedeemResult.Error(
+                            "Akses ditolak: Kode tidak valid atau tidak terdaftar untuk ID Pengguna Anda.\n\n" +
+                            "Pastikan kode belum digunakan dan Admin mendaftarkan kode ini khusus untuk ID Pengguna (UID) Anda:\n$uid"
+                        )
+                    }
                     return RedeemResult.Error("Gagal memverifikasi kode (Offline atau error jaringan): ${e.message}")
                 }
             }
@@ -1891,6 +1938,32 @@ data class GoogleLoginResult(
         return try {
             firestore.collection("activation_codes").document(kode).set(codeMap).await()
             android.util.Log.d("ADMIN", "Firestore Save result: success")
+
+            // Copy code to user's personal Firestore document for direct read bypass
+            if (targetUid.isNotBlank()) {
+                try {
+                    val userDocRef = firestore.collection("users").document(targetUid.trim())
+                    val userSnapshot = userDocRef.get().await()
+                    if (userSnapshot.exists()) {
+                        val assignedCodes = userSnapshot.get("assignedCodes") as? Map<String, Any?> ?: emptyMap()
+                        val updatedCodes = assignedCodes.toMutableMap().apply {
+                            this[kode] = mapOf(
+                                "code" to kode,
+                                "type" to type,
+                                "durationDays" to durationDays.toLong(),
+                                "isUsed" to false,
+                                "createdAt" to now
+                            )
+                        }
+                        userDocRef.update("assignedCodes", updatedCodes).await()
+                        android.util.Log.d("ADMIN", "Successfully associated code directly in user's document path")
+                    } else {
+                        android.util.Log.w("ADMIN", "Target user document doesn't exist in Firestore collection yet.")
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("ADMIN", "Could not write assignedCodes fallback to user document", e)
+                }
+            }
             true
         } catch (e: Exception) {
             e.printStackTrace()

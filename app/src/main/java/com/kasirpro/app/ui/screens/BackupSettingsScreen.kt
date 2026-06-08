@@ -1625,6 +1625,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
 fun PremiumPricingView(viewModel: KasirViewModel) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
 
     var showActivationDialog by remember { mutableStateOf(false) }
     var activationCodeInput by remember { mutableStateOf("") }
@@ -1752,7 +1753,52 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
             Text("HUBUNGI ADMIN VIA WHATSAPP", fontWeight = FontWeight.Bold, fontSize = 15.sp)
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Display current user UID for quick copying
+        val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        if (currentUserId.isNotEmpty()) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Slate800),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.Gray.copy(alpha = 0.3f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp).fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("ID Pengguna (UID) Anda:", fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = currentUserId,
+                            fontSize = 12.sp,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+                    }
+                    IconButton(
+                        onClick = {
+                            clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(currentUserId))
+                            viewModel.showToast("Sukses: ID Pengguna berhasil disalin!")
+                        },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ContentCopy,
+                            contentDescription = "Salin ID",
+                            tint = OrangePrimary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedButton(
             onClick = { showActivationDialog = true },
@@ -1792,6 +1838,46 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
                             fontSize = 12.sp,
                             color = Color.LightGray
                         )
+
+                        if (currentUserId.isNotEmpty()) {
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = Slate900),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color.Gray.copy(alpha = 0.2f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(10.dp).fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("Kirim ID ini ke Admin:", fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                                        Text(
+                                            text = currentUserId,
+                                            fontSize = 11.sp,
+                                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                            color = Color.Green,
+                                            maxLines = 1,
+                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = {
+                                            clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(currentUserId))
+                                            viewModel.showToast("Sukses: ID Pengguna berhasil disalin!")
+                                        },
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.ContentCopy,
+                                            contentDescription = "Salin ID",
+                                            tint = OrangePrimary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
                         
                         OutlinedTextField(
                             value = activationCodeInput,
