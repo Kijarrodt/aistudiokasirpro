@@ -1857,9 +1857,11 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
                                         val sdf = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale("id", "ID"))
                                         successEndDateFormatted = sdf.format(java.util.Date(result.endDate))
                                         showSuccessDialog = true
+                                        viewModel.showToast("Sukses: Fitur Premium Kasir Pro berhasil diaktifkan!")
                                     }
                                     is com.kasirpro.app.data.repository.RedeemResult.Error -> {
                                         errorMessage = result.message
+                                        viewModel.showToast("Gagal: ${result.message}")
                                     }
                                 }
                             }
@@ -2412,13 +2414,14 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                             onClick = { 
                                 if (targetUidInput.isBlank()) {
                                     Toast.makeText(context, "ID Pengguna (UID) wajib diisi!", Toast.LENGTH_SHORT).show()
+                                    viewModel.showToast("ID Pengguna (UID) wajib diisi!")
                                 } else {
                                     viewModel.generateCode(isYearly = false, targetUid = targetUidInput) { success ->
                                         if (success) {
-                                            Toast.makeText(context, "Kode Bulanan berhasil digenerate!", Toast.LENGTH_SHORT).show()
+                                            viewModel.showToast("Sukses: Kode Bulanan berhasil dibuat!")
                                             targetUidInput = ""
                                         } else {
-                                            Toast.makeText(context, "Gagal generate kode Bulanan!", Toast.LENGTH_SHORT).show()
+                                            viewModel.showToast("Gagal membuat kode Bulanan!")
                                         }
                                     }
                                 }
@@ -2435,13 +2438,14 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                             onClick = { 
                                 if (targetUidInput.isBlank()) {
                                     Toast.makeText(context, "ID Pengguna (UID) wajib diisi!", Toast.LENGTH_SHORT).show()
+                                    viewModel.showToast("ID Pengguna (UID) wajib diisi!")
                                 } else {
                                     viewModel.generateCode(isYearly = true, targetUid = targetUidInput) { success ->
                                         if (success) {
-                                            Toast.makeText(context, "Kode Tahunan berhasil digenerate!", Toast.LENGTH_SHORT).show()
+                                            viewModel.showToast("Sukses: Kode Tahunan berhasil dibuat!")
                                             targetUidInput = ""
                                         } else {
-                                            Toast.makeText(context, "Gagal generate kode Tahunan!", Toast.LENGTH_SHORT).show()
+                                            viewModel.showToast("Gagal membuat kode Tahunan!")
                                         }
                                     }
                                 }
@@ -2595,6 +2599,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                                     onClick = {
                                                         clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(codeId))
                                                         Toast.makeText(context, "Kode disalin: $codeId", Toast.LENGTH_SHORT).show()
+                                                        viewModel.showToast("Salin: Kode $codeId berhasil disalin")
                                                     }
                                                 ) {
                                                     Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = Color.LightGray)
@@ -2606,6 +2611,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                                         onClick = {
                                                             viewModel.deleteCode(codeId)
                                                             Toast.makeText(context, "Kode dihapus!", Toast.LENGTH_SHORT).show()
+                                                            viewModel.showToast("Hapus: Kode $codeId berhasil dihapus")
                                                         }
                                                     ) {
                                                         Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)

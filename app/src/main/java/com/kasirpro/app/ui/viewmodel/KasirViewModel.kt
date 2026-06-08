@@ -104,6 +104,17 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
     // Navigation and Pop-Up dialog states
     val activeScreen = MutableStateFlow("splash") // splash, onboarding, login, register, forgot_password, setup_toko, home, cashier, manage, settings, premium_pricing
     val showLimitPopup = MutableStateFlow<String?>(null) // Contains message of limit reached
+    val customNotification = MutableStateFlow<String?>(null)
+
+    fun showToast(message: String) {
+        viewModelScope.launch {
+            customNotification.value = message
+            kotlinx.coroutines.delay(3000L)
+            if (customNotification.value == message) {
+                customNotification.value = null
+            }
+        }
+    }
 
     // Core Kasir Cart state
     val cartItems = MutableStateFlow<List<TransactionItem>>(emptyList())

@@ -1739,9 +1739,9 @@ data class GoogleLoginResult(
 
             var durationDays = 30L
             if (localMatch != null) {
-                val targetUid = localMatch["targetUid"] as? String
-                if (targetUid != null && targetUid.isNotBlank() && targetUid != uid) {
-                    return RedeemResult.Error("Kode ini dikhususkan untuk ID Pengguna: $targetUid. ID Anda ($uid) tidak cocok.")
+                val targetUid = (localMatch["targetUid"] as? String)?.trim() ?: ""
+                if (targetUid.isNotBlank() && !targetUid.equals(uid.trim(), ignoreCase = true)) {
+                    return RedeemResult.Error("Kode ini dikhususkan untuk ID Pengguna: $targetUid. ID Anda (${uid.trim()}) tidak cocok.")
                 }
                 val isUsed = localMatch["isUsed"] as? Boolean ?: false
                 if (isUsed) {
@@ -1754,9 +1754,9 @@ data class GoogleLoginResult(
                     val docRef = firestore.collection("activation_codes").document(code)
                     val snapshot = docRef.get().await()
                     if (snapshot.exists()) {
-                        val targetUid = snapshot.getString("targetUid")
-                        if (targetUid != null && targetUid.isNotBlank() && targetUid != uid) {
-                            return RedeemResult.Error("Kode ini dikhususkan untuk ID Pengguna: $targetUid. ID Anda ($uid) tidak cocok.")
+                        val targetUid = (snapshot.getString("targetUid"))?.trim() ?: ""
+                        if (targetUid.isNotBlank() && !targetUid.equals(uid.trim(), ignoreCase = true)) {
+                            return RedeemResult.Error("Kode ini dikhususkan untuk ID Pengguna: $targetUid. ID Anda (${uid.trim()}) tidak cocok.")
                         }
                         val isUsed = snapshot.getBoolean("isUsed") ?: false
                         if (isUsed) {
@@ -1888,18 +1888,15 @@ data class GoogleLoginResult(
         saveLocalActivationCodes(currentLocal)
         _localCodesFlow.value = currentLocal
 
-        try {
-            firestore.collection("activation_codes").document(kode).set(codeMap)
-                .addOnSuccessListener {
-                    android.util.Log.d("ADMIN", "Firestore Save result: success")
-                }
-                .addOnFailureListener { e ->
-                    e.printStackTrace()
-                }
+        return try {
+            firestore.collection("activation_codes").document(kode).set(codeMap).await()
+            android.util.Log.d("ADMIN", "Firestore Save result: success")
+            true
         } catch (e: Exception) {
             e.printStackTrace()
+            android.util.Log.e("ADMIN", "Firestore Save result failed", e)
+            false
         }
-        return true
     }
 
     suspend fun deleteActivationCode(codeId: String): Boolean {

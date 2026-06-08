@@ -11,9 +11,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.kasirpro.app.ui.theme.MyApplicationTheme
 import com.kasirpro.app.ui.theme.OrangePrimary
 import com.kasirpro.app.ui.viewmodel.KasirViewModel
@@ -117,6 +120,8 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    val customNotificationText by viewModel.customNotification.collectAsState()
+
                     Scaffold(
                         contentWindowInsets = WindowInsets(0.dp),
                         bottomBar = {
@@ -199,7 +204,8 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     ) { pad ->
-                        Box(modifier = Modifier.padding(pad)) {
+                        Box(modifier = Modifier.fillMaxSize().padding(pad)) {
+                            // Current screen logic
                             when (activeScreenState) {
                                 "splash" -> SplashScreen(viewModel)
                                 "onboarding" -> OnboardingScreen(viewModel)
@@ -213,6 +219,41 @@ class MainActivity : ComponentActivity() {
                                 "premium" -> PremiumScreens(viewModel)
                                 "settings" -> BackupSettingsScreen(viewModel)
                                 "premium_pricing" -> BackupSettingsScreen(viewModel) // embedded view inside BackupSettingsScreen switcher
+                            }
+
+                            // Slid-in / overlapping Custom Photo Toast/Notification
+                            customNotificationText?.let { msg ->
+                                Card(
+                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)), // Slate800
+                                    border = androidx.compose.foundation.BorderStroke(1.5.dp, OrangePrimary),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .align(Alignment.TopCenter)
+                                        .padding(16.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        androidx.compose.foundation.Image(
+                                            painter = androidx.compose.ui.res.painterResource(id = com.kasirpro.app.R.drawable.ic_kasir_logo),
+                                            contentDescription = "Kasir Pro Toast Logo",
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                        )
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Text(
+                                            text = msg,
+                                            color = Color.White,
+                                            fontSize = 13.sp,
+                                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

@@ -832,18 +832,33 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                     border = BorderStroke(1.dp, Color.Red.copy(alpha = 0.5f)),
                                     modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
                                 ) {
-                                    Row(
-                                        modifier = Modifier.padding(10.dp),
-                                        verticalAlignment = Alignment.CenterVertically
+                                    Column(
+                                        modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        Icon(imageVector = Icons.Default.Warning, contentDescription = null, tint = Color.Red, modifier = Modifier.size(16.dp))
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                            text = "Wajib memilih pelanggan jika status adalah Hutang (DP)",
-                                            color = Color.Red,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(imageVector = Icons.Default.Warning, contentDescription = null, tint = Color.Red, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = "Wajib memilih pelanggan jika status adalah Hutang (DP)",
+                                                color = Color.Red,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                        Button(
+                                            onClick = { showCustomerPicker = true },
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+                                            shape = RoundedCornerShape(8.dp),
+                                            modifier = Modifier.fillMaxWidth(),
+                                            contentPadding = PaddingValues(vertical = 4.dp, horizontal = 12.dp)
+                                        ) {
+                                            Icon(imageVector = Icons.Default.PersonAdd, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("Pilih / Tambah Pelanggan Sekarang", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                        }
                                     }
                                 }
                             }
@@ -1028,6 +1043,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                         // Debt/DP Customer mandatory check
                         if (statusTrx == "dp" && currentCustomer == null) {
                             Toast.makeText(context, "Khusus transaksi hutang (DP/Piutang), Anda wajib memilih pelanggan yang sudah ada atau menambahkan pelanggan baru!", Toast.LENGTH_LONG).show()
+                            viewModel.showToast("Peringatan: Transaksi hutang wajib memilih pelanggan!")
                             return@Button
                         }
 
@@ -1040,6 +1056,11 @@ fun CashierScreen(viewModel: KasirViewModel) {
 
                         // Execute checkout
                         viewModel.processCheckout(pointsRedeemedAmount = pointsRedeemedAmountVal, pointRateValue = pointRateValue.toDouble())
+                        if (statusTrx == "dp") {
+                            viewModel.showToast("Sukses: Sisa hutang pelanggan berhasil dicatat!")
+                        } else {
+                            viewModel.showToast("Sukses: Pembayaran lunas diproses!")
+                        }
                         redeemPointsInput = ""
                         showCheckoutDialog = false
                     },
