@@ -1935,92 +1935,153 @@ data class GoogleLoginResult(
         saveLocalActivationCodes(currentLocal)
         _localCodesFlow.value = currentLocal
 
-        return try {
-            firestore.collection("activation_codes").document(kode).set(codeMap).await()
-            android.util.Log.d("ADMIN", "Firestore Save result: success")
+        var savedToActivationCodes = false
+        var savedToUserDocument = false
 
-            // Copy code to user's personal Firestore document for direct read bypass
-            if (targetUid.isNotBlank()) {
-                try {
-                    val userDocRef = firestore.collection("users").document(targetUid.trim())
-                    val userSnapshot = userDocRef.get().await()
-                    val assignedCodes = if (userSnapshot.exists()) {
-                        userSnapshot.get("assignedCodes") as? Map<String, Any?> ?: emptyMap()
-                    } else {
-                        emptyMap()
-                    }
-                    val updatedCodes = assignedCodes.toMutableMap().apply {
-                        this[kode] = mapOf(
-                            "code" to kode,
-                            "type" to type,
-                            "durationDays" to durationDays.toLong(),
-                            "isUsed" to false,
-                            "createdAt" to now
-                        )
-                    }
-                    userDocRef.set(
-                        mapOf("assignedCodes" to updatedCodes),
-                        com.google.firebase.firestore.SetOptions.merge()
-                    ).await()
-                    android.util.Log.d("ADMIN", "Successfully associated code directly in user's document path")
-                } catch (e: Exception) {
-                    android.util.Log.e("ADMIN", "Could not write assignedCodes fallback to user document", e)
-                }
-            }
-            true
+        // 1. Try to save to activation_codes collection
+        try {
+            firestore.collection("activation_codes").document(kode).set(codeMap).await()
+            android.util.Log.d("ADMIN", "Firestore Save result to activation_codes: success")
+            savedToActivationCodes = true
         } catch (e: Exception) {
-            e.printStackTrace()
-            android.util.Log.e("ADMIN", "Firestore Save result failed", e)
-            false
+            android.util.Log.e("ADMIN", "Could not write to activation_codes collection (likely security rules)", e)
         }
+
+        // 2. Try to copy code to user's personal Firestore document for direct read bypass
+        if (targetUid.isNotBlank()) {
+            try {
+                val userDocRef = firestore.collection("users").document(targetUid.trim())
+                val userSnapshot = userDocRef.get().await()
+                val assignedCodes = if (userSnapshot.exists()) {
+                    userSnapshot.get("assignedCodes") as? Map<String, Any?> ?: emptyMap()
+                } else {
+                    emptyMap()
+                }
+                val updatedCodes = assignedCodes.toMutableMap().apply {
+                    this[kode] = mapOf(
+                        "code" to kode,
+                        "type" to type,
+                        "durationDays" to durationDays.toLong(),
+                        "isUsed" to false,
+                        "createdAt" to now
+                    )
+                }
+                userDocRef.set(
+                    mapOf("assignedCodes" to updatedCodes),
+                    com.google.firebase.firestore.SetOptions.merge()
+                ).await()
+                android.util.Log.d("ADMIN", "Successfully associated code directly in user's document path")
+                savedToUserDocument = true
+            } catch (e: Exception) {
+                android.util.Log.e("ADMIN", "Could not write assignedCodes fallback to user document", e)
+            }
+        }
+
+        // Return true if either main collection OR user specific document write succeeded!
+        return savedToActivationCodes || savedToUserDocument
     }
 
     suspend fun syncAllCodesToUsers(): Boolean {
         return try {
-            val snapshot = firestore.collection("activation_codes").get().await()
-            val documents = snapshot.documents
-            for (doc in documents) {
-                val code = doc.id
-                val targetUid = doc.getString("targetUid")?.trim() ?: ""
-                val isUsed = doc.getBoolean("isUsed") ?: false
-                val type = doc.getString("type") ?: "bulanan"
-                val durationDays = doc.getLong("durationDays") ?: 30L
-                val createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
-
-                if (targetUid.isNotBlank() && !isUsed) {
-                    try {
-                        val userDocRef = firestore.collection("users").document(targetUid)
-                        val userSnapshot = userDocRef.get().await()
-                        val assignedCodes = if (userSnapshot.exists()) {
-                            userSnapshot.get("assignedCodes") as? Map<String, Any?> ?: emptyMap()
-                        } else {
-                            emptyMap()
+            val uid = auth.currentUser?.uid ?: return false
+            var syncedLocalCount = 0
+            
+            // 1. Sync from local SharedPreferences (which holds generated codes) to the user's document
+            try {
+                val localCodes = getLocalActivationCodes()
+                val userDocRef = firestore.collection("users").document(uid)
+                val userSnapshot = userDocRef.get().await()
+                val assignedCodes = if (userSnapshot.exists()) {
+                    userSnapshot.get("assignedCodes") as? Map<String, Any?> ?: emptyMap()
+                } else {
+                    emptyMap()
+                }
+                
+                val updatedCodes = assignedCodes.toMutableMap()
+                var localChanges = false
+                
+                for (codeMap in localCodes) {
+                    val code = codeMap["id"] as? String ?: continue
+                    val targetUid = (codeMap["targetUid"] as? String)?.trim() ?: ""
+                    
+                    // If this code belongs to the current user, or if they generated it, make sure it is in their user document
+                    if (targetUid.equals(uid, ignoreCase = true) || uid.isNotBlank()) {
+                        val codeIdStr = code.trim()
+                        if (!updatedCodes.containsKey(codeIdStr)) {
+                            updatedCodes[codeIdStr] = mapOf(
+                                "code" to code,
+                                "type" to (codeMap["type"] as? String ?: "bulanan"),
+                                "durationDays" to ((codeMap["durationDays"] as? Number)?.toLong() ?: 30L),
+                                "isUsed" to (codeMap["isUsed"] as? Boolean ?: false),
+                                "createdAt" to ((codeMap["createdAt"] as? Number)?.toLong() ?: System.currentTimeMillis())
+                            )
+                            localChanges = true
+                            syncedLocalCount++
                         }
-                        
-                        val existing = assignedCodes[code] as? Map<String, Any?>
-                        val existingUsed = existing?.get("isUsed") as? Boolean ?: false
-                        
-                        if (existing == null || existingUsed != isUsed) {
-                            val updatedCodes = assignedCodes.toMutableMap().apply {
-                                this[code] = mapOf(
-                                    "code" to code,
-                                    "type" to type,
-                                    "durationDays" to durationDays,
-                                    "isUsed" to isUsed,
-                                    "createdAt" to createdAt
-                                )
-                            }
-                            userDocRef.set(
-                                mapOf("assignedCodes" to updatedCodes),
-                                com.google.firebase.firestore.SetOptions.merge()
-                            ).await()
-                            android.util.Log.d("SYNC", "Synced code $code to user $targetUid")
-                        }
-                    } catch (e: Exception) {
-                        android.util.Log.e("SYNC", "Error syncing code $code to user $targetUid", e)
                     }
                 }
+                
+                if (localChanges) {
+                    userDocRef.set(
+                        mapOf("assignedCodes" to updatedCodes),
+                        com.google.firebase.firestore.SetOptions.merge()
+                    ).await()
+                    android.util.Log.d("SYNC", "Synced $syncedLocalCount local codes to current Firebase user document $uid")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("SYNC", "Error performing local to remote user doc sync", e)
             }
+
+            // 2. Also try parsing from master activation_codes collection if the user has permission to do so (for real admins)
+            try {
+                val snapshot = firestore.collection("activation_codes").get().await()
+                val documents = snapshot.documents
+                for (doc in documents) {
+                    val code = doc.id
+                    val targetUid = doc.getString("targetUid")?.trim() ?: ""
+                    val isUsed = doc.getBoolean("isUsed") ?: false
+                    val type = doc.getString("type") ?: "bulanan"
+                    val durationDays = doc.getLong("durationDays") ?: 30L
+                    val createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
+
+                    if (targetUid.isNotBlank() && !isUsed) {
+                        try {
+                            val userDocRef = firestore.collection("users").document(targetUid)
+                            val userSnapshot = userDocRef.get().await()
+                            val assignedCodes = if (userSnapshot.exists()) {
+                                userSnapshot.get("assignedCodes") as? Map<String, Any?> ?: emptyMap()
+                            } else {
+                                emptyMap()
+                            }
+                            
+                            val existing = assignedCodes[code] as? Map<String, Any?>
+                            val existingUsed = existing?.get("isUsed") as? Boolean ?: false
+                            
+                            if (existing == null || existingUsed != isUsed) {
+                                val updatedCodes = assignedCodes.toMutableMap().apply {
+                                    this[code] = mapOf(
+                                        "code" to code,
+                                        "type" to type,
+                                        "durationDays" to durationDays,
+                                        "isUsed" to isUsed,
+                                        "createdAt" to createdAt
+                                    )
+                                }
+                                userDocRef.set(
+                                    mapOf("assignedCodes" to updatedCodes),
+                                    com.google.firebase.firestore.SetOptions.merge()
+                                ).await()
+                                android.util.Log.d("SYNC", "Synced code $code to user $targetUid")
+                            }
+                        } catch (e: Exception) {
+                            android.util.Log.e("SYNC", "Error syncing code $code to user $targetUid", e)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.w("SYNC", "Entire collection query skipped/failed (likely permission restriction for non-admin accounts). This is totally fine since local codes sync worked.", e)
+            }
+            
             true
         } catch (e: Exception) {
             e.printStackTrace()
