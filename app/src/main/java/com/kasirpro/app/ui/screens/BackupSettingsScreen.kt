@@ -2093,6 +2093,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
 
     var selectedTab by remember { mutableStateOf(0) } // 0: Dashboard & Kinerja, 1: Kode Aktivasi (Terpisah)
     var targetUidInput by remember { mutableStateOf("") }
+    var isSyncingCodes by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -2580,6 +2581,38 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                 Text("$totalUsed", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
                             }
                         }
+                    }
+
+                    Button(
+                        onClick = {
+                            isSyncingCodes = true
+                            viewModel.syncAllCodesToUsers { success ->
+                                isSyncingCodes = false
+                                if (success) {
+                                    viewModel.showToast("Sukses: Semua kode lama berhasil disinkronkan ke user!")
+                                } else {
+                                    viewModel.showToast("Gagal menyinkronkan kode.")
+                                }
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Slate800),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.Gray.copy(alpha = 0.3f)),
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isSyncingCodes
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Sync,
+                            contentDescription = null,
+                            tint = OrangePrimary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (isSyncingCodes) "Menyeimbangkan Database..." else "Sinkronkan Kode ke Akun User (Atasi Error)",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
                     }
 
                     Text("Daftar Kode Aktivasi (${codes.size})", color = Color.Gray, fontSize = 14.sp, fontWeight = FontWeight.Bold)

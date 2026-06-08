@@ -1944,22 +1944,25 @@ data class GoogleLoginResult(
                 try {
                     val userDocRef = firestore.collection("users").document(targetUid.trim())
                     val userSnapshot = userDocRef.get().await()
-                    if (userSnapshot.exists()) {
-                        val assignedCodes = userSnapshot.get("assignedCodes") as? Map<String, Any?> ?: emptyMap()
-                        val updatedCodes = assignedCodes.toMutableMap().apply {
-                            this[kode] = mapOf(
-                                "code" to kode,
-                                "type" to type,
-                                "durationDays" to durationDays.toLong(),
-                                "isUsed" to false,
-                                "createdAt" to now
-                            )
-                        }
-                        userDocRef.update("assignedCodes", updatedCodes).await()
-                        android.util.Log.d("ADMIN", "Successfully associated code directly in user's document path")
+                    val assignedCodes = if (userSnapshot.exists()) {
+                        userSnapshot.get("assignedCodes") as? Map<String, Any?> ?: emptyMap()
                     } else {
-                        android.util.Log.w("ADMIN", "Target user document doesn't exist in Firestore collection yet.")
+                        emptyMap()
                     }
+                    val updatedCodes = assignedCodes.toMutableMap().apply {
+                        this[kode] = mapOf(
+                            "code" to kode,
+                            "type" to type,
+                            "durationDays" to durationDays.toLong(),
+                            "isUsed" to false,
+                            "createdAt" to now
+                        )
+                    }
+                    userDocRef.set(
+                        mapOf("assignedCodes" to updatedCodes),
+                        com.google.firebase.firestore.SetOptions.merge()
+                    ).await()
+                    android.util.Log.d("ADMIN", "Successfully associated code directly in user's document path")
                 } catch (e: Exception) {
                     android.util.Log.e("ADMIN", "Could not write assignedCodes fallback to user document", e)
                 }
@@ -1968,6 +1971,59 @@ data class GoogleLoginResult(
         } catch (e: Exception) {
             e.printStackTrace()
             android.util.Log.e("ADMIN", "Firestore Save result failed", e)
+            false
+        }
+    }
+
+    suspend fun syncAllCodesToUsers(): Boolean {
+        return try {
+            val snapshot = firestore.collection("activation_codes").get().await()
+            val documents = snapshot.documents
+            for (doc in documents) {
+                val code = doc.id
+                val targetUid = doc.getString("targetUid")?.trim() ?: ""
+                val isUsed = doc.getBoolean("isUsed") ?: false
+                val type = doc.getString("type") ?: "bulanan"
+                val durationDays = doc.getLong("durationDays") ?: 30L
+                val createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
+
+                if (targetUid.isNotBlank() && !isUsed) {
+                    try {
+                        val userDocRef = firestore.collection("users").document(targetUid)
+                        val userSnapshot = userDocRef.get().await()
+                        val assignedCodes = if (userSnapshot.exists()) {
+                            userSnapshot.get("assignedCodes") as? Map<String, Any?> ?: emptyMap()
+                        } else {
+                            emptyMap()
+                        }
+                        
+                        val existing = assignedCodes[code] as? Map<String, Any?>
+                        val existingUsed = existing?.get("isUsed") as? Boolean ?: false
+                        
+                        if (existing == null || existingUsed != isUsed) {
+                            val updatedCodes = assignedCodes.toMutableMap().apply {
+                                this[code] = mapOf(
+                                    "code" to code,
+                                    "type" to type,
+                                    "durationDays" to durationDays,
+                                    "isUsed" to isUsed,
+                                    "createdAt" to createdAt
+                                )
+                            }
+                            userDocRef.set(
+                                mapOf("assignedCodes" to updatedCodes),
+                                com.google.firebase.firestore.SetOptions.merge()
+                            ).await()
+                            android.util.Log.d("SYNC", "Synced code $code to user $targetUid")
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("SYNC", "Error syncing code $code to user $targetUid", e)
+                    }
+                }
+            }
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
             false
         }
     }

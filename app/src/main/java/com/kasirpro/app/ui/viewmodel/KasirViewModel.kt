@@ -641,6 +641,13 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun syncAllCodesToUsers(onComplete: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            val success = repository.syncAllCodesToUsers()
+            onComplete(success)
+        }
+    }
+
     fun deleteCode(codeId: String) {
         viewModelScope.launch {
             repository.deleteActivationCode(codeId)
