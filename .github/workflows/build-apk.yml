@@ -2,39 +2,39 @@ name: Build Kasir Pro APK
 
 on:
   push:
-      branches: [ main, master ]
-        workflow_dispatch:
+    branches: [ main, master ]
+  workflow_dispatch:
 
-        jobs:
-          build:
-              runs-on: ubuntu-latest
-                  steps:
-                        - uses: actions/checkout@v4
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-                              - name: Create google-services.json
-                                      run: echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > app/google-services.json
+      - name: Create google-services.json
+        run: echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > app/google-services.json
 
-                                            - name: Create env file
-                                                    run: |
-                                                              echo "GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }}" > .env
-                                                                        cp .env .env.example
+      - name: Create env file
+        run: |
+          echo "GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }}" > .env
+          cp .env .env.example
 
-                                                                              - uses: actions/setup-java@v4
-                                                                                      with:
-                                                                                                java-version: '17'
-                                                                                                          distribution: 'temurin'
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
-                                                                                                                - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v3
 
-                                                                                                                      - run: cat debug.keystore.base64 | base64 --decode > debug.keystore
+      - run: cat debug.keystore.base64 | base64 --decode > debug.keystore
 
-                                                                                                                            - run: chmod +x ./gradlew
+      - run: chmod +x ./gradlew
 
-                                                                                                                                  - run: ./gradlew assembleDebug
+      - run: ./gradlew assembleDebug
 
-                                                                                                                                        - run: mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/kasir-pro.apk
+      - run: mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/kasir-pro.apk
 
-                                                                                                                                              - uses: actions/upload-artifact@v4
-                                                                                                                                                      with:
-                                                                                                                                                                name: Kasir-Pro
-                                                                                                                                                                          path: app/build/outputs/apk/debug/kasir-pro.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Kasir-Pro
+          path: app/build/outputs/apk/debug/kasir-pro.apk
