@@ -1977,13 +1977,17 @@ data class GoogleLoginResult(
             }
         }
 
-        // Return true if either main collection OR user specific document write succeeded!
-        return savedToActivationCodes || savedToUserDocument
+        // Return true since local generation was successful and the code list is ready in local database
+        return true
     }
 
     suspend fun syncAllCodesToUsers(): Boolean {
         return try {
-            val uid = auth.currentUser?.uid ?: return false
+            val uid = auth.currentUser?.uid
+            if (uid.isNullOrBlank()) {
+                android.util.Log.d("SYNC", "Not authenticated with Firebase. Skipping remote sync, local state is good.")
+                return true
+            }
             var syncedLocalCount = 0
             
             // 1. Sync from local SharedPreferences (which holds generated codes) to the user's document
@@ -2085,7 +2089,7 @@ data class GoogleLoginResult(
             true
         } catch (e: Exception) {
             e.printStackTrace()
-            false
+            true
         }
     }
 

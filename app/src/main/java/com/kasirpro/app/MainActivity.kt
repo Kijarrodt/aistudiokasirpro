@@ -223,34 +223,111 @@ class MainActivity : ComponentActivity() {
 
                             // Slid-in / overlapping Custom Photo Toast/Notification
                             customNotificationText?.let { msg ->
+                                val lowerMsg = msg.lowercase()
+                                val isSuccess = lowerMsg.contains("sukses") || lowerMsg.contains("berhasil")
+                                val isFailed = lowerMsg.contains("gagal") || lowerMsg.contains("error") || lowerMsg.contains("salah") || lowerMsg.contains("ditolak")
+                                val isWarning = lowerMsg.contains("peringatan") || lowerMsg.contains("perhatian") || lowerMsg.contains("wajib") || lowerMsg.contains("kurang") || lowerMsg.contains("tidak cukup")
+                                val isCopy = lowerMsg.contains("salin") || lowerMsg.contains("copy") || lowerMsg.contains("clipboard")
+
+                                val accentColor = when {
+                                    isSuccess -> Color(0xFF10B981) // Emerald Green for success
+                                    isFailed -> Color(0xFFEF4444) // Crimson Red for failure
+                                    isWarning -> Color(0xFFF59E0B) // Amber for warnings
+                                    isCopy -> Color(0xFF3B82F6) // Dynamic Blue for copying properties
+                                    else -> OrangePrimary // Default brand orange
+                                }
+
+                                val statusIcon = when {
+                                    isSuccess -> Icons.Default.CheckCircle
+                                    isFailed -> Icons.Default.Error
+                                    isWarning -> Icons.Default.Warning
+                                    isCopy -> Icons.Default.ContentCopy
+                                    else -> Icons.Default.Info
+                                }
+
+                                val cleanMsg = msg
+                                    .replace("Sukses:", "")
+                                    .replace("Gagal:", "")
+                                    .replace("Peringatan:", "")
+                                    .replace("Salin:", "")
+                                    .trim()
+
                                 Card(
                                     shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)), // Slate800
-                                    border = androidx.compose.foundation.BorderStroke(1.5.dp, OrangePrimary),
-                                    elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
+                                    colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)), // Deep Slate Dark 900
+                                    border = androidx.compose.foundation.BorderStroke(1.5.dp, accentColor),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .align(Alignment.TopCenter)
-                                        .padding(16.dp)
+                                        .padding(horizontal = 16.dp, vertical = 24.dp)
                                 ) {
                                     Row(
-                                        modifier = Modifier.padding(12.dp),
+                                        modifier = Modifier
+                                            .padding(14.dp)
+                                            .fillMaxWidth(),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        androidx.compose.foundation.Image(
-                                            painter = androidx.compose.ui.res.painterResource(id = com.kasirpro.app.R.drawable.ic_kasir_logo),
-                                            contentDescription = "Kasir Pro Toast Logo",
+                                        // App brand cash register icon
+                                        Box(
                                             modifier = Modifier
-                                                .size(40.dp)
-                                                .clip(androidx.compose.foundation.shape.CircleShape)
-                                        )
+                                                .size(44.dp)
+                                                .background(
+                                                    color = Color.White.copy(alpha = 0.05f),
+                                                    shape = androidx.compose.foundation.shape.CircleShape
+                                                )
+                                                .padding(2.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            androidx.compose.foundation.Image(
+                                                painter = androidx.compose.ui.res.painterResource(
+                                                    id = com.kasirpro.app.R.drawable.ic_kasir_logo_1780920830633
+                                                ),
+                                                contentDescription = "Kasir Pro Brand Logo",
+                                                modifier = Modifier
+                                                    .size(38.dp)
+                                                    .clip(androidx.compose.foundation.shape.CircleShape)
+                                            )
+                                        }
+
                                         Spacer(modifier = Modifier.width(12.dp))
-                                        Text(
-                                            text = msg,
-                                            color = Color.White,
-                                            fontSize = 13.sp,
-                                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+
+                                        // Notification message text
+                                        Column(
                                             modifier = Modifier.weight(1f)
+                                        ) {
+                                            val titleText = when {
+                                                isSuccess -> "SUKSES"
+                                                isFailed -> "GAGAL"
+                                                isWarning -> "PERINGATAN"
+                                                isCopy -> "DISALIN"
+                                                else -> "INFO"
+                                            }
+                                            Text(
+                                                text = titleText,
+                                                color = accentColor,
+                                                fontSize = 11.sp,
+                                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                                letterSpacing = 1.sp
+                                            )
+                                            Spacer(modifier = Modifier.height(1.dp))
+                                            Text(
+                                                text = cleanMsg,
+                                                color = Color.White,
+                                                fontSize = 13.sp,
+                                                fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                                                lineHeight = 18.sp
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.width(10.dp))
+
+                                        // Dynamic Status Icon Indicating Success, Warning, Error, etc.
+                                        Icon(
+                                            imageVector = statusIcon,
+                                            contentDescription = null,
+                                            tint = accentColor,
+                                            modifier = Modifier.size(24.dp)
                                         )
                                     }
                                 }
