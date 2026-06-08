@@ -813,7 +813,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
 
                     // Payment partial choice / DP option
                     item {
-                        Column {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text("Metode Status Piutang", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -823,6 +823,28 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     RadioButton(selected = statusTrx == "dp", onClick = { viewModel.transactionStatus.value = "dp" })
                                     Text("DP / PIUTANG", fontSize = 12.sp)
+                                }
+                            }
+
+                            if (statusTrx == "dp" && currentCustomer == null) {
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = Color.Red.copy(alpha = 0.08f)),
+                                    border = BorderStroke(1.dp, Color.Red.copy(alpha = 0.5f)),
+                                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(10.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(imageVector = Icons.Default.Warning, contentDescription = null, tint = Color.Red, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "Wajib memilih pelanggan jika status adalah Hutang (DP)",
+                                            color = Color.Red,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -1003,6 +1025,12 @@ fun CashierScreen(viewModel: KasirViewModel) {
                         val user = viewModel.currentUser.value
                         val isPremium = user?.subscriptionStatus == "premium"
 
+                        // Debt/DP Customer mandatory check
+                        if (statusTrx == "dp" && currentCustomer == null) {
+                            Toast.makeText(context, "Khusus transaksi hutang (DP/Piutang), Anda wajib memilih pelanggan yang sudah ada atau menambahkan pelanggan baru!", Toast.LENGTH_LONG).show()
+                            return@Button
+                        }
+
                         // Free limit transaction guard (50 transactions limit)
                         if (!isPremium && viewModel.transactions.value.size >= 50) {
                             showCheckoutDialog = false
@@ -1015,10 +1043,10 @@ fun CashierScreen(viewModel: KasirViewModel) {
                         redeemPointsInput = ""
                         showCheckoutDialog = false
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+                    colors = ButtonDefaults.buttonColors(containerColor = if (statusTrx == "dp" && currentCustomer == null) Color.Gray else OrangePrimary),
                     modifier = Modifier.testTag("finalize_payment_button")
                 ) {
-                    Text("Proses Lunas")
+                    Text(if (statusTrx == "dp") "Proses Hutang" else "Proses Lunas")
                 }
             },
             dismissButton = {

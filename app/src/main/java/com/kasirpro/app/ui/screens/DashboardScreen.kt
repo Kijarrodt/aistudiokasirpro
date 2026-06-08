@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kasirpro.app.ui.viewmodel.KasirViewModel
 import com.kasirpro.app.data.local.*
-import com.kasirpro.app.data.local.actualIncome
 import com.kasirpro.app.ui.theme.*
 import java.text.NumberFormat
 import java.util.Locale

@@ -1274,12 +1274,17 @@ data class GoogleLoginResult(
         if (status == "dp" && pelangganId != null) {
             val sisaHutang = total - bayarNominal
             if (sisaHutang > 0) {
+                var pelangganNama = "Pelanggan Setia"
+                val customer = dao.getAllCustomersRaw().find { it.id == pelangganId }
+                if (customer != null) {
+                    pelangganNama = customer.nama
+                }
                 val d = DebtEntity(
                     id = UUID.randomUUID().toString(),
                     businessId = tx.businessId,
                     branchId = tx.branchId,
                     pelangganId = pelangganId,
-                    pelangganNama = "Pelanggan Setia",
+                    pelangganNama = pelangganNama,
                     jumlah = sisaHutang,
                     transaksiId = tx.id,
                     status = "belum"
@@ -1734,6 +1739,10 @@ data class GoogleLoginResult(
 
             var durationDays = 30L
             if (localMatch != null) {
+                val targetUid = localMatch["targetUid"] as? String
+                if (targetUid != null && targetUid.isNotBlank() && targetUid != uid) {
+                    return RedeemResult.Error("Kode ini dikhususkan untuk ID Pengguna: $targetUid. ID Anda ($uid) tidak cocok.")
+                }
                 val isUsed = localMatch["isUsed"] as? Boolean ?: false
                 if (isUsed) {
                     return RedeemResult.Error("Kode sudah pernah digunakan")
@@ -1745,24 +1754,20 @@ data class GoogleLoginResult(
                     val docRef = firestore.collection("activation_codes").document(code)
                     val snapshot = docRef.get().await()
                     if (snapshot.exists()) {
+                        val targetUid = snapshot.getString("targetUid")
+                        if (targetUid != null && targetUid.isNotBlank() && targetUid != uid) {
+                            return RedeemResult.Error("Kode ini dikhususkan untuk ID Pengguna: $targetUid. ID Anda ($uid) tidak cocok.")
+                        }
                         val isUsed = snapshot.getBoolean("isUsed") ?: false
                         if (isUsed) {
                             return RedeemResult.Error("Kode sudah pernah digunakan")
                         }
                         durationDays = snapshot.getLong("durationDays") ?: 30L
                     } else {
-                        if (code.startsWith("KASIRPRO-")) {
-                            durationDays = if (code.contains("TAHUNAN")) 365L else 30L
-                        } else {
-                            return RedeemResult.Error("Kode tidak valid. Perika kembali kode Anda")
-                        }
+                        return RedeemResult.Error("Kode tidak valid atau belum didaftarkan oleh admin.")
                     }
                 } catch (e: Exception) {
-                    if (code.startsWith("KASIRPRO-")) {
-                        durationDays = if (code.contains("TAHUNAN")) 365L else 30L
-                    } else {
-                        return RedeemResult.Error("Kode tidak valid atau koneksi bermasalah: ${e.message}")
-                    }
+                    return RedeemResult.Error("Gagal memverifikasi kode (Offline atau error jaringan): ${e.message}")
                 }
             }
 
@@ -1857,8 +1862,8 @@ data class GoogleLoginResult(
         }
     }
 
-    suspend fun generateActivationCode(type: String, durationDays: Int, createdByUid: String): Boolean {
-        android.util.Log.d("ADMIN", "Generating code...")
+    suspend fun generateActivationCode(type: String, durationDays: Int, createdByUid: String, targetUid: String): Boolean {
+        android.util.Log.d("ADMIN", "Generating code for $targetUid...")
         val suffix = (1..6).map { "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".random() }.joinToString("")
         val typeLabel = if (type.lowercase() == "tahunan") "TAHUNAN" else "BULANAN"
         val kode = "KASIRPRO-$typeLabel-$suffix"
@@ -1873,7 +1878,8 @@ data class GoogleLoginResult(
             "usedBy" to null,
             "usedAt" to null,
             "createdAt" to now,
-            "createdBy" to createdByUid
+            "createdBy" to createdByUid,
+            "targetUid" to targetUid
         )
 
         // Save local

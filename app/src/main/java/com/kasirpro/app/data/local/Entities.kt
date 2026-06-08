@@ -77,7 +77,10 @@ data class TransactionEntity(
     val pelangganId: String?,
     val createdAt: Long = System.currentTimeMillis(),
     val isOfflinePending: Boolean = false // Track if transaction was made offline and needs sync
-)
+) {
+    val actualIncome: Double
+        get() = if (status.equals("dp", ignoreCase = true)) bayarNominal else total
+}
 
 @Entity(tableName = "debts")
 data class DebtEntity(
@@ -130,6 +133,3 @@ data class PromoEntity(
     val berlakuSampai: Long,
     val createdAt: Long = System.currentTimeMillis()
 )
-
-val TransactionEntity.actualIncome: Double
-    get() = if (status.equals("dp", ignoreCase = true)) bayarNominal else total

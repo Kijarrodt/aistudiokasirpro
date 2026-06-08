@@ -2004,6 +2004,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
     }
 
     var selectedTab by remember { mutableStateOf(0) } // 0: Dashboard & Kinerja, 1: Kode Aktivasi (Terpisah)
+    var targetUidInput by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
@@ -2380,6 +2381,28 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    Text(
+                        text = "Generasi Kode Sekali Pakai (Khusus Pengguna)",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    OutlinedTextField(
+                        value = targetUidInput,
+                        onValueChange = { targetUidInput = it },
+                        label = { Text("ID Pengguna / UID (Wajib)", color = Color.Gray, fontSize = 12.sp) },
+                        placeholder = { Text("Masukkan atau tempel UID pengguna...", color = Color.DarkGray, fontSize = 12.sp) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = OrangePrimary,
+                            unfocusedBorderColor = Color.Gray,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        )
+                    )
+
                     // Action to create codes
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -2387,11 +2410,16 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                     ) {
                         Button(
                             onClick = { 
-                                viewModel.generateCode(isYearly = false) { success ->
-                                    if (success) {
-                                        Toast.makeText(context, "Kode Bulanan berhasil digenerate!", Toast.LENGTH_SHORT).show()
-                                    } else {
-                                        Toast.makeText(context, "Gagal generate kode Bulanan!", Toast.LENGTH_SHORT).show()
+                                if (targetUidInput.isBlank()) {
+                                    Toast.makeText(context, "ID Pengguna (UID) wajib diisi!", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    viewModel.generateCode(isYearly = false, targetUid = targetUidInput) { success ->
+                                        if (success) {
+                                            Toast.makeText(context, "Kode Bulanan berhasil digenerate!", Toast.LENGTH_SHORT).show()
+                                            targetUidInput = ""
+                                        } else {
+                                            Toast.makeText(context, "Gagal generate kode Bulanan!", Toast.LENGTH_SHORT).show()
+                                        }
                                     }
                                 }
                             },
@@ -2405,11 +2433,16 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
 
                         Button(
                             onClick = { 
-                                viewModel.generateCode(isYearly = true) { success ->
-                                    if (success) {
-                                        Toast.makeText(context, "Kode Tahunan berhasil digenerate!", Toast.LENGTH_SHORT).show()
-                                    } else {
-                                        Toast.makeText(context, "Gagal generate kode Tahunan!", Toast.LENGTH_SHORT).show()
+                                if (targetUidInput.isBlank()) {
+                                    Toast.makeText(context, "ID Pengguna (UID) wajib diisi!", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    viewModel.generateCode(isYearly = true, targetUid = targetUidInput) { success ->
+                                        if (success) {
+                                            Toast.makeText(context, "Kode Tahunan berhasil digenerate!", Toast.LENGTH_SHORT).show()
+                                            targetUidInput = ""
+                                        } else {
+                                            Toast.makeText(context, "Gagal generate kode Tahunan!", Toast.LENGTH_SHORT).show()
+                                        }
                                     }
                                 }
                             },
@@ -2503,6 +2536,16 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                                         textDecoration = if (isUsed) androidx.compose.ui.text.style.TextDecoration.LineThrough else null
                                                     )
                                                 )
+                                                val targetUid = codeMap["targetUid"] as? String ?: ""
+                                                if (targetUid.isNotBlank()) {
+                                                    Spacer(modifier = Modifier.height(2.dp))
+                                                    Text(
+                                                        text = "Target UID: $targetUid",
+                                                        color = OrangePrimary,
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                }
                                                 Spacer(modifier = Modifier.height(4.dp))
                                                 Row(
                                                     verticalAlignment = Alignment.CenterVertically,
