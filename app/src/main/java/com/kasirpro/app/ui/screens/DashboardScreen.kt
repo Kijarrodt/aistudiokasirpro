@@ -22,6 +22,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kasirpro.app.ui.viewmodel.KasirViewModel
+import com.kasirpro.app.data.local.*
+import com.kasirpro.app.data.local.actualIncome
 import com.kasirpro.app.ui.theme.*
 import java.text.NumberFormat
 import java.util.Locale
@@ -70,10 +72,10 @@ fun DashboardScreen(viewModel: KasirViewModel) {
     val startOfDay = today - (today % (24 * 60 * 60 * 1000))
     val todayTransactions = transactionsList.filter { it.createdAt >= startOfDay }
 
-    val totalIncome = todayTransactions.sumOf { it.total }
+    val totalIncome = todayTransactions.sumOf { it.actualIncome }
     val totalProfit = todayTransactions.sumOf { tx ->
         // Profit calculation helper
-        tx.total * 0.45 // Estimated margin simulator based on user parameters
+        tx.actualIncome * 0.45 // Estimated margin simulator based on user parameters
     }
     val trxCount = todayTransactions.size
     val activeDebts = debtsList.filter { it.status == "belum" }.sumOf { it.jumlah }
@@ -93,7 +95,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
         daysList.map { cal ->
             val dayStart = cal.timeInMillis
             val dayEnd = dayStart + (24 * 60 * 60 * 1000)
-            val dayRevenue = transactionsList.filter { t -> t.createdAt in dayStart until dayEnd }.sumOf { it.total }
+            val dayRevenue = transactionsList.filter { t -> t.createdAt in dayStart until dayEnd }.sumOf { it.actualIncome }
             
             val sdf = java.text.SimpleDateFormat("EEE", java.util.Locale("id", "ID"))
             val label = sdf.format(cal.time)

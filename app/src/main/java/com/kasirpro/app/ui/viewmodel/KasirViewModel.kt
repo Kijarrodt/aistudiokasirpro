@@ -11,6 +11,23 @@ import java.util.UUID
 
 class KasirViewModel(application: Application) : AndroidViewModel(application) {
     val repository = KasirRepository(application)
+    private val prefs = application.getSharedPreferences("kasir_prefs", android.content.Context.MODE_PRIVATE)
+
+    fun getPointEarnRate(): Double {
+        return prefs.getFloat("point_earn_rate", 10000f).toDouble()
+    }
+
+    fun setPointEarnRate(rate: Double) {
+        prefs.edit().putFloat("point_earn_rate", rate.toFloat()).apply()
+    }
+
+    fun getPointRedeemRate(): Double {
+        return prefs.getFloat("point_rate", 100f).toDouble()
+    }
+
+    fun setPointRedeemRate(rate: Double) {
+        prefs.edit().putFloat("point_rate", rate.toFloat()).apply()
+    }
 
     init {
         viewModelScope.launch {
@@ -319,9 +336,10 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
                 pelangganId = selectedCustomer.value?.id
             )
 
-            // Handle Customer Loyalty Point Update Simulation (1 point per Rp10.000)
+            // Handle Customer Loyalty Point Update Simulation (Integrated CRM point earn rate config)
             selectedCustomer.value?.let { cust ->
-                val addedPoints = (total / 10000).toInt()
+                val earnRate = prefs.getFloat("point_earn_rate", 10000f).toDouble()
+                val addedPoints = if (earnRate > 0) (total / earnRate).toInt() else 0
                 val updatedCustomer = cust.copy(
                     totalPoin = (cust.totalPoin - pointsRedeemedAmount + addedPoints).coerceAtLeast(0),
                     totalTransaksi = cust.totalTransaksi + 1
@@ -550,6 +568,12 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun updateCustomer(customer: CustomerEntity) {
+        viewModelScope.launch {
+            repository.updateCustomer(customer)
+        }
+    }
+
     // DEBTS WITH PREMIUM CHECKS
     fun settleDebt(debtId: String) {
         viewModelScope.launch {
@@ -616,6 +640,28 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val user = currentUser.value ?: return@launch
             repository.upgradeUserSubscription(user.uid, "free")
+        }
+    }
+
+    val allFirestoreUsers = MutableStateFlow<List<UserEntity>>(emptyList())
+    val isLoadingFirestoreUsers = MutableStateFlow(false)
+
+    fun fetchFirestoreUsers() {
+        viewModelScope.launch {
+            isLoadingFirestoreUsers.value = true
+            val list = repository.getAllUsersFirestore()
+            allFirestoreUsers.value = list
+            isLoadingFirestoreUsers.value = false
+        }
+    }
+
+    fun updateUserSubscriptionAdmin(uid: String, status: String, onComplete: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            val success = repository.upgradeUserSubscription(uid, status)
+            if (success) {
+                fetchFirestoreUsers()
+            }
+            onComplete(success)
         }
     }
 

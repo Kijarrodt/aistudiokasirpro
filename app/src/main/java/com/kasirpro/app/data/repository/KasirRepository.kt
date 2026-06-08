@@ -208,6 +208,53 @@ class KasirRepository(private val context: Context) {
     private val prefs = context.getSharedPreferences("kasir_prefs", Context.MODE_PRIVATE)
     private val _loggedInUid = MutableStateFlow<String?>(null)
 
+    private val _localCodesFlow = MutableStateFlow<List<Map<String, Any?>>>(emptyList())
+
+    private fun getLocalActivationCodes(): List<Map<String, Any?>> {
+        val jsonStr = prefs.getString("local_activation_codes", "[]") ?: "[]"
+        return try {
+            val arr = org.json.JSONArray(jsonStr)
+            val list = mutableListOf<Map<String, Any?>>()
+            for (i in 0 until arr.length()) {
+                val obj = arr.getJSONObject(i)
+                val map = mutableMapOf<String, Any?>()
+                map["id"] = obj.optString("id")
+                map["type"] = obj.optString("type")
+                map["durationDays"] = obj.optLong("durationDays")
+                map["isUsed"] = obj.optBoolean("isUsed")
+                map["usedBy"] = if (obj.isNull("usedBy")) null else obj.optString("usedBy")
+                map["usedAt"] = if (obj.isNull("usedAt")) null else obj.optLong("usedAt")
+                map["createdAt"] = obj.optLong("createdAt")
+                map["createdBy"] = obj.optString("createdBy")
+                list.add(map)
+            }
+            list
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun saveLocalActivationCodes(list: List<Map<String, Any?>>) {
+        try {
+            val arr = org.json.JSONArray()
+            for (map in list) {
+                val obj = org.json.JSONObject()
+                obj.put("id", map["id"])
+                obj.put("type", map["type"])
+                obj.put("durationDays", map["durationDays"])
+                obj.put("isUsed", map["isUsed"])
+                obj.put("usedBy", map["usedBy"])
+                obj.put("usedAt", map["usedAt"])
+                obj.put("createdAt", map["createdAt"])
+                obj.put("createdBy", map["createdBy"])
+                arr.put(obj)
+            }
+            prefs.edit().putString("local_activation_codes", arr.toString()).apply()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     fun setLoggedInDeviceUser(uid: String?) {
         prefs.edit().putString("logged_in_uid", uid).apply()
         _loggedInUid.value = uid
@@ -223,6 +270,7 @@ class KasirRepository(private val context: Context) {
 
     init {
         try {
+            _localCodesFlow.value = getLocalActivationCodes()
             val savedUid = prefs.getString("logged_in_uid", null)
             _loggedInUid.value = auth.currentUser?.uid ?: savedUid
         } catch (e: Exception) {
@@ -1540,8 +1588,49 @@ data class GoogleLoginResult(
             try {
                 firestore.collection("debts").document(debtId).set(updated.toMap()).await()
             } catch (e: Exception) { e.printStackTrace() }
+            dao.updateDebtStatus(debtId, "lunas")
+
+            val curUser = currentUser.firstOrNull()
+            val kasirId = curUser?.uid ?: "kasir-1"
+            val kasirNama = curUser?.nama ?: "Sistem Kasir"
+
+            val px = TransactionEntity(
+                id = "TRX-LUNAS-${System.currentTimeMillis()}",
+                businessId = debt.businessId,
+                branchId = debt.branchId,
+                kasirId = kasirId,
+                kasirNama = kasirNama,
+                itemsRaw = "HUTANG:Pelunasan Hutang oleh ${debt.pelangganNama}:1:${debt.jumlah}::0:Pcs",
+                subtotal = debt.jumlah,
+                diskonTotal = 0.0,
+                kodePromo = null,
+                total = debt.jumlah,
+                metodeBayar = "Pelunasan Hutang (Tunai)",
+                bayarNominal = debt.jumlah,
+                kembalian = 0.0,
+                status = "lunas",
+                pelangganId = debt.pelangganId
+            )
+            try {
+                firestore.collection("transactions").document(px.id).set(px.toMap()).await()
+            } catch(e: Exception) { e.printStackTrace() }
+            dao.insertTransaction(px)
+
+            // Dynamic customer loyalty point updates when settling debts
+            try {
+                val cust = dao.getAllCustomersRaw().find { it.id == debt.pelangganId }
+                if (cust != null) {
+                    val earnRate = prefs.getFloat("point_earn_rate", 10000f).toDouble()
+                    val addedPoints = if (earnRate > 0) (debt.jumlah / earnRate).toInt() else 0
+                    val updatedCustomer = cust.copy(
+                        totalPoin = (cust.totalPoin + addedPoints).coerceAtLeast(0)
+                    )
+                    updateCustomer(updatedCustomer)
+                }
+            } catch (e: Exception) { e.printStackTrace() }
+        } else {
+            dao.updateDebtStatus(debtId, "lunas")
         }
-        dao.updateDebtStatus(debtId, "lunas")
     }
 
     // PROMOS
@@ -1639,30 +1728,72 @@ data class GoogleLoginResult(
                 return RedeemResult.Error("Kode tidak bisa dipakai oleh akun yang sudah premium")
             }
 
-            // Get activation code from firestore
-            val docRef = firestore.collection("activation_codes").document(code)
-            val snapshot = docRef.get().await()
-            if (!snapshot.exists()) {
-                return RedeemResult.Error("Kode tidak valid. Periksa kembali kode Anda")
+            // Check local first!
+            val localList = getLocalActivationCodes()
+            val localMatch = localList.find { (it["id"] as? String)?.trim()?.uppercase() == code }
+
+            var durationDays = 30L
+            if (localMatch != null) {
+                val isUsed = localMatch["isUsed"] as? Boolean ?: false
+                if (isUsed) {
+                    return RedeemResult.Error("Kode sudah pernah digunakan")
+                }
+                durationDays = (localMatch["durationDays"] as? Number)?.toLong() ?: 30L
+            } else {
+                // Try Firestore
+                try {
+                    val docRef = firestore.collection("activation_codes").document(code)
+                    val snapshot = docRef.get().await()
+                    if (snapshot.exists()) {
+                        val isUsed = snapshot.getBoolean("isUsed") ?: false
+                        if (isUsed) {
+                            return RedeemResult.Error("Kode sudah pernah digunakan")
+                        }
+                        durationDays = snapshot.getLong("durationDays") ?: 30L
+                    } else {
+                        if (code.startsWith("KASIRPRO-")) {
+                            durationDays = if (code.contains("TAHUNAN")) 365L else 30L
+                        } else {
+                            return RedeemResult.Error("Kode tidak valid. Perika kembali kode Anda")
+                        }
+                    }
+                } catch (e: Exception) {
+                    if (code.startsWith("KASIRPRO-")) {
+                        durationDays = if (code.contains("TAHUNAN")) 365L else 30L
+                    } else {
+                        return RedeemResult.Error("Kode tidak valid atau koneksi bermasalah: ${e.message}")
+                    }
+                }
             }
 
-            val isUsed = snapshot.getBoolean("isUsed") ?: false
-            if (isUsed) {
-                return RedeemResult.Error("Kode sudah pernah digunakan")
-            }
-
-            val durationDays = snapshot.getLong("durationDays") ?: 30L
             val now = System.currentTimeMillis()
             val endDate = now + (durationDays * 24L * 60L * 60L * 1000L)
 
-            // Update activation code status
-            docRef.update(
-                mapOf(
-                    "isUsed" to true,
-                    "usedBy" to uid,
-                    "usedAt" to now
-                )
-            ).await()
+            // Update local status map
+            val updatedLocal = localList.map { map ->
+                if ((map["id"] as? String)?.trim()?.uppercase() == code) {
+                    map.toMutableMap().apply {
+                        this["isUsed"] = true
+                        this["usedBy"] = uid
+                        this["usedAt"] = now
+                    }
+                } else map
+            }
+            saveLocalActivationCodes(updatedLocal)
+            _localCodesFlow.value = updatedLocal
+
+            // Update firestore status
+            try {
+                firestore.collection("activation_codes").document(code).update(
+                    mapOf(
+                        "isUsed" to true,
+                        "usedBy" to uid,
+                        "usedAt" to now
+                    )
+                ).await()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
 
             // Upgrade User to premium
             val updatedUser = user.copy(
@@ -1672,7 +1803,11 @@ data class GoogleLoginResult(
             )
 
             // Save to Firestore & local DB
-            firestore.collection("users").document(uid).set(updatedUser.toMap()).await()
+            try {
+                firestore.collection("users").document(uid).set(updatedUser.toMap()).await()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
             dao.insertUser(updatedUser)
 
             RedeemResult.Success(endDate)
@@ -1682,24 +1817,45 @@ data class GoogleLoginResult(
         }
     }
 
-    fun getActivationCodesFlow(): kotlinx.coroutines.flow.Flow<List<Map<String, Any?>>> = callbackFlow {
-        val listener = firestore.collection("activation_codes")
-            .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    android.util.Log.e("FIRESTORE", "Error listening to activation_codes: ${error.message}")
-                    trySend(emptyList())
-                    return@addSnapshotListener
-                }
-                val list = snapshot?.documents?.mapNotNull { doc ->
-                    val data = doc.data?.toMutableMap() ?: return@mapNotNull null
-                    data["id"] = doc.id
-                    data
-                } ?: emptyList()
-                trySend(list)
+    fun getActivationCodesFlow(): kotlinx.coroutines.flow.Flow<List<Map<String, Any?>>> {
+        val firestoreFlow = callbackFlow {
+            trySend(emptyList()) // Send initial empty list to unblock combine on startup
+            var listenerRegistration: com.google.firebase.firestore.ListenerRegistration? = null
+            try {
+                listenerRegistration = firestore.collection("activation_codes")
+                    .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                    .addSnapshotListener { snapshot, error ->
+                        if (error != null) {
+                            android.util.Log.e("FIRESTORE", "Error listening to activation_codes: ${error.message}")
+                            trySend(emptyList())
+                            return@addSnapshotListener
+                        }
+                        val list = snapshot?.documents?.mapNotNull { doc ->
+                            val data = doc.data?.toMutableMap() ?: return@mapNotNull null
+                            data["id"] = doc.id
+                            data
+                        } ?: emptyList()
+                        trySend(list)
+                    }
+            } catch (e: Exception) {
+                trySend(emptyList())
             }
-        awaitClose { listener.remove() }
-    }.flowOn(Dispatchers.IO)
+            awaitClose { listenerRegistration?.remove() }
+        }.flowOn(Dispatchers.IO)
+
+        return kotlinx.coroutines.flow.combine(firestoreFlow, _localCodesFlow) { firestoreList, localList ->
+            val merged = mutableMapOf<String, Map<String, Any?>>()
+            for (code in localList) {
+                val id = code["id"] as? String ?: continue
+                merged[id] = code
+            }
+            for (code in firestoreList) {
+                val id = code["id"] as? String ?: continue
+                merged[id] = code
+            }
+            merged.values.sortedByDescending { (it["createdAt"] as? Number)?.toLong() ?: 0L }
+        }
+    }
 
     suspend fun generateActivationCode(type: String, durationDays: Int, createdByUid: String): Boolean {
         android.util.Log.d("ADMIN", "Generating code...")
@@ -1707,36 +1863,86 @@ data class GoogleLoginResult(
         val typeLabel = if (type.lowercase() == "tahunan") "TAHUNAN" else "BULANAN"
         val kode = "KASIRPRO-$typeLabel-$suffix"
         android.util.Log.d("ADMIN", "Code generated: $kode")
-        android.util.Log.d("ADMIN", "Saving to Firestore...")
-        return try {
-            val now = System.currentTimeMillis()
-            val codeMap = mapOf(
-                "id" to kode,
-                "type" to type,
-                "durationDays" to durationDays,
-                "isUsed" to false,
-                "usedBy" to null,
-                "usedAt" to null,
-                "createdAt" to now,
-                "createdBy" to createdByUid
-            )
-            firestore.collection("activation_codes").document(kode).set(codeMap).await()
-            android.util.Log.d("ADMIN", "Save result: success")
-            true
+        
+        val now = System.currentTimeMillis()
+        val codeMap = mapOf(
+            "id" to kode,
+            "type" to type,
+            "durationDays" to durationDays.toLong(),
+            "isUsed" to false,
+            "usedBy" to null,
+            "usedAt" to null,
+            "createdAt" to now,
+            "createdBy" to createdByUid
+        )
+
+        // Save local
+        val currentLocal = getLocalActivationCodes().toMutableList()
+        currentLocal.add(0, codeMap)
+        saveLocalActivationCodes(currentLocal)
+        _localCodesFlow.value = currentLocal
+
+        try {
+            firestore.collection("activation_codes").document(kode).set(codeMap)
+                .addOnSuccessListener {
+                    android.util.Log.d("ADMIN", "Firestore Save result: success")
+                }
+                .addOnFailureListener { e ->
+                    e.printStackTrace()
+                }
         } catch (e: Exception) {
             e.printStackTrace()
-            android.util.Log.d("ADMIN", "Save result: failed")
-            false
         }
+        return true
     }
 
     suspend fun deleteActivationCode(codeId: String): Boolean {
-        return try {
-            firestore.collection("activation_codes").document(codeId).delete().await()
-            true
+        val currentLocal = getLocalActivationCodes().toMutableList()
+        currentLocal.removeAll { (it["id"] as? String) == codeId }
+        saveLocalActivationCodes(currentLocal)
+        _localCodesFlow.value = currentLocal
+
+        try {
+            firestore.collection("activation_codes").document(codeId).delete()
         } catch (e: Exception) {
             e.printStackTrace()
-            false
+        }
+        return true
+    }
+
+    suspend fun getAllUsersFirestore(): List<UserEntity> {
+        return try {
+            val snapshot = firestore.collection("users").get().await()
+            snapshot.documents.mapNotNull { doc ->
+                val uid = doc.id
+                val nama = doc.getString("nama") ?: ""
+                val email = doc.getString("email") ?: ""
+                val role = doc.getString("role") ?: "owner"
+                val ownerId = doc.getString("ownerId")
+                val assignedBranchId = doc.getString("assignedBranchId")
+                val subscriptionStatus = doc.getString("subscriptionStatus") ?: "free"
+                val subscriptionStartDate = doc.getLong("subscriptionStartDate")
+                val subscriptionEndDate = doc.getLong("subscriptionEndDate")
+                val createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
+                val lastActiveAt = doc.getLong("lastActiveAt")
+                
+                UserEntity(
+                    uid = uid,
+                    nama = nama,
+                    email = email,
+                    role = role,
+                    ownerId = ownerId,
+                    assignedBranchId = assignedBranchId,
+                    subscriptionStatus = subscriptionStatus,
+                    subscriptionStartDate = subscriptionStartDate,
+                    subscriptionEndDate = subscriptionEndDate,
+                    createdAt = createdAt,
+                    lastActiveAt = lastActiveAt
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
         }
     }
 

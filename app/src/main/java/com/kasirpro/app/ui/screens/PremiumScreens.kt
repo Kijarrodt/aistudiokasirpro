@@ -1,7 +1,10 @@
 package com.kasirpro.app.ui.screens
 
 import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
+import androidx.compose.foundation.border
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -47,7 +50,7 @@ fun PremiumScreens(viewModel: KasirViewModel) {
     val user by viewModel.currentUser.collectAsState()
     val isPremium = user?.subscriptionStatus == "premium"
 
-    var selectedModule by remember { mutableStateOf("LAPORAN") } // LAPORAN, HUTANG
+    var selectedModule by remember { mutableStateOf("LAPORAN") } // LAPORAN, HUTANG, CRM POIN
 
     val context = LocalContext.current
 
@@ -128,7 +131,8 @@ fun PremiumScreens(viewModel: KasirViewModel) {
                     ) {
                         listOf(
                             "LAPORAN" to Icons.Default.BarChart,
-                            "HUTANG" to Icons.Default.PendingActions
+                            "HUTANG" to Icons.Default.PendingActions,
+                            "CRM POIN" to Icons.Default.CardGiftcard
                         ).forEach { (mod, icon) ->
                             val isSel = selectedModule == mod
                             Button(
@@ -158,6 +162,7 @@ fun PremiumScreens(viewModel: KasirViewModel) {
                 when (selectedModule) {
                     "LAPORAN" -> PremiumLaporanTab(viewModel)
                     "HUTANG" -> PremiumHutangTab(viewModel)
+                    "CRM POIN" -> PremiumPelangganTab(viewModel)
                 }
             }
         }
@@ -290,7 +295,7 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
     }
 
     // Calculate Pendapatan, HPP, and Keuntungan from products in transactions
-    val finalIncome = filtered.sumOf { it.total }
+    val finalIncome = filtered.sumOf { it.actualIncome }
     
     var calculatedCapital = 0.0
     filtered.forEach { tx ->
@@ -368,7 +373,7 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
             dateCal.set(java.util.Calendar.SECOND, 59)
             val dayEnd = dateCal.timeInMillis
             
-            val totalForDay = filtered.filter { it.createdAt in dayStart..dayEnd }.sumOf { it.total }
+            val totalForDay = filtered.filter { it.createdAt in dayStart..dayEnd }.sumOf { it.actualIncome }
             list.add(sdf.format(dateCal.time) to totalForDay)
         }
         list
@@ -573,7 +578,7 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                     } else {
                         branchGroups.forEach { (bId, bTxs) ->
                             val bName = branchesList.find { it.id == bId }?.namaCabang ?: "Cabang Utama"
-                            val bSum = bTxs.sumOf { it.total }
+                            val bSum = bTxs.sumOf { it.actualIncome }
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -601,7 +606,7 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                     } else {
                         cashierGroups.forEach { (key, cTxs) ->
                             val (cId, cName) = key
-                            val cSum = cTxs.sumOf { it.total }
+                            val cSum = cTxs.sumOf { it.actualIncome }
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1094,6 +1099,13 @@ fun PremiumHutangTab(viewModel: KasirViewModel) {
 fun PremiumPelangganTab(viewModel: KasirViewModel) {
     val customersList by viewModel.customers.collectAsState()
     var showAddCustDialog by remember { mutableStateOf(false) }
+    var selectedCustForDetail by remember { mutableStateOf<CustomerEntity?>(null) }
+    val context = LocalContext.current
+    val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+
+    var showConfigLoyalty by remember { mutableStateOf(false) }
+    var earnRateInput by remember { mutableStateOf(viewModel.getPointEarnRate().toInt().toString()) }
+    var redeemRateInput by remember { mutableStateOf(viewModel.getPointRedeemRate().toInt().toString()) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -1115,6 +1127,69 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
             }
         }
 
+        // Aturan poin loyalty configuration panel
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable { showConfigLoyalty = !showConfigLoyalty },
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(imageVector = Icons.Default.Settings, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Aturan Loyalty & Poin CRM", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                        Icon(
+                            imageVector = if (showConfigLoyalty) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    if (showConfigLoyalty) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = earnRateInput,
+                                onValueChange = { earnRateInput = it },
+                                label = { Text("Belanja per Poin (Rp)", fontSize = 10.sp) },
+                                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                                modifier = Modifier.weight(1f),
+                                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp)
+                            )
+                            OutlinedTextField(
+                                value = redeemRateInput,
+                                onValueChange = { redeemRateInput = it },
+                                label = { Text("Nilai 1 Poin (Rp)", fontSize = 10.sp) },
+                                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                                modifier = Modifier.weight(1f),
+                                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Button(
+                            onClick = {
+                                val eRate = earnRateInput.toDoubleOrNull() ?: 10000.0
+                                val rRate = redeemRateInput.toDoubleOrNull() ?: 100.0
+                                viewModel.setPointEarnRate(eRate)
+                                viewModel.setPointRedeemRate(rRate)
+                                Toast.makeText(context, "Aturan CRM berhasil disimpan!", Toast.LENGTH_SHORT).show()
+                                showConfigLoyalty = false
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Simpan Aturan", fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        }
+
         if (customersList.isEmpty()) {
             item {
                 Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
@@ -1124,7 +1199,7 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
         } else {
             items(customersList) { c ->
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().clickable { selectedCustForDetail = c },
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Row(
@@ -1135,8 +1210,14 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text(c.nama, fontWeight = FontWeight.Bold)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Person, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(c.nama, fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
                             Text("No HP: ${c.nomorHp}", fontSize = 11.sp, color = Color.Gray)
+                            Text("Total Transaksi: ${c.totalTransaksi} kali", fontSize = 10.sp, color = Color.Gray)
                         }
                         Box(
                             modifier = Modifier
@@ -1176,6 +1257,178 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
                     colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
                 ) {
                     Text("Daftar")
+                }
+            }
+        )
+    }
+
+    // CUSTOMER DETAIL & CRM SERVICES DIALOG
+    if (selectedCustForDetail != null) {
+        val cust = selectedCustForDetail!!
+        var adjustPoinStr by remember { mutableStateOf("") }
+        var activeSubTab by remember { mutableStateOf(0) } // 0: Info, 1: Redeem Rewards
+
+        AlertDialog(
+            onDismissRequest = { selectedCustForDetail = null },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.CardMembership, contentDescription = null, tint = OrangePrimary)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(cust.nama, fontWeight = FontWeight.Bold)
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().border(1.dp, Color.LightGray.copy(alpha = 0.5f), RoundedCornerShape(8.dp)).padding(8.dp),
+                        horizontalArrangement = Arrangement.SpaceAround
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("Total Poin", fontSize = 10.sp, color = Color.Gray)
+                            Text("${cust.totalPoin}", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = OrangeDark)
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("Sesi Belanja", fontSize = 10.sp, color = Color.Gray)
+                            Text("${cust.totalTransaksi}", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("WhastApp", fontSize = 10.sp, color = Color.Gray)
+                            Text(if (cust.nomorHp.length > 5) cust.nomorHp.take(5) + "..." else cust.nomorHp, fontWeight = FontWeight.Medium, fontSize = 12.sp)
+                        }
+                    }
+
+                    TabRow(
+                        selectedTabIndex = activeSubTab,
+                        containerColor = Color.Transparent,
+                        contentColor = OrangePrimary,
+                        indicator = { tabPositions ->
+                            TabRowDefaults.SecondaryIndicator(
+                                Modifier.tabIndicatorOffset(tabPositions[activeSubTab]),
+                                color = OrangePrimary
+                            )
+                        }
+                    ) {
+                        Tab(selected = activeSubTab == 0, onClick = { activeSubTab = 0 }) {
+                            Text("Penyesuaian", modifier = Modifier.padding(8.dp), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Tab(selected = activeSubTab == 1, onClick = { activeSubTab = 1 }) {
+                            Text("Tukar Hadiah", modifier = Modifier.padding(8.dp), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    if (activeSubTab == 0) {
+                        // Point adjustment & Share CRM
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Koreksi / Bonus Poin Manual", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color.Gray)
+                            OutlinedTextField(
+                                value = adjustPoinStr,
+                                onValueChange = { adjustPoinStr = it },
+                                placeholder = { Text("Jumlah poin, misal: 10 atau -5") },
+                                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                Button(
+                                    onClick = {
+                                        val pts = adjustPoinStr.toIntOrNull() ?: 0
+                                        if (pts != 0) {
+                                            val updated = cust.copy(totalPoin = (cust.totalPoin + pts).coerceAtLeast(0))
+                                            viewModel.updateCustomer(updated)
+                                            selectedCustForDetail = updated
+                                            adjustPoinStr = ""
+                                            Toast.makeText(context, "Poin berhasil diperbarui!", Toast.LENGTH_SHORT).show()
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Sesuaikan", fontSize = 11.sp)
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(4.dp))
+                            HorizontalDivider()
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            Text("Kirim Broadcast Point CRM", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color.Gray)
+                            Button(
+                                onClick = {
+                                    val earnR = viewModel.getPointEarnRate().toInt()
+                                    val msg = "Halo ${cust.nama}, terima kasih telah berbelanja pelanggan setia di Toko kami. Poin Loyalty Anda saat ini *${cust.totalPoin} Poin* (Setiap Rp$earnR = 1 Poin). Tukarkan poin Anda dengan hadiah menarik di kasir kami!"
+                                    try {
+                                        val uri = Uri.parse("https://api.whatsapp.com/send?phone=${cust.nomorHp}&text=" + java.net.URLEncoder.encode(msg, "UTF-8"))
+                                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, uri)
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {
+                                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(msg))
+                                        Toast.makeText(context, "Link WA gagal dibuka. Teks pesan telah disalin ke Clipboard!", Toast.LENGTH_LONG).show()
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)), // WhatsApp Green
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Share Promo & Poin WA", fontSize = 12.sp)
+                            }
+                        }
+                    } else {
+                        // Gift Redemption Catalog
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Pilih Hadiah Poin Pelanggan:", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color.Gray)
+                            
+                            val rewards = listOf(
+                                Pair("Voucher Diskon Rp5.000", 50),
+                                Pair("Gantungan Kunci Cantik", 100),
+                                Pair("Buku Saku KasirPro", 150),
+                                Pair("Kaos Polo Eksklusif", 350)
+                            )
+
+                            rewards.forEach { (gift, cost) ->
+                                val listColor = if (cust.totalPoin >= cost) OrangePrimary else Color.Gray
+
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .border(1.dp, listColor.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                                        .padding(8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Text(gift, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                        Text("Butuh $cost Poin", fontSize = 11.sp, color = listColor)
+                                    }
+                                    Button(
+                                        onClick = {
+                                            if (cust.totalPoin >= cost) {
+                                                val updated = cust.copy(totalPoin = cust.totalPoin - cost)
+                                                viewModel.updateCustomer(updated)
+                                                selectedCustForDetail = updated
+                                                Toast.makeText(context, "Hadiah '$gift' berhasil ditukarkan! $cost Poin dikurangi.", Toast.LENGTH_LONG).show()
+                                            } else {
+                                                Toast.makeText(context, "Poin tidak cukup!", Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
+                                        enabled = (cust.totalPoin >= cost),
+                                        colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                        modifier = Modifier.height(28.dp)
+                                    ) {
+                                        Text("Tukar", fontSize = 10.sp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { selectedCustForDetail = null }) {
+                    Text("Tutup", color = OrangePrimary)
                 }
             }
         )

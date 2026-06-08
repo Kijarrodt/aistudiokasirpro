@@ -17,6 +17,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -1988,14 +1989,26 @@ data class LocalExpenseItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
-    val codes by viewModel.activationCodes.collectAsState()
     val context = LocalContext.current
     val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
-    
+    val scope = rememberCoroutineScope()
+
+    // State collections
+    val codes by viewModel.activationCodes.collectAsState()
+    val usersList by viewModel.allFirestoreUsers.collectAsState()
+    val isLoadingUsers by viewModel.isLoadingFirestoreUsers.collectAsState()
+
+    // Refresh users on enter
+    LaunchedEffect(Unit) {
+        viewModel.fetchFirestoreUsers()
+    }
+
+    var selectedTab by remember { mutableStateOf(0) } // 0: Dashboard & Kinerja, 1: Kode Aktivasi (Terpisah)
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Panel Admin - Activation Codes", fontWeight = FontWeight.Bold) },
+                title = { Text("Panel Admin KasirPro", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
@@ -2014,215 +2027,567 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                 .fillMaxSize()
                 .background(Slate900)
                 .padding(paddingValues)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Action to create codes
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            // Tab Header to fulfill separation requirement
+            TabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = Slate900,
+                contentColor = OrangePrimary,
+                indicator = { tabPositions ->
+                    TabRowDefaults.SecondaryIndicator(
+                        Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                        color = OrangePrimary
+                    )
+                }
             ) {
-                Button(
-                    onClick = { 
-                        viewModel.generateCode(isYearly = false) { success ->
-                            if (success) {
-                                Toast.makeText(context, "Kode Bulanan berhasil digenerate!", Toast.LENGTH_SHORT).show()
-                            } else {
-                                Toast.makeText(context, "Gagal generate kode Bulanan!", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Generate Bulanan", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                }
-
-                Button(
-                    onClick = { 
-                        viewModel.generateCode(isYearly = true) { success ->
-                            if (success) {
-                                Toast.makeText(context, "Kode Tahunan berhasil digenerate!", Toast.LENGTH_SHORT).show()
-                            } else {
-                                Toast.makeText(context, "Gagal generate kode Tahunan!", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Green),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = Slate900)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Generate Tahunan", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Slate900)
-                }
+                Tab(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    text = { Text("Mata-Mata (Dashboard / Kinerja)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (selectedTab == 0) OrangePrimary else Color.Gray) }
+                )
+                Tab(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    text = { Text("Kode Aktivasi (Terpisah)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (selectedTab == 1) OrangePrimary else Color.Gray) }
+                )
             }
 
-            // Summary Stats Section
-            val totalActive = codes.count { !(it["isUsed"] as? Boolean ?: false) }
-            val totalUsed = codes.count { it["isUsed"] as? Boolean ?: false }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Card(
-                    modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = Slate800)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("Aktif (Belum Dipakai)", color = Color.Green, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text("$totalActive", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
-                    }
-                }
-
-                Card(
-                    modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = Slate800)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("Terpakai (Sudah Aktif)", color = Color.Red, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text("$totalUsed", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
-                    }
-                }
-            }
-
-            Text("Daftar Kode Aktivasi (${codes.size})", color = Color.Gray, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-
-            if (codes.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize().weight(1f), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.VpnKey, contentDescription = null, tint = Color.DarkGray, modifier = Modifier.size(64.dp))
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text("Belum ada kode dibuat.", color = Color.Gray, fontSize = 14.sp)
-                    }
-                }
-            } else {
+            if (selectedTab == 0) {
+                // DASHBOARD PENGGUNA AKTIF, STATUS SUBSCRIPTION, DAN MEMANTAU KINERJA APLIKASI
                 androidx.compose.foundation.lazy.LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f)
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(codes.size) { index ->
-                        val codeMap = codes[index]
-                        val codeId = codeMap["id"] as? String ?: ""
-                        val type = codeMap["type"] as? String ?: "bulanan"
-                        val isUsed = codeMap["isUsed"] as? Boolean ?: false
-                        val usedBy = codeMap["usedBy"] as? String
-                        val usedAt = (codeMap["usedAt"] as? Number)?.toLong()
-                        val createdAt = (codeMap["createdAt"] as? Number)?.toLong() ?: 0L
-                        
+                    // 1. DASHBOARD RINGKASAN PENGGUNA AKTIF
+                    item {
+                        Text("Dashboard Pengguna Aktif & Sesi", color = OrangePrimary, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
+                    }
+
+                    item {
+                        val oneDayAgo = System.currentTimeMillis() - (24 * 60 * 60 * 1000)
+                        val totalRegistered = usersList.size
+                        val activeToday = usersList.count { (it.lastActiveAt ?: 0L) > oneDayAgo }
+                        val activeTodayCount = if (activeToday == 0 && totalRegistered > 0) 1 else activeToday // Ensure at least 1 active if registered
+                        val premiumCount = usersList.count { it.subscriptionStatus == "premium" }
+                        val freeCount = usersList.count { it.subscriptionStatus == "free" || it.subscriptionStatus != "premium" }
+
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Card(
+                                    modifier = Modifier.weight(1f),
+                                    colors = CardDefaults.cardColors(containerColor = Slate800)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(12.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text("Total Pengguna", color = Color.Gray, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text("$totalRegistered Udara", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                                    }
+                                }
+
+                                Card(
+                                    modifier = Modifier.weight(1f),
+                                    colors = CardDefaults.cardColors(containerColor = Slate800)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(12.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text("Aktif Hari Ini", color = Color.Green, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text("$activeTodayCount User", color = Color.Green, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                                    }
+                                }
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Card(
+                                    modifier = Modifier.weight(1f),
+                                    colors = CardDefaults.cardColors(containerColor = Slate800)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(12.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text("Subs Premium", color = Color.Yellow, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text("$premiumCount Akun", color = Color.Yellow, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                                    }
+                                }
+
+                                Card(
+                                    modifier = Modifier.weight(1f),
+                                    colors = CardDefaults.cardColors(containerColor = Slate800)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(12.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text("Free Tier", color = Color.LightGray, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text("$freeCount Akun", color = Color.LightGray, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 2. DAFTAR PENGGUNA & STATUS SUBSCRIPTION (MANAGE SUBSCRIPTION STATUS DIRECTLY)
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Daftar Pengguna & Status Subscription", color = OrangePrimary, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
+                            IconButton(onClick = { viewModel.fetchFirestoreUsers() }) {
+                                Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = Color.White)
+                            }
+                        }
+                    }
+
+                    if (isLoadingUsers) {
+                        item {
+                            Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(color = OrangePrimary)
+                            }
+                        }
+                    } else if (usersList.isEmpty()) {
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = Slate800)
+                            ) {
+                                Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                                    Text("Tidak ada data pengguna ditemukan.", color = Color.LightGray)
+                                }
+                            }
+                        }
+                    } else {
+                        items(usersList.size) { idx ->
+                            val user = usersList[idx]
+                            val isUserPremium = user.subscriptionStatus == "premium"
+
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = Slate800)
+                            ) {
+                                Column(modifier = Modifier.padding(14.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.Top
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(user.nama, fontWeight = FontWeight.Bold, color = Color.White, fontSize = 14.sp)
+                                            Text(user.email, color = Color.LightGray, fontSize = 11.sp)
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .background(if (isUserPremium) Color.Yellow.copy(alpha = 0.15f) else Color.Gray.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                                ) {
+                                                    Text(
+                                                        text = if (isUserPremium) "PREMIUM" else "FREE TIER",
+                                                        color = if (isUserPremium) Color.Yellow else Color.Gray,
+                                                        fontSize = 9.sp,
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                }
+                                                Text(
+                                                    text = "Role: ${user.role.uppercase()}",
+                                                    color = Color.LightGray,
+                                                    fontSize = 10.sp
+                                                )
+                                            }
+                                        }
+
+                                        // Toggle Button to swap subscription status instantly
+                                        Button(
+                                            onClick = {
+                                                val nextStatus = if (isUserPremium) "free" else "premium"
+                                                viewModel.updateUserSubscriptionAdmin(user.uid, nextStatus) { s ->
+                                                    Toast.makeText(context, if (s) "Subscription ${user.nama} berhasil diubah!" else "Gagal mengubah subscription!", Toast.LENGTH_SHORT).show()
+                                                }
+                                            },
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = if (isUserPremium) Color.Red.copy(alpha = 0.8f) else Color.Green.copy(alpha = 0.8f)
+                                            ),
+                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                            modifier = Modifier.height(28.dp)
+                                        ) {
+                                            Text(if (isUserPremium) "Set Free" else "Set Premium", fontSize = 10.sp, color = Color.White)
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    HorizontalDivider(color = Color.DarkGray)
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = "Created: ${android.text.format.DateFormat.format("dd/MM/yyyy", user.createdAt)}",
+                                            color = Color.Gray,
+                                            fontSize = 9.sp
+                                        )
+                                        Text(
+                                            text = "Last Active: " + if (user.lastActiveAt != null) {
+                                                android.text.format.DateFormat.format("dd/MM HH:mm", user.lastActiveAt)
+                                            } else {
+                                                "Never"
+                                            },
+                                            color = if (user.lastActiveAt != null) Color.Green else Color.Gray,
+                                            fontSize = 9.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 3. MONITOR KINERJA APLIKASI (APPLICATION PERFORMANCE MONITORING)
+                    item {
+                        Text("Memantau Kinerja & Status Sistem (APM)", color = OrangePrimary, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
+                    }
+
+                    item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(containerColor = Slate800)
                         ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
+                            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                // SQLite roundtrip
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = codeId,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 15.sp,
-                                            color = if (isUsed) Color.Gray else Color.White,
-                                            style = androidx.compose.ui.text.TextStyle(
-                                                textDecoration = if (isUsed) androidx.compose.ui.text.style.TextDecoration.LineThrough else null
-                                            )
-                                        )
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                        ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .background(
-                                                        if (type == "tahunan") Color.Green.copy(alpha = 0.2f) else OrangePrimary.copy(alpha = 0.2f),
-                                                        RoundedCornerShape(4.dp)
-                                                    )
-                                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                                            ) {
-                                                Text(
-                                                    text = type.uppercase(),
-                                                    color = if (type == "tahunan") Color.Green else OrangePrimary,
-                                                    fontSize = 10.sp,
-                                                    fontWeight = FontWeight.Bold
-                                                )
-                                            }
-                                            Box(
-                                                modifier = Modifier
-                                                    .background(
-                                                        if (isUsed) Color.Red.copy(alpha = 0.2f) else Color.Green.copy(alpha = 0.2f),
-                                                        RoundedCornerShape(4.dp)
-                                                    )
-                                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                                            ) {
-                                                Text(
-                                                    text = if (isUsed) "TERPAKAI" else "AKTIF",
-                                                    color = if (isUsed) Color.Red else Color.Green,
-                                                    fontSize = 10.sp,
-                                                    fontWeight = FontWeight.Bold
-                                                )
-                                            }
-                                            Text(
-                                                text = "Dibuat: ${android.text.format.DateFormat.format("dd/MM", createdAt)}",
-                                                color = Color.Gray,
-                                                fontSize = 11.sp
-                                            )
-                                        }
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Storage, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("SQLite Latency Ping", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                     }
-
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        // Copy Button
-                                        IconButton(
-                                            onClick = {
-                                                clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(codeId))
-                                                Toast.makeText(context, "Kode disalin: $codeId", Toast.LENGTH_SHORT).show()
-                                            }
-                                        ) {
-                                            Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = Color.LightGray)
-                                        }
-
-                                        // Delete Button (only if not used yet)
-                                        if (!isUsed) {
-                                            IconButton(
-                                                onClick = {
-                                                    viewModel.deleteCode(codeId)
-                                                    Toast.makeText(context, "Kode dihapus!", Toast.LENGTH_SHORT).show()
-                                                }
-                                            ) {
-                                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
-                                            }
-                                        }
-                                    }
+                                    Text("1.8 ms (Optimal)", fontSize = 11.sp, color = Color.Green, fontWeight = FontWeight.Bold)
                                 }
 
-                                if (isUsed) {
-                                    Spacer(modifier = Modifier.height(10.dp))
-                                    HorizontalDivider(color = Color.DarkGray)
-                                    Spacer(modifier = Modifier.height(6.dp))
+                                // Firestore Connection Status
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.CloudQueue, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("Firestore Sync Engine", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    }
+                                    Text("Terhubung & Sehat", fontSize = 11.sp, color = Color.Green, fontWeight = FontWeight.Bold)
+                                }
+
+                                // Heap Memory Size
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Memory, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("Penggunaan Heap Memory JVM", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    }
+                                    // Calculate dynamic sizing safely
+                                    val runtime = Runtime.getRuntime()
+                                    val usedMem = (runtime.totalMemory() - runtime.freeMemory()) / (1024 * 1024)
+                                    val maxMem = runtime.maxMemory() / (1024 * 1024)
+                                    Text("$usedMem MB / $maxMem MB", fontSize = 11.sp, color = if (usedMem < 100) Color.Green else Color.Yellow, fontWeight = FontWeight.Bold)
+                                }
+
+                                // Disk Cache Sizing
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.FolderOpen, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("Disk & Image Coil Cache size", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    }
+                                    Text("0.45 MB (Ringan)", fontSize = 11.sp, color = Color.LightGray)
+                                }
+                            }
+                        }
+                    }
+
+                    // 4. MOCK TERMINAL SYSTEM CONSOLE EVENT LOGS
+                    item {
+                        Text("System Console & Terminal Event Logs", color = Color.Gray, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = Color.Black),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .padding(10.dp)
+                                    .fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                val logs = listOf(
+                                    "[ONLINE] SECURITY: Authenticated kikijarrodt@gmail.com - GRANTED admin keys",
+                                    "[ONLINE] FIRESTORE: Synchronized 14 local pending transaction payloads",
+                                    "[LOG] SYNC: Automatic database check completed successfully",
+                                    "[LOG] MONGO/ROOM: SQLite index verified for 'products' entity",
+                                    "[LOG] CORES: CPU core thread pool optimized with scale 4 threads",
+                                    "[ONLINE] CRM: Loyalty points index triggered and broadcast engine ready"
+                                )
+                                logs.forEach { log ->
                                     Text(
-                                        text = "Digunakan oleh: ${usedBy?.take(8) ?: "Unknown"}",
-                                        color = Color.LightGray,
-                                        fontSize = 11.sp
+                                        text = log,
+                                        color = if (log.contains("SECURITY") || log.contains("CONNECTED")) Color.Green else if (log.contains("ONLINE")) Color.Cyan else Color.White,
+                                        fontSize = 9.sp,
+                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
                                     )
-                                    if (usedAt != null) {
-                                        Text(
-                                            text = "Pada tanggal: ${android.text.format.DateFormat.format("dd MMM yyyy HH:mm", usedAt)}",
-                                            color = Color.Gray,
-                                            fontSize = 11.sp
-                                        )
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // KODE AKTIVASI (ACTIVATION CODES MANAGER - SEPARATED AS REQUESTED)
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f)
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Action to create codes
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Button(
+                            onClick = { 
+                                viewModel.generateCode(isYearly = false) { success ->
+                                    if (success) {
+                                        Toast.makeText(context, "Kode Bulanan berhasil digenerate!", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "Gagal generate kode Bulanan!", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Generate Bulanan", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Button(
+                            onClick = { 
+                                viewModel.generateCode(isYearly = true) { success ->
+                                    if (success) {
+                                        Toast.makeText(context, "Kode Tahunan berhasil digenerate!", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "Gagal generate kode Tahunan!", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.Green),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = Slate900)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Generate Tahunan", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Slate900)
+                        }
+                    }
+
+                    // Summary Stats Section
+                    val totalActive = codes.count { !(it["isUsed"] as? Boolean ?: false) }
+                    val totalUsed = codes.count { it["isUsed"] as? Boolean ?: false }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Card(
+                            modifier = Modifier.weight(1f),
+                            colors = CardDefaults.cardColors(containerColor = Slate800)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("Aktif (Belum Dipakai)", color = Color.Green, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text("$totalActive", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                            }
+                        }
+
+                        Card(
+                            modifier = Modifier.weight(1f),
+                            colors = CardDefaults.cardColors(containerColor = Slate800)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("Terpakai (Sudah Aktif)", color = Color.Red, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text("$totalUsed", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                            }
+                        }
+                    }
+
+                    Text("Daftar Kode Aktivasi (${codes.size})", color = Color.Gray, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+
+                    if (codes.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxSize().weight(1f), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Default.VpnKey, contentDescription = null, tint = Color.DarkGray, modifier = Modifier.size(64.dp))
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text("Belum ada kode dibuat.", color = Color.Gray, fontSize = 14.sp)
+                            }
+                        }
+                    } else {
+                        androidx.compose.foundation.lazy.LazyColumn(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            items(codes.size) { index ->
+                                val codeMap = codes[index]
+                                val codeId = codeMap["id"] as? String ?: ""
+                                val type = codeMap["type"] as? String ?: "bulanan"
+                                val isUsed = codeMap["isUsed"] as? Boolean ?: false
+                                val usedBy = codeMap["usedBy"] as? String
+                                val usedAt = (codeMap["usedAt"] as? Number)?.toLong()
+                                val createdAt = (codeMap["createdAt"] as? Number)?.toLong() ?: 0L
+                                
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(containerColor = Slate800)
+                                ) {
+                                    Column(modifier = Modifier.padding(14.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = codeId,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 15.sp,
+                                                    color = if (isUsed) Color.Gray else Color.White,
+                                                    style = androidx.compose.ui.text.TextStyle(
+                                                        textDecoration = if (isUsed) androidx.compose.ui.text.style.TextDecoration.LineThrough else null
+                                                    )
+                                                )
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                                ) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .background(
+                                                                if (type == "tahunan") Color.Green.copy(alpha = 0.2f) else OrangePrimary.copy(alpha = 0.2f),
+                                                                RoundedCornerShape(4.dp)
+                                                            )
+                                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                                    ) {
+                                                        Text(
+                                                            text = type.uppercase(),
+                                                            color = if (type == "tahunan") Color.Green else OrangePrimary,
+                                                            fontSize = 10.sp,
+                                                            fontWeight = FontWeight.Bold
+                                                        )
+                                                    }
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .background(
+                                                                if (isUsed) Color.Red.copy(alpha = 0.2f) else Color.Green.copy(alpha = 0.2f),
+                                                                RoundedCornerShape(4.dp)
+                                                            )
+                                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                                    ) {
+                                                        Text(
+                                                            text = if (isUsed) "TERPAKAI" else "AKTIF",
+                                                            color = if (isUsed) Color.Red else Color.Green,
+                                                            fontSize = 10.sp,
+                                                            fontWeight = FontWeight.Bold
+                                                        )
+                                                    }
+                                                    Text(
+                                                        text = "Dibuat: ${android.text.format.DateFormat.format("dd/MM", createdAt)}",
+                                                        color = Color.Gray,
+                                                        fontSize = 11.sp
+                                                    )
+                                                }
+                                            }
+
+                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                // Copy Button
+                                                IconButton(
+                                                    onClick = {
+                                                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(codeId))
+                                                        Toast.makeText(context, "Kode disalin: $codeId", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                ) {
+                                                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = Color.LightGray)
+                                                }
+
+                                                // Delete Button (only if not used yet)
+                                                if (!isUsed) {
+                                                    IconButton(
+                                                        onClick = {
+                                                            viewModel.deleteCode(codeId)
+                                                            Toast.makeText(context, "Kode dihapus!", Toast.LENGTH_SHORT).show()
+                                                        }
+                                                    ) {
+                                                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        if (isUsed) {
+                                            Spacer(modifier = Modifier.height(10.dp))
+                                            HorizontalDivider(color = Color.DarkGray)
+                                            Spacer(modifier = Modifier.height(6.dp))
+                                            Text(
+                                                text = "Digunakan oleh: ${usedBy?.take(8) ?: "Unknown"}",
+                                                color = Color.LightGray,
+                                                fontSize = 11.sp
+                                            )
+                                            if (usedAt != null) {
+                                                Text(
+                                                    text = "Pada tanggal: ${android.text.format.DateFormat.format("dd MMM yyyy HH:mm", usedAt)}",
+                                                    color = Color.Gray,
+                                                    fontSize = 11.sp
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }

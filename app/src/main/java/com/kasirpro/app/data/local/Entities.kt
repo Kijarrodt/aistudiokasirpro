@@ -130,3 +130,6 @@ data class PromoEntity(
     val berlakuSampai: Long,
     val createdAt: Long = System.currentTimeMillis()
 )
+
+val TransactionEntity.actualIncome: Double
+    get() = if (status.equals("dp", ignoreCase = true)) bayarNominal else total
