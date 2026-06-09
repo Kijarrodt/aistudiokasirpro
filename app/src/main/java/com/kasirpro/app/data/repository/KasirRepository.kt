@@ -1233,7 +1233,12 @@ data class GoogleLoginResult(
                 put("branchName", currentBranchNama)
             }
 
-            firestore.collection("transactions").document(tx.id).set(firestoreMap).await()
+            // Asynchronously post transaction to firestore to eliminate UI freezing delays
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    firestore.collection("transactions").document(tx.id).set(firestoreMap).await()
+                } catch (e: Exception) { e.printStackTrace() }
+            }
         } catch (e: Exception) { e.printStackTrace() }
         
         dao.insertTransaction(tx)
@@ -1246,9 +1251,12 @@ data class GoogleLoginResult(
                 val stokSesudah = (stokSebelum - item.jumlah).coerceAtLeast(0)
                 val updatedProduct = product.copy(stok = stokSesudah)
                 
-                try {
-                    firestore.collection("products").document(updatedProduct.id).set(updatedProduct.toMap()).await()
-                } catch (e: Exception) { e.printStackTrace() }
+                // Asynchronously update product stock on firestore
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        firestore.collection("products").document(updatedProduct.id).set(updatedProduct.toMap()).await()
+                    } catch (e: Exception) { e.printStackTrace() }
+                }
                 
                 dao.insertProduct(updatedProduct)
 
@@ -1263,9 +1271,12 @@ data class GoogleLoginResult(
                     stokSesudah = stokSesudah,
                     keterangan = "Penjualan transaksi ${tx.id}"
                 )
-                try {
-                    firestore.collection("stock_history").document(hs.id).set(hs.toMap()).await()
-                } catch (e: Exception) { e.printStackTrace() }
+                // Asynchronously update stock history on firestore
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        firestore.collection("stock_history").document(hs.id).set(hs.toMap()).await()
+                    } catch (e: Exception) { e.printStackTrace() }
+                }
                 
                 dao.insertStockHistory(hs)
             }
@@ -1289,9 +1300,12 @@ data class GoogleLoginResult(
                     transaksiId = tx.id,
                     status = "belum"
                 )
-                try {
-                    firestore.collection("debts").document(d.id).set(d.toMap()).await()
-                } catch (e: Exception) { e.printStackTrace() }
+                // Asynchronously write debt database to firestore
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        firestore.collection("debts").document(d.id).set(d.toMap()).await()
+                    } catch (e: Exception) { e.printStackTrace() }
+                }
                 dao.insertDebt(d)
             }
         }

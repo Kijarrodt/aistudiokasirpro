@@ -1264,21 +1264,24 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                         Text(if (excelFileUri != null) excelFileName else "Pilih File Excel / CSV")
                     }
 
-                    // Step 4: Optional Multiple Photo uploads
-                    Text("4. Lampirkan Folder/File Foto (Opsional)", fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = Color.Gray)
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        OutlinedButton(
-                            onClick = { photosPickerLauncher.launch("image/*") },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.DarkGray),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Icon(imageVector = Icons.Default.AddPhotoAlternate, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(if (selectedProductPhotos.isNotEmpty()) "Terpilih ${selectedProductPhotos.size} foto" else "Pilih Beberapa Foto")
-                        }
-                        if (selectedProductPhotos.isNotEmpty()) {
-                            Text("Foto akan dicocokkan otomatis dengan kolom 'Nama File Foto' di spreadsheet.", fontSize = 10.sp, color = Color.LightGray)
+                    // Step 4: Product Photo Integration Guideline
+                    Text("4. Foto Produk Langsung Di Dalam Spreadsheet", fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = Color.Gray)
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                "Foto produk wajib disatukan di dalam file Excel / CSV:",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = OrangePrimary
+                            )
+                            Text(
+                                "• Untuk file Excel (.xlsx): Anda bisa langsung menyisipkan/menyematkan gambar ke dalam sel baris produk Anda.\n• Untuk file CSV (.csv): Anda dapat menuliskan tautan atau link URL gambar publik (http/https) atau teks Base64 pada kolom 'Keterangan Foto'.",
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
 
@@ -1397,28 +1400,33 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
 
                                 var imageUrl: String? = null
                                 
-                                // Priority 1: Check embeddedPhotos extracted from XLSX directly
-                                val embeddedBytes = embeddedPhotos[p.rowNum]
-                                if (embeddedBytes != null) {
-                                    uploadStatusText = "Memproses foto: ${p.nama}..."
-                                    try {
-                                        imageUrl = ImageHelper.processAndConvertBytesToBase64(embeddedBytes)
-                                    } catch (e: Exception) {
-                                        e.printStackTrace()
-                                    }
+                                // Priority 1: Check if the spreadsheet cell directly has an image URL link or Base64 string
+                                if (p.fotoName != null && (p.fotoName.startsWith("http://", ignoreCase = true) || p.fotoName.startsWith("https://", ignoreCase = true) || p.fotoName.startsWith("data:", ignoreCase = true))) {
+                                    imageUrl = p.fotoName
                                 } else {
-                                    // Priority 2: Fallback to matched photo name selected from multiple photos
-                                    val matchedUri = selectedProductPhotos.find { photoUri ->
-                                        val localFilename = getFileNameFromUri(context, photoUri)
-                                        localFilename.equals(p.fotoName, ignoreCase = true)
-                                    }
-
-                                    if (matchedUri != null) {
-                                        uploadStatusText = "Memproses foto: ${p.fotoName}..."
+                                    // Priority 2: Check embeddedPhotos extracted from XLSX directly
+                                    val embeddedBytes = embeddedPhotos[p.rowNum]
+                                    if (embeddedBytes != null) {
+                                        uploadStatusText = "Memproses foto: ${p.nama}..."
                                         try {
-                                            imageUrl = ImageHelper.processAndConvertImageToBase64(context, matchedUri)
+                                            imageUrl = ImageHelper.processAndConvertBytesToBase64(embeddedBytes)
                                         } catch (e: Exception) {
                                             e.printStackTrace()
+                                        }
+                                    } else {
+                                        // Priority 3: Fallback to matched photo name if any (legacy compatibility)
+                                        val matchedUri = selectedProductPhotos.find { photoUri ->
+                                            val localFilename = getFileNameFromUri(context, photoUri)
+                                            localFilename.equals(p.fotoName, ignoreCase = true)
+                                        }
+
+                                        if (matchedUri != null) {
+                                            uploadStatusText = "Memproses foto: ${p.fotoName}..."
+                                            try {
+                                                imageUrl = ImageHelper.processAndConvertImageToBase64(context, matchedUri)
+                                            } catch (e: Exception) {
+                                                e.printStackTrace()
+                                            }
                                         }
                                     }
                                 }
