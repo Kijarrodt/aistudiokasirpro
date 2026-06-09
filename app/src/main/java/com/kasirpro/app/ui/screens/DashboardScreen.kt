@@ -114,6 +114,8 @@ fun DashboardScreen(viewModel: KasirViewModel) {
         label = "pos_action_scale"
     )
 
+    val unreadCount by viewModel.unreadNotificationsCount.collectAsState()
+
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
@@ -143,6 +145,37 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                     }
                 },
                 actions = {
+                    // Notification Bell Icon with Badge
+                    IconButton(
+                        onClick = { viewModel.activeScreen.value = "user_notifications" },
+                        modifier = Modifier.testTag("notification_bell_button")
+                    ) {
+                        Box {
+                            Icon(
+                                imageVector = Icons.Default.Notifications,
+                                contentDescription = "Notifications",
+                                tint = OrangePrimary
+                            )
+                            if (unreadCount > 0) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .offset(x = 4.dp, y = (-4).dp)
+                                        .background(Color.Red, CircleShape)
+                                        .size(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "$unreadCount",
+                                        color = Color.White,
+                                        fontSize = 8.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     // Simulated active online sync backup trigger
                     IconButton(onClick = { viewModel.toggleOnlineMode() }) {
                         Icon(

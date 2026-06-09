@@ -219,6 +219,7 @@ class MainActivity : ComponentActivity() {
                                 "premium" -> PremiumScreens(viewModel)
                                 "settings" -> BackupSettingsScreen(viewModel)
                                 "premium_pricing" -> BackupSettingsScreen(viewModel) // embedded view inside BackupSettingsScreen switcher
+                                "user_notifications" -> com.kasirpro.app.ui.screens.UserNotificationsScreen(viewModel, onBack = { viewModel.activeScreen.value = "home" })
                             }
 
                             // Slid-in / overlapping Custom Photo Toast/Notification

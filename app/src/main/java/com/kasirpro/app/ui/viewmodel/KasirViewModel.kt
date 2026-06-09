@@ -29,6 +29,17 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         prefs.edit().putFloat("point_rate", rate.toFloat()).apply()
     }
 
+    val currentUser = repository.currentUser.stateIn(
+        viewModelScope, SharingStarted.Eagerly, null
+    )
+
+    private var notificationListener: com.google.firebase.firestore.ListenerRegistration? = null
+    val userNotifications = MutableStateFlow<List<Map<String, Any>>>(emptyList())
+    val unreadNotificationsCount = MutableStateFlow(0)
+    val broadcastList = MutableStateFlow<List<Map<String, Any>>>(emptyList())
+    val isSendingBroadcast = MutableStateFlow(false)
+    val broadcastProgress = MutableStateFlow<Pair<Int, Int>?>(null)
+
     init {
         viewModelScope.launch {
             kotlinx.coroutines.delay(5000L) // Wait slightly after startup
@@ -41,12 +52,25 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
                 kotlinx.coroutines.delay(30000L) // Loop every 30 seconds
             }
         }
+
+        viewModelScope.launch {
+            currentUser.collect { user ->
+                notificationListener?.remove()
+                notificationListener = null
+                if (user != null) {
+                    notificationListener = repository.listenToUserNotifications(user.uid) { list ->
+                        userNotifications.value = list
+                        unreadNotificationsCount.value = list.count { !(it["isRead"] as? Boolean ?: true) }
+                    }
+                } else {
+                    userNotifications.value = emptyList()
+                    unreadNotificationsCount.value = 0
+                }
+            }
+        }
     }
 
     // UI Session flags
-    val currentUser = repository.currentUser.stateIn(
-        viewModelScope, SharingStarted.Eagerly, null
-    )
 
     val activationCodes = repository.getActivationCodesFlow().stateIn(
         viewModelScope, SharingStarted.Eagerly, emptyList()
@@ -854,5 +878,70 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.logout()
         }
+    }
+
+    fun sendBroadcast(title: String, message: String, type: String, downloadUrl: String?, version: String?, isActive: Boolean) {
+        val adminUid = currentUser.value?.uid ?: "admin-uid"
+        isSendingBroadcast.value = true
+        broadcastProgress.value = Pair(0, 0)
+        viewModelScope.launch {
+            val success = repository.sendBroadcastNotification(
+                title = title,
+                message = message,
+                type = type,
+                downloadUrl = downloadUrl,
+                version = version,
+                isActive = isActive,
+                createdBy = adminUid,
+                onProgress = { sent, total ->
+                    broadcastProgress.value = Pair(sent, total)
+                }
+            )
+            isSendingBroadcast.value = false
+            broadcastProgress.value = null
+            if (success) {
+                showToast("Broadcast berhasil dikirim!")
+                fetchBroadcasts()
+            } else {
+                showToast("Gagal mengirim broadcast!")
+            }
+        }
+    }
+
+    fun fetchBroadcasts() {
+        viewModelScope.launch {
+            val list = repository.getBroadcasts()
+            broadcastList.value = list
+        }
+    }
+
+    fun deleteBroadcast(id: String) {
+        viewModelScope.launch {
+            val success = repository.deleteBroadcast(id)
+            if (success) {
+                showToast("Broadcast berhasil dihapus")
+                fetchBroadcasts()
+            } else {
+                showToast("Gagal menghapus broadcast")
+            }
+        }
+    }
+
+    fun markNotifRead(id: String) {
+        viewModelScope.launch {
+            repository.markNotificationAsRead(id)
+        }
+    }
+
+    fun markAllNotifsRead() {
+        val userVal = currentUser.value ?: return
+        viewModelScope.launch {
+            repository.markAllNotificationsAsRead(userVal.uid)
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        notificationListener?.remove()
     }
 }

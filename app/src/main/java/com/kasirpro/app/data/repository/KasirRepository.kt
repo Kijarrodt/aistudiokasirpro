@@ -2846,3 +2846,183 @@ data class ShiftReport(
         }
     }
 }
+
+// BROADCAST NOTIFICATIONS SYSTEM & HELPERS
+suspend fun KasirRepository.sendBroadcastNotification(
+    title: String,
+    message: String,
+    type: String,
+    downloadUrl: String?,
+    version: String?,
+    isActive: Boolean,
+    createdBy: String,
+    onProgress: (Int, Int) -> Unit = { _, _ -> }
+): Boolean {
+    return try {
+        val db = FirebaseFirestore.getInstance()
+        val broadcastDocRef = db.collection("broadcasts").document()
+        val broadcastId = broadcastDocRef.id
+        val now = System.currentTimeMillis()
+
+        val broadcastMap = mutableMapOf<String, Any?>(
+            "id" to broadcastId,
+            "title" to title,
+            "message" to message,
+            "type" to type.lowercase(),
+            "downloadUrl" to downloadUrl,
+            "version" to version,
+            "isActive" to isActive,
+            "createdAt" to now,
+            "createdBy" to createdBy
+        )
+
+        // Save the broadcast document
+        broadcastDocRef.set(broadcastMap).await()
+
+        // Fetch all users to create notifications
+        val users = getAllUsersFirestore()
+        val totalUsers = users.size
+        
+        var sentCount = 0
+        val batchSize = 40 // Let's use Firestore batching (max 500 per WriteBatch)
+        var batch = db.batch()
+        
+        for (user in users) {
+            val notifDocRef = db.collection("user_notifications").document()
+            val notifMap = mapOf(
+                "id" to notifDocRef.id,
+                "userId" to user.uid,
+                "broadcastId" to broadcastId,
+                "title" to title,
+                "message" to message,
+                "type" to type.lowercase(),
+                "downloadUrl" to downloadUrl,
+                "version" to version,
+                "isRead" to false,
+                "createdAt" to now
+            )
+            batch.set(notifDocRef, notifMap)
+            sentCount++
+            
+            if (sentCount % batchSize == 0 || sentCount == totalUsers) {
+                batch.commit().await()
+                onProgress(sentCount, totalUsers)
+                batch = db.batch()
+            }
+        }
+        true
+    } catch (e: Exception) {
+        e.printStackTrace()
+        false
+    }
+}
+
+suspend fun KasirRepository.getBroadcasts(): List<Map<String, Any>> {
+    return try {
+        val db = FirebaseFirestore.getInstance()
+        val snapshot = db.collection("broadcasts").get().await()
+        snapshot.documents.mapNotNull { doc ->
+            val map = doc.data ?: return@mapNotNull null
+            map.toMutableMap().apply {
+                this["id"] = doc.id
+            }
+        }.sortedByDescending { (it["createdAt"] as? Number)?.toLong() ?: 0L }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        emptyList()
+    }
+}
+
+suspend fun KasirRepository.deleteBroadcast(broadcastId: String): Boolean {
+    return try {
+        val db = FirebaseFirestore.getInstance()
+        db.collection("broadcasts").document(broadcastId).delete().await()
+        
+        // Clean up user_notifications for this broadcast
+        val matchingNotifs = db.collection("user_notifications")
+            .whereEqualTo("broadcastId", broadcastId)
+            .get()
+            .await()
+        
+        var batch = db.batch()
+        var count = 0
+        for (doc in matchingNotifs.documents) {
+            batch.delete(doc.reference)
+            count++
+            if (count % 40 == 0) {
+                batch.commit().await()
+                batch = db.batch()
+            }
+        }
+        if (count % 40 != 0) {
+            batch.commit().await()
+        }
+        true
+    } catch (e: Exception) {
+        e.printStackTrace()
+        false
+    }
+}
+
+fun KasirRepository.listenToUserNotifications(userId: String, onUpdate: (List<Map<String, Any>>) -> Unit): com.google.firebase.firestore.ListenerRegistration {
+    val db = FirebaseFirestore.getInstance()
+    return db.collection("user_notifications")
+        .whereEqualTo("userId", userId)
+        .addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                error.printStackTrace()
+                return@addSnapshotListener
+            }
+            if (snapshot != null) {
+                val list = snapshot.documents.mapNotNull { doc ->
+                    val data = doc.data ?: return@mapNotNull null
+                    data.toMutableMap().apply {
+                        this["id"] = doc.id
+                    }
+                }.sortedByDescending { (it["createdAt"] as? Number)?.toLong() ?: 0L }
+                onUpdate(list)
+            }
+        }
+}
+
+suspend fun KasirRepository.markNotificationAsRead(notifId: String): Boolean {
+    return try {
+        val db = FirebaseFirestore.getInstance()
+        db.collection("user_notifications").document(notifId)
+            .update("isRead", true)
+            .await()
+        true
+    } catch (e: Exception) {
+        e.printStackTrace()
+        false
+    }
+}
+
+suspend fun KasirRepository.markAllNotificationsAsRead(userId: String): Boolean {
+    return try {
+        val db = FirebaseFirestore.getInstance()
+        val unread = db.collection("user_notifications")
+            .whereEqualTo("userId", userId)
+            .whereEqualTo("isRead", false)
+            .get()
+            .await()
+        var batch = db.batch()
+        var count = 0
+        for (doc in unread.documents) {
+            batch.update(doc.reference, "isRead", true)
+            count++
+            if (count % 40 == 0) {
+                batch.commit().await()
+                batch = db.batch()
+            }
+        }
+        if (count % 40 != 0) {
+            batch.commit().await()
+        }
+        true
+    } catch (e: Exception) {
+        e.printStackTrace()
+        false
+    }
+}
+

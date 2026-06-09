@@ -2115,11 +2115,28 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
         viewModel.fetchFirestoreUsers()
     }
 
-    var selectedTab by remember { mutableStateOf(0) } // 0: Dashboard & Kinerja, 1: Kode Aktivasi (Terpisah)
+    var selectedTab by remember { mutableStateOf(0) } // 0: Dashboard & Kinerja, 1: Kode Aktivasi (Terpisah), 2: Broadcast Notifikasi
     var targetUidInput by remember { mutableStateOf("") }
     var isSyncingCodes by remember { mutableStateOf(false) }
     var selectedPackage by remember { mutableStateOf("dasar") } // "dasar", "profesional", "bisnis"
     var selectedBillingCycle by remember { mutableStateOf("bulanan") } // "bulanan", "tahunan"
+
+    var broadcastTitle by remember { mutableStateOf("") }
+    var broadcastMessage by remember { mutableStateOf("") }
+    var broadcastType by remember { mutableStateOf("info") } // "info", "update", "promo", "maintenance"
+    var broadcastVersion by remember { mutableStateOf("") }
+    var broadcastDownloadUrl by remember { mutableStateOf("") }
+    var broadcastIsActive by remember { mutableStateOf(true) }
+
+    val broadcasts by viewModel.broadcastList.collectAsState()
+    val isSendingBroadcast by viewModel.isSendingBroadcast.collectAsState()
+    val broadcastProgress by viewModel.broadcastProgress.collectAsState()
+
+    LaunchedEffect(selectedTab) {
+        if (selectedTab == 2) {
+            viewModel.fetchBroadcasts()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -2159,12 +2176,17 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                 Tab(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    text = { Text("Mata-Mata (Dashboard / Kinerja)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (selectedTab == 0) OrangePrimary else Color.Gray) }
+                    text = { Text("Pantauan (Dashboard)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (selectedTab == 0) OrangePrimary else Color.Gray) }
                 )
                 Tab(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    text = { Text("Kode Aktivasi (Terpisah)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (selectedTab == 1) OrangePrimary else Color.Gray) }
+                    text = { Text("Kode Aktivasi", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (selectedTab == 1) OrangePrimary else Color.Gray) }
+                )
+                Tab(
+                    selected = selectedTab == 2,
+                    onClick = { selectedTab = 2 },
+                    text = { Text("Broadcast Notifikasi", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (selectedTab == 2) OrangePrimary else Color.Gray) }
                 )
             }
 
@@ -2487,7 +2509,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                         }
                     }
                 }
-            } else {
+            } else if (selectedTab == 1) {
                 // KODE AKTIVASI (ACTIVATION CODES MANAGER - SEPARATED AS REQUESTED)
                 Column(
                     modifier = Modifier
@@ -2861,6 +2883,367 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                                 )
                                             }
                                         }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // BROADCAST NOTIFICATION SCREEN
+                androidx.compose.foundation.lazy.LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f)
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    item {
+                        Text(
+                            text = "Kirim Broadcast Notifikasi ke Semua Pengguna",
+                            color = OrangePrimary,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 14.sp
+                        )
+                    }
+
+                    if (isSendingBroadcast) {
+                        item {
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = Slate800),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, OrangePrimary)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .padding(16.dp)
+                                        .fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    CircularProgressIndicator(color = OrangePrimary)
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Text(
+                                        text = if (broadcastProgress != null && broadcastProgress!!.second > 0) {
+                                            "Mengirim ke ${broadcastProgress!!.first} dari ${broadcastProgress!!.second} pengguna..."
+                                        } else {
+                                            "Memproses pengiriman broadcast..."
+                                        },
+                                        color = Color.White,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    item {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Slate800)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Text(
+                                    text = "Form Broadcast Baru",
+                                    color = Color.White,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+
+                                Text(
+                                    text = "Tipe Notifikasi:",
+                                    color = Color.LightGray,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+
+                                val types = listOf(
+                                    Triple("info", "INFORMASI", Color.Cyan),
+                                    Triple("update", "PEMBARUAN", Color.Green),
+                                    Triple("promo", "PROMOSI", Color.Yellow),
+                                    Triple("maintenance", "PERAWATAN", Color.Red)
+                                )
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    types.forEach { (typeKey, label, color) ->
+                                        val isSel = broadcastType == typeKey
+                                        Card(
+                                            onClick = { broadcastType = typeKey },
+                                            colors = CardDefaults.cardColors(
+                                                containerColor = if (isSel) color.copy(alpha = 0.3f) else Slate900
+                                            ),
+                                            border = androidx.compose.foundation.BorderStroke(
+                                                width = 1.dp,
+                                                color = if (isSel) color else Color.Transparent
+                                            ),
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Box(
+                                                modifier = Modifier.padding(vertical = 10.dp).fillMaxWidth(),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = label,
+                                                    color = if (isSel) color else Color.Gray,
+                                                    fontSize = 8.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    maxLines = 1
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                OutlinedTextField(
+                                    value = broadcastTitle,
+                                    onValueChange = { broadcastTitle = it },
+                                    label = { Text("Judul Notifikasi", color = Color.Gray) },
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White,
+                                        focusedBorderColor = OrangePrimary,
+                                        unfocusedBorderColor = Color.DarkGray
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                OutlinedTextField(
+                                    value = broadcastMessage,
+                                    onValueChange = { broadcastMessage = it },
+                                    label = { Text("Isi Pesan Notifikasi", color = Color.Gray) },
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White,
+                                        focusedBorderColor = OrangePrimary,
+                                        unfocusedBorderColor = Color.DarkGray
+                                    ),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    minLines = 3
+                                )
+
+                                if (broadcastType == "update") {
+                                    OutlinedTextField(
+                                        value = broadcastVersion,
+                                        onValueChange = { broadcastVersion = it },
+                                        label = { Text("Nomor Versi (Contoh: 1.1.0)", color = Color.Gray) },
+                                        placeholder = { Text("1.1.0", color = Color.Gray) },
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedTextColor = Color.White,
+                                            unfocusedTextColor = Color.White,
+                                            focusedBorderColor = OrangePrimary,
+                                            unfocusedBorderColor = Color.DarkGray
+                                        ),
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+
+                                    OutlinedTextField(
+                                        value = broadcastDownloadUrl,
+                                        onValueChange = { broadcastDownloadUrl = it },
+                                        label = { Text("Link Download APK", color = Color.Gray) },
+                                        placeholder = { Text("https://github.com/.../app-release.apk", color = Color.Gray) },
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedTextColor = Color.White,
+                                            unfocusedTextColor = Color.White,
+                                            focusedBorderColor = OrangePrimary,
+                                            unfocusedBorderColor = Color.DarkGray
+                                        ),
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Status Aktif",
+                                        color = Color.LightGray,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Switch(
+                                        checked = broadcastIsActive,
+                                        onCheckedChange = { broadcastIsActive = it },
+                                        colors = SwitchDefaults.colors(
+                                            checkedThumbColor = Color.Green,
+                                            checkedTrackColor = Color.Green.copy(alpha = 0.5f)
+                                        )
+                                    )
+                                }
+
+                                Button(
+                                    onClick = {
+                                        if (broadcastTitle.isBlank() || broadcastMessage.isBlank()) {
+                                            Toast.makeText(context, "Judul dan Isi wajib diisi!", Toast.LENGTH_SHORT).show()
+                                        } else if (broadcastType == "update" && (broadcastVersion.isBlank() || broadcastDownloadUrl.isBlank())) {
+                                            Toast.makeText(context, "Versi dan Link Download wajib diisi untuk Pembaruan!", Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            viewModel.sendBroadcast(
+                                                title = broadcastTitle,
+                                                message = broadcastMessage,
+                                                type = broadcastType,
+                                                downloadUrl = if (broadcastType == "update") broadcastDownloadUrl else null,
+                                                version = if (broadcastType == "update") broadcastVersion else null,
+                                                isActive = broadcastIsActive
+                                            )
+                                            broadcastTitle = ""
+                                            broadcastMessage = ""
+                                            broadcastVersion = ""
+                                            broadcastDownloadUrl = ""
+                                        }
+                                    },
+                                    enabled = !isSendingBroadcast,
+                                    colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(imageVector = Icons.Default.Send, contentDescription = null, tint = Slate900, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Kirim ke Semua Pengguna", fontWeight = FontWeight.ExtraBold, color = Slate900, fontSize = 12.sp)
+                                }
+                            }
+                        }
+                    }
+
+                    item {
+                        Text(
+                            text = "Daftar Riwayat Notifikasi Broadcast",
+                            color = Color.LightGray,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
+
+                    if (broadcasts.isEmpty()) {
+                        item {
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = Slate800)
+                            ) {
+                                Box(
+                                    modifier = Modifier.padding(24.dp).fillMaxWidth(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("Belum ada broadcast yang dikirim", color = Color.Gray, fontSize = 12.sp)
+                                }
+                            }
+                        }
+                    } else {
+                        items(broadcasts.size) { index ->
+                            val bCast = broadcasts[index]
+                            val bId = bCast["id"] as? String ?: ""
+                            val bTitle = bCast["title"] as? String ?: ""
+                            val bMsg = bCast["message"] as? String ?: ""
+                            val bType = bCast["type"] as? String ?: "info"
+                            val bCreatedAt = (bCast["createdAt"] as? Number)?.toLong() ?: 0L
+                            val bActive = bCast["isActive"] as? Boolean ?: true
+
+                            val typeColor = when (bType.lowercase()) {
+                                "update" -> Color.Green
+                                "promo" -> Color.Yellow
+                                "maintenance" -> Color.Red
+                                else -> Color.Cyan
+                            }
+
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = Slate800),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(14.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .background(typeColor.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
+                                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = bType.uppercase(),
+                                                color = typeColor,
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(8.dp)
+                                                    .background(if (bActive) Color.Green else Color.Gray, androidx.compose.foundation.shape.CircleShape)
+                                            )
+                                            Text(
+                                                text = if (bActive) "Aktif" else "Nonaktif",
+                                                color = if (bActive) Color.Green else Color.Gray,
+                                                fontSize = 10.sp
+                                            )
+
+                                            IconButton(
+                                                onClick = { viewModel.deleteBroadcast(bId) },
+                                                modifier = Modifier.size(24.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Delete,
+                                                    contentDescription = "Hapus Broadcast",
+                                                    tint = Color.Red,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    Text(
+                                        text = bTitle,
+                                        color = Color.White,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+
+                                    Text(
+                                        text = bMsg,
+                                        color = Color.LightGray,
+                                        fontSize = 11.sp
+                                    )
+
+                                    if (bType == "update") {
+                                        val bVer = bCast["version"] as? String ?: ""
+                                        val bUrl = bCast["downloadUrl"] as? String ?: ""
+                                        Column(
+                                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                                            modifier = Modifier.background(Slate900.copy(alpha = 0.5f), RoundedCornerShape(4.dp)).padding(6.dp).fillMaxWidth()
+                                        ) {
+                                            Text(text = "Versi: $bVer", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                            Text(text = "Link: $bUrl", color = Color.Gray, fontSize = 9.sp, maxLines = 1)
+                                        }
+                                    }
+
+                                    HorizontalDivider(color = Color.DarkGray)
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = "Dikirim ke: Semua Pengguna",
+                                            color = Color.Gray,
+                                            fontSize = 9.sp
+                                        )
+                                        Text(
+                                            text = android.text.format.DateFormat.format("dd MMM yyyy HH:mm", bCreatedAt).toString(),
+                                            color = Color.Gray,
+                                            fontSize = 9.sp
+                                        )
                                     }
                                 }
                             }
