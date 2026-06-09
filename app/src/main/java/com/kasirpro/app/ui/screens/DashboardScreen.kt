@@ -157,19 +157,25 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                                 tint = OrangePrimary
                             )
                             if (unreadCount > 0) {
+                                val countText = if (unreadCount > 99) "99+" else "$unreadCount"
                                 Box(
                                     modifier = Modifier
                                         .align(Alignment.TopEnd)
-                                        .offset(x = 4.dp, y = (-4).dp)
-                                        .background(Color.Red, CircleShape)
-                                        .size(16.dp),
+                                        .offset(x = 6.dp, y = (-6).dp)
+                                        .background(Color.Red, RoundedCornerShape(10.dp))
+                                        .padding(horizontal = 4.dp)
+                                        .sizeIn(minWidth = 16.dp, minHeight = 16.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = "$unreadCount",
+                                        text = countText,
                                         color = Color.White,
                                         fontSize = 8.sp,
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.Black,
+                                        style = androidx.compose.ui.text.TextStyle(
+                                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                            lineHeight = 1.sp
+                                        )
                                     )
                                 }
                             }

@@ -189,7 +189,7 @@ fun com.google.firebase.firestore.DocumentSnapshot.getSafeDouble(field: String):
     }
 }
 
-class KasirRepository(private val context: Context) {
+class KasirRepository(val context: Context) {
     private val database = KasirDatabase.getDatabase(context)
     private val dao = database.kasirDao()
 
@@ -3076,10 +3076,62 @@ suspend fun KasirRepository.deleteBroadcast(broadcastId: String): Boolean {
     }
 }
 
+private fun KasirRepository.showSystemNotification(title: String, message: String) {
+    try {
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+        val channelId = "kasir_pro_notifications"
+        val channelName = "Notifikasi Kasir Pro"
+        
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            val channel = android.app.NotificationChannel(
+                channelId,
+                channelName,
+                android.app.NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Channel untuk notifikasi dari aplikasi Kasir Pro"
+                enableLights(true)
+                lightColor = android.graphics.Color.RED
+                enableVibration(true)
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+        
+        val intent = android.content.Intent(context, com.kasirpro.app.MainActivity::class.java).apply {
+            flags = android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra("open_screen", "user_notifications")
+        }
+        
+        val pendingIntent = android.app.PendingIntent.getActivity(
+            context,
+            System.currentTimeMillis().toInt(),
+            intent,
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        val builder = androidx.core.app.NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(com.kasirpro.app.R.mipmap.ic_launcher)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setDefaults(androidx.core.app.NotificationCompat.DEFAULT_ALL)
+            .setContentIntent(pendingIntent)
+            
+        notificationManager.notify(System.currentTimeMillis().toInt(), builder.build())
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+
 fun KasirRepository.listenToUserNotifications(userId: String, onUpdate: (List<Map<String, Any>>) -> Unit): com.google.firebase.firestore.ListenerRegistration {
     val localList = getLocalUserNotifications().filter { (it["userId"] as? String ?: "") == userId }
     // Dispatch local items first
     onUpdate(localList)
+
+    var isInitialLoad = true
+    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+        isInitialLoad = false
+    }, 4500L) // Wait slightly for initial snapshot emissions to clear
 
     var lastUserNotifications = emptyList<Map<String, Any>>()
     var lastBroadcasts = emptyList<Map<String, Any>>()
@@ -3142,12 +3194,28 @@ fun KasirRepository.listenToUserNotifications(userId: String, onUpdate: (List<Ma
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {
-                    lastUserNotifications = snapshot.documents.mapNotNull { doc ->
+                    val remoteList = snapshot.documents.mapNotNull { doc ->
                         val data = doc.data ?: return@mapNotNull null
                         data.toMutableMap().apply {
                             this["id"] = doc.id
                         }
                     }
+                    
+                    if (!isInitialLoad) {
+                        for (notif in remoteList) {
+                            val notifId = notif["id"] as? String ?: ""
+                            val isRead = notif["isRead"] as? Boolean ?: false
+                            val title = notif["title"] as? String ?: "Kasir Pro"
+                            val message = notif["message"] as? String ?: ""
+                            
+                            val wasInPrevious = lastUserNotifications.any { (it["id"] as? String ?: "") == notifId }
+                            if (!wasInPrevious && !isRead) {
+                                showSystemNotification(title, message)
+                            }
+                        }
+                    }
+                    
+                    lastUserNotifications = remoteList
                 }
                 triggerMergedUpdate()
             }
@@ -3165,12 +3233,33 @@ fun KasirRepository.listenToUserNotifications(userId: String, onUpdate: (List<Ma
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {
-                    lastBroadcasts = snapshot.documents.mapNotNull { doc ->
+                    val remoteBroadcasts = snapshot.documents.mapNotNull { doc ->
                         val data = doc.data ?: return@mapNotNull null
                         data.toMutableMap().apply {
                             this["id"] = doc.id
                         }
                     }
+                    
+                    if (!isInitialLoad) {
+                        for (bcast in remoteBroadcasts) {
+                            val bcastId = bcast["id"] as? String ?: ""
+                            val title = bcast["title"] as? String ?: "Pengumuman Kasir Pro"
+                            val message = bcast["message"] as? String ?: ""
+                            val isActive = bcast["isActive"] as? Boolean ?: true
+                            
+                            val wasInPrevious = lastBroadcasts.any { (it["id"] as? String ?: "") == bcastId }
+                            if (!wasInPrevious && isActive) {
+                                val isLocallyRead = localList.any { 
+                                    (it["broadcastId"] as? String ?: "") == bcastId && (it["isRead"] as? Boolean == true)
+                                }
+                                if (!isLocallyRead) {
+                                    showSystemNotification(title, message)
+                                }
+                            }
+                        }
+                    }
+                    
+                    lastBroadcasts = remoteBroadcasts
                 }
                 triggerMergedUpdate()
             }

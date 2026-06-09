@@ -275,7 +275,10 @@ fun UserNotificationsScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                 shape = RoundedCornerShape(8.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { selectedNotification = notif }
+                                    .clickable {
+                                        viewModel.markNotifRead(id)
+                                        selectedNotification = notif.toMutableMap().apply { this["isRead"] = true }
+                                    }
                             ) {
                                 Row(
                                     modifier = Modifier

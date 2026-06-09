@@ -38,6 +38,14 @@ class MainActivity : ComponentActivity() {
         return false
     }
 
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        val screenToOpen = intent.getStringExtra("open_screen")
+        if (screenToOpen != null) {
+            viewModel.activeScreen.value = screenToOpen
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
@@ -50,6 +58,11 @@ class MainActivity : ComponentActivity() {
             requestPermissions(permissionsToRequest.toTypedArray(), 101)
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+
+        val screenToOpen = intent?.getStringExtra("open_screen")
+        if (screenToOpen != null) {
+            viewModel.activeScreen.value = screenToOpen
         }
 
         enableEdgeToEdge()

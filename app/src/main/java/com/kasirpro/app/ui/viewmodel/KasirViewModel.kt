@@ -928,6 +928,19 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun markNotifRead(id: String) {
+        val currentList = userNotifications.value.map { notif ->
+            val notifId = notif["id"] as? String ?: ""
+            val bcastId = notif["broadcastId"] as? String ?: ""
+            val synthId = "synth_" + (currentUser.value?.uid ?: "") + "_" + bcastId
+            if (notifId == id || bcastId == id || synthId == id) {
+                notif.toMutableMap().apply { this["isRead"] = true }
+            } else {
+                notif
+            }
+        }
+        userNotifications.value = currentList
+        unreadNotificationsCount.value = currentList.count { !(it["isRead"] as? Boolean ?: true) }
+
         viewModelScope.launch {
             repository.markNotificationAsRead(id)
         }
@@ -935,6 +948,12 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
 
     fun markAllNotifsRead() {
         val userVal = currentUser.value ?: return
+        val currentList = userNotifications.value.map { notif ->
+            notif.toMutableMap().apply { this["isRead"] = true }
+        }
+        userNotifications.value = currentList
+        unreadNotificationsCount.value = 0
+
         viewModelScope.launch {
             repository.markAllNotificationsAsRead(userVal.uid)
         }
