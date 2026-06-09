@@ -3081,35 +3081,108 @@ fun KasirRepository.listenToUserNotifications(userId: String, onUpdate: (List<Ma
     // Dispatch local items first
     onUpdate(localList)
 
-    return try {
-        val db = FirebaseFirestore.getInstance()
+    var lastUserNotifications = emptyList<Map<String, Any>>()
+    var lastBroadcasts = emptyList<Map<String, Any>>()
+
+    fun triggerMergedUpdate() {
+        val mergedList = mutableListOf<Map<String, Any>>()
+        
+        // 1. Add all from user_notifications listener
+        mergedList.addAll(lastUserNotifications)
+
+        // 2. Synthesize notification from broadcasts that are ACTIVE
+        for (bcast in lastBroadcasts) {
+            val isActive = bcast["isActive"] as? Boolean ?: true
+            if (!isActive) continue
+
+            val bcastId = bcast["id"] as? String ?: ""
+            if (bcastId.isEmpty()) continue
+            
+            // Check if there is already a user_notification with this broadcastId
+            val alreadyHasNotif = mergedList.any { (it["broadcastId"] as? String ?: "") == bcastId }
+            if (!alreadyHasNotif) {
+                // Synthesize!
+                val synthId = "synth_" + userId + "_" + bcastId
+                // Check if this broadcast is locally marked as read
+                val localRead = localList.any { 
+                    ((it["broadcastId"] as? String ?: "") == bcastId || (it["id"] as? String ?: "") == synthId) && 
+                    (it["isRead"] as? Boolean == true)
+                }
+                
+                val synthesized = mapOf(
+                    "id" to synthId,
+                    "userId" to userId,
+                    "broadcastId" to bcastId,
+                    "title" to (bcast["title"] as? String ?: ""),
+                    "message" to (bcast["message"] as? String ?: ""),
+                    "type" to (bcast["type"] as? String ?: "info"),
+                    "downloadUrl" to (bcast["downloadUrl"] as? String ?: ""),
+                    "version" to (bcast["version"] as? String ?: ""),
+                    "isRead" to localRead,
+                    "createdAt" to ((bcast["createdAt"] as? Number)?.toLong() ?: System.currentTimeMillis())
+                )
+                mergedList.add(synthesized)
+            }
+        }
+
+        val mergedMap = (localList + mergedList).associateBy { it["id"] as? String ?: "" }
+        val sorted = mergedMap.values.sortedByDescending { (it["createdAt"] as? Number)?.toLong() ?: 0L }
+        onUpdate(sorted)
+    }
+
+    val db = FirebaseFirestore.getInstance()
+
+    val notifListener = try {
         db.collection("user_notifications")
             .whereEqualTo("userId", userId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     error.printStackTrace()
-                    onUpdate(localList)
+                    triggerMergedUpdate()
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {
-                    val remoteList = snapshot.documents.mapNotNull { doc ->
+                    lastUserNotifications = snapshot.documents.mapNotNull { doc ->
                         val data = doc.data ?: return@mapNotNull null
                         data.toMutableMap().apply {
                             this["id"] = doc.id
                         }
                     }
-                    val mergedMap = (localList + remoteList).associateBy { it["id"] as? String ?: "" }
-                    val sorted = mergedMap.values.sortedByDescending { (it["createdAt"] as? Number)?.toLong() ?: 0L }
-                    onUpdate(sorted)
-                } else {
-                    onUpdate(localList)
                 }
+                triggerMergedUpdate()
             }
     } catch (e: Exception) {
         e.printStackTrace()
-        onUpdate(localList)
-        object : com.google.firebase.firestore.ListenerRegistration {
-            override fun remove() {}
+        null
+    }
+
+    val bcastListener = try {
+        db.collection("broadcasts")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    error.printStackTrace()
+                    triggerMergedUpdate()
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    lastBroadcasts = snapshot.documents.mapNotNull { doc ->
+                        val data = doc.data ?: return@mapNotNull null
+                        data.toMutableMap().apply {
+                            this["id"] = doc.id
+                        }
+                    }
+                }
+                triggerMergedUpdate()
+            }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
+    }
+
+    return object : com.google.firebase.firestore.ListenerRegistration {
+        override fun remove() {
+            notifListener?.remove()
+            bcastListener?.remove()
         }
     }
 }
@@ -3118,22 +3191,49 @@ suspend fun KasirRepository.markNotificationAsRead(notifId: String): Boolean {
     // Also update local list
     val localNotifs = getLocalUserNotifications().toMutableList()
     var updated = false
+    
+    val bcastId = if (notifId.startsWith("synth_")) {
+        notifId.split("_").lastOrNull() ?: notifId
+    } else {
+        notifId
+    }
+    
     val newList = localNotifs.map { notif ->
-        if ((notif["id"] as? String ?: "") == notifId) {
+        val currentId = notif["id"] as? String ?: ""
+        val currentBcastId = notif["broadcastId"] as? String ?: ""
+        if (currentId == notifId || currentId == bcastId || currentBcastId == bcastId) {
             updated = true
             notif.toMutableMap().apply { this["isRead"] = true }
         } else {
             notif
         }
     }
+    
     if (updated) {
         saveLocalUserNotifications(newList)
+    } else {
+        val newRecord = mapOf(
+            "id" to notifId,
+            "userId" to (auth.currentUser?.uid ?: "local-user"),
+            "broadcastId" to bcastId,
+            "isRead" to true,
+            "createdAt" to System.currentTimeMillis()
+        )
+        localNotifs.add(newRecord)
+        saveLocalUserNotifications(localNotifs)
     }
 
     return try {
         val db = FirebaseFirestore.getInstance()
+        val map = mapOf(
+            "id" to notifId,
+            "userId" to (auth.currentUser?.uid ?: ""),
+            "broadcastId" to bcastId,
+            "isRead" to true,
+            "createdAt" to System.currentTimeMillis()
+        )
         db.collection("user_notifications").document(notifId)
-            .update("isRead", true)
+            .set(map, com.google.firebase.firestore.SetOptions.merge())
             .await()
         true
     } catch (e: Exception) {
@@ -3143,17 +3243,39 @@ suspend fun KasirRepository.markNotificationAsRead(notifId: String): Boolean {
 }
 
 suspend fun KasirRepository.markAllNotificationsAsRead(userId: String): Boolean {
-    // Also update local list
+    // 1. Update existing local ones
     val localNotifs = getLocalUserNotifications().toMutableList()
-    val newList = localNotifs.map { notif ->
+    val updatedList = localNotifs.map { notif ->
         if ((notif["userId"] as? String ?: "") == userId) {
             notif.toMutableMap().apply { this["isRead"] = true }
         } else {
             notif
         }
-    }
-    saveLocalUserNotifications(newList)
+    }.toMutableList()
 
+    // 2. Also mark any local broadcasts as read for this user
+    val bcasts = getLocalBroadcasts()
+    for (bcast in bcasts) {
+        val bcastId = bcast["id"] as? String ?: ""
+        if (bcastId.isEmpty()) continue
+        val synthId = "synth_" + userId + "_" + bcastId
+        val alreadyHasRead = updatedList.any { 
+            ((it["broadcastId"] as? String ?: "") == bcastId || (it["id"] as? String ?: "") == synthId) && 
+            (it["isRead"] as? Boolean == true)
+        }
+        if (!alreadyHasRead) {
+            updatedList.add(mapOf(
+                "id" to synthId,
+                "userId" to userId,
+                "broadcastId" to bcastId,
+                "isRead" to true,
+                "createdAt" to System.currentTimeMillis()
+            ))
+        }
+    }
+    saveLocalUserNotifications(updatedList)
+
+    // 3. Mark in firestore
     return try {
         val db = FirebaseFirestore.getInstance()
         val unread = db.collection("user_notifications")
