@@ -314,11 +314,11 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
     // CHECKOUT PROCESS
     fun processCheckout(customDiscountPrice: Double = 0.0, pointsRedeemedAmount: Int = 0, pointRateValue: Double = 100.0) {
         val user = currentUser.value
-        val isPremium = user?.subscriptionStatus == "premium"
+        val isPremium = user?.isPremium ?: false
 
         // Rule limit validation for Free Tier (Max 50 transactions per month)
         if (!isPremium && transactions.value.size >= 50) {
-            showLimitPopup.value = "Batas 50 transaksi bulanan untuk akun Gratis telah tercapai. Upgrade ke Premium untuk transaksi tanpa batas!"
+            showLimitPopup.value = "Batas 50 transaksi bulanan untuk akun Gratis telah tercapai. Hubungi Admin atau pasang Kode Aktivasi Paket untuk transaksi tanpa batas!"
             return
         }
 
@@ -404,11 +404,17 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         satuan: String = "Pcs"
     ) {
         val user = currentUser.value
-        val isPremium = user?.subscriptionStatus == "premium"
+        val isPremium = user?.isPremium ?: false
+        val isAtLeastProfesional = user?.isAtLeastProfesional ?: false
 
         // Constraint Free Tier check: max 10 products
         if (!isPremium && products.value.size >= 10) {
-            showLimitPopup.value = "Batas maksimal 10 produk untuk akun Gratis tercapai. Upgrade ke Premium untuk menambah produk tanpa batas!"
+            showLimitPopup.value = "Batas maksimal 10 produk untuk akun Gratis tercapai. Silakan masukkan Kode Aktivasi Paket untuk meningkatkan kapasitas produk Anda!"
+            return
+        }
+        // Constraint Dasar Tier check: max 50 products
+        if (isPremium && !isAtLeastProfesional && products.value.size >= 50) {
+            showLimitPopup.value = "Batas maksimal 50 produk untuk Paket Dasar tercapai. Silakan tingkatkan ke Paket Profesional atau Bisnis untuk produk tanpa batas!"
             return
         }
 
@@ -494,9 +500,22 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
 
     // BRANCHES WITH FREE TIER VALIDATION
     fun addBranch(nama: String, alamat: String) {
-        val isPremium = currentUser.value?.subscriptionStatus == "premium"
+        val user = currentUser.value
+        val isPremium = user?.isPremium ?: false
+        val isAtLeastProfesional = user?.isAtLeastProfesional ?: false
+        val isAtLeastBisnis = user?.isAtLeastBisnis ?: false
+        val count = branches.value.size
+
         if (!isPremium) {
-            showLimitPopup.value = "Fitur Multi-Cabang hanya untuk pengguna Premium. Upgrade sekarang!"
+            showLimitPopup.value = "Fitur Multi-Cabang hanya untuk pengguna Premium. Hubungi Admin atau gunakan Kode Aktivasi Paket!"
+            return
+        }
+        if (isPremium && !isAtLeastProfesional && count >= 1) {
+            showLimitPopup.value = "Paket Dasar dibatasi maksimal 1 cabang. Silakan tingkatkan ke Paket Profesional atau Bisnis!"
+            return
+        }
+        if (isAtLeastProfesional && !isAtLeastBisnis && count >= 3) {
+            showLimitPopup.value = "Paket Profesional dibatasi maksimal 3 cabang. Silakan tingkatkan ke Paket Bisnis untuk cabang tanpa batas!"
             return
         }
         viewModelScope.launch {
@@ -541,9 +560,10 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun editCashier(cashierId: String, oldUsername: String, newNama: String, newUsername: String, newPass: String, onResult: (Boolean, String) -> Unit) {
-        val isPremium = currentUser.value?.subscriptionStatus == "premium"
+        val user = currentUser.value
+        val isPremium = user?.isPremium ?: false
         if (!isPremium) {
-            showLimitPopup.value = "Fitur ini hanya untuk pengguna Premium. Upgrade sekarang!"
+            showLimitPopup.value = "Fitur Manajemen Kasir hanya untuk pengguna Premium!"
             onResult(false, "Fitur Premium")
             return
         }
@@ -558,10 +578,25 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun addCashier(nama: String, username: String, pass: String, branchId: String, onResult: (Boolean, String) -> Unit) {
-        val isPremium = currentUser.value?.subscriptionStatus == "premium"
+        val user = currentUser.value
+        val isPremium = user?.isPremium ?: false
+        val isAtLeastProfesional = user?.isAtLeastProfesional ?: false
+        val isAtLeastBisnis = user?.isAtLeastBisnis ?: false
+        val count = cashiers.value.size
+
         if (!isPremium) {
-            showLimitPopup.value = "Fitur Manajemen Kasir hanya untuk pengguna Premium. Upgrade sekarang!"
+            showLimitPopup.value = "Fitur Manajemen Kasir hanya untuk pengguna Premium!"
             onResult(false, "Fitur Premium")
+            return
+        }
+        if (isPremium && !isAtLeastProfesional && count >= 1) {
+            showLimitPopup.value = "Paket Dasar dibatasi maksimal 1 kasir. Silakan tingkatkan ke Paket Profesional atau Bisnis!"
+            onResult(false, "Limit 1 kasir terlampaui")
+            return
+        }
+        if (isAtLeastProfesional && !isAtLeastBisnis && count >= 5) {
+            showLimitPopup.value = "Paket Profesional dibatasi maksimal 5 kasir. Silakan upgrade ke Paket Bisnis untuk kasir tanpa batas!"
+            onResult(false, "Limit 5 kasir terlampaui")
             return
         }
         viewModelScope.launch {
@@ -650,12 +685,11 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         codeRedeemResult.value = null
     }
 
-    fun generateCode(isYearly: Boolean, targetUid: String, onComplete: (Boolean) -> Unit = {}) {
+    fun generateCode(packageType: String, billingCycle: String, targetUid: String, onComplete: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
             val uid = currentUser.value?.uid ?: com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: "admin-uid"
-            val type = if (isYearly) "tahunan" else "bulanan"
-            val durationDays = if (isYearly) 365 else 30
-            val success = repository.generateActivationCode(type, durationDays, uid, targetUid.trim())
+            val durationDays = if (billingCycle.lowercase() == "tahunan") 365 else 30
+            val success = repository.generateActivationCode(packageType, billingCycle, durationDays, uid, targetUid.trim())
             onComplete(success)
         }
     }

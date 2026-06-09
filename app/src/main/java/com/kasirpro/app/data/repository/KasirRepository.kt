@@ -60,6 +60,7 @@ fun UserEntity.toMap(): Map<String, Any?> = mapOf(
     "ownerId" to ownerId,
     "assignedBranchId" to assignedBranchId,
     "subscriptionStatus" to subscriptionStatus,
+    "subscriptionType" to subscriptionType,
     "subscriptionStartDate" to subscriptionStartDate,
     "subscriptionEndDate" to subscriptionEndDate,
     "createdAt" to createdAt,
@@ -608,10 +609,12 @@ class KasirRepository(private val context: Context) {
                 val nama = cashierDoc.getString("cashierName") ?: cashierDoc.getString("nama") ?: "Kasir"
                 val branchId = cashierDoc.getString("branchId") ?: "branch-1-biz-$ownerId"
                 var subscriptionStatus = "free"
+                var subscriptionType: String? = null
                 try {
                     val ownerDoc = firestore.collection("users").document(ownerId).get().await()
                     if (ownerDoc.exists()) {
                         subscriptionStatus = ownerDoc.getString("subscriptionStatus") ?: "free"
+                        subscriptionType = ownerDoc.getString("subscriptionType")
                     }
                 } catch (ex: Exception) {
                     android.util.Log.e("KASIR_LOGIN", "Error fetching owner state in loginUser: ${ex.message}")
@@ -625,6 +628,7 @@ class KasirRepository(private val context: Context) {
                     ownerId = ownerId,
                     assignedBranchId = branchId,
                     subscriptionStatus = subscriptionStatus,
+                    subscriptionType = subscriptionType,
                     subscriptionStartDate = null,
                     subscriptionEndDate = null,
                     createdAt = cashierDoc.getLong("createdAt") ?: System.currentTimeMillis(),
@@ -766,6 +770,7 @@ data class GoogleLoginResult(
                         ownerId = doc.getString("ownerId"),
                         assignedBranchId = doc.getString("assignedBranchId"),
                         subscriptionStatus = doc.getString("subscriptionStatus") ?: "free",
+                        subscriptionType = doc.getString("subscriptionType"),
                         subscriptionStartDate = doc.getLong("subscriptionStartDate"),
                         subscriptionEndDate = doc.getLong("subscriptionEndDate"),
                         createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis(),
@@ -804,6 +809,7 @@ data class GoogleLoginResult(
                             ownerId = firstDoc.getString("ownerId"),
                             assignedBranchId = firstDoc.getString("assignedBranchId"),
                             subscriptionStatus = firstDoc.getString("subscriptionStatus") ?: "free",
+                            subscriptionType = firstDoc.getString("subscriptionType"),
                             subscriptionStartDate = firstDoc.getLong("subscriptionStartDate"),
                             subscriptionEndDate = firstDoc.getLong("subscriptionEndDate"),
                             createdAt = firstDoc.getLong("createdAt") ?: System.currentTimeMillis(),
@@ -1010,6 +1016,7 @@ data class GoogleLoginResult(
                     ownerId = doc.getString("ownerId"),
                     assignedBranchId = doc.getString("assignedBranchId"),
                     subscriptionStatus = doc.getString("subscriptionStatus") ?: "free",
+                    subscriptionType = doc.getString("subscriptionType"),
                     subscriptionStartDate = doc.getLong("subscriptionStartDate"),
                     subscriptionEndDate = doc.getLong("subscriptionEndDate"),
                     createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis(),
@@ -1794,8 +1801,8 @@ data class GoogleLoginResult(
             val code = rawCode.trim().uppercase()
             // Check if user is already premium
             val user = getUserById(uid) ?: return RedeemResult.Error("Pengguna tidak ditemukan")
-            if (user.subscriptionStatus == "premium") {
-                return RedeemResult.Error("Kode tidak bisa dipakai oleh akun yang sudah premium")
+            if (user.subscriptionStatus != "free" && user.subscriptionEndDate != null && user.subscriptionEndDate > System.currentTimeMillis()) {
+                return RedeemResult.Error("Kode tidak bisa dipakai karena Anda sudah memiliki paket aktif (${user.subscriptionStatus.uppercase()})")
             }
 
             // Check local first!
@@ -1803,6 +1810,8 @@ data class GoogleLoginResult(
             val localMatch = localList.find { (it["id"] as? String)?.trim()?.uppercase() == code }
 
             var durationDays = 30L
+            var codeType = "profesional"
+            var billingCycle = "bulanan"
             var checkedSuccessfully = false
 
             if (localMatch != null) {
@@ -1815,6 +1824,8 @@ data class GoogleLoginResult(
                     return RedeemResult.Error("Kode sudah pernah digunakan")
                 }
                 durationDays = (localMatch["durationDays"] as? Number)?.toLong() ?: 30L
+                codeType = (localMatch["type"] as? String) ?: "profesional"
+                billingCycle = (localMatch["billingCycle"] as? String) ?: "bulanan"
                 checkedSuccessfully = true
             }
 
@@ -1833,6 +1844,8 @@ data class GoogleLoginResult(
                                 return RedeemResult.Error("Kode sudah pernah digunakan")
                             }
                             durationDays = (codeInfo["durationDays"] as? Number)?.toLong() ?: 30L
+                            codeType = (codeInfo["type"] as? String) ?: "profesional"
+                            billingCycle = (codeInfo["billingCycle"] as? String) ?: "bulanan"
                             checkedSuccessfully = true
 
                             // Mark it as used in user's own document
@@ -1866,6 +1879,8 @@ data class GoogleLoginResult(
                             return RedeemResult.Error("Kode sudah pernah digunakan")
                         }
                         durationDays = snapshot.getLong("durationDays") ?: 30L
+                        codeType = snapshot.getString("type") ?: "profesional"
+                        billingCycle = snapshot.getString("billingCycle") ?: "bulanan"
                         checkedSuccessfully = true
                     } else {
                         return RedeemResult.Error("Kode tidak valid atau belum didaftarkan oleh admin.")
@@ -1881,6 +1896,27 @@ data class GoogleLoginResult(
                     }
                     return RedeemResult.Error("Gagal memverifikasi kode (Offline atau error jaringan): ${e.message}")
                 }
+            }
+
+            // Bulletproof string-based parser override in case of unpopulated DB fields
+            if (code.startsWith("KASIRPRO-DASARTAHUNAN-")) {
+                codeType = "dasar"
+                billingCycle = "tahunan"
+            } else if (code.startsWith("KASIRPRO-DASAR-")) {
+                codeType = "dasar"
+                billingCycle = "bulanan"
+            } else if (code.startsWith("KASIRPRO-PROTAHUNAN-")) {
+                codeType = "profesional"
+                billingCycle = "tahunan"
+            } else if (code.startsWith("KASIRPRO-PRO-")) {
+                codeType = "profesional"
+                billingCycle = "bulanan"
+            } else if (code.startsWith("KASIRPRO-BISNISTAHUNAN-")) {
+                codeType = "bisnis"
+                billingCycle = "tahunan"
+            } else if (code.startsWith("KASIRPRO-BISNIS-")) {
+                codeType = "bisnis"
+                billingCycle = "bulanan"
             }
 
             val now = System.currentTimeMillis()
@@ -1912,9 +1948,10 @@ data class GoogleLoginResult(
                 e.printStackTrace()
             }
 
-            // Upgrade User to premium
+            // Upgrade User to premium package type
             val updatedUser = user.copy(
-                subscriptionStatus = "premium",
+                subscriptionStatus = codeType.lowercase(),
+                subscriptionType = billingCycle.lowercase(),
                 subscriptionStartDate = now,
                 subscriptionEndDate = endDate
             )
@@ -1974,17 +2011,25 @@ data class GoogleLoginResult(
         }
     }
 
-    suspend fun generateActivationCode(type: String, durationDays: Int, createdByUid: String, targetUid: String): Boolean {
-        android.util.Log.d("ADMIN", "Generating code for $targetUid...")
+    suspend fun generateActivationCode(type: String, billingCycle: String, durationDays: Int, createdByUid: String, targetUid: String): Boolean {
+        android.util.Log.d("ADMIN", "Generating code for $targetUid (type=$type cycle=$billingCycle)...")
         val suffix = (1..6).map { "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".random() }.joinToString("")
-        val typeLabel = if (type.lowercase() == "tahunan") "TAHUNAN" else "BULANAN"
-        val kode = "KASIRPRO-$typeLabel-$suffix"
+        
+        // Format of the suffix according to package:
+        val prefix = when (type.lowercase()) {
+            "dasar" -> if (billingCycle.lowercase() == "tahunan") "DASARTAHUNAN" else "DASAR"
+            "profesional" -> if (billingCycle.lowercase() == "tahunan") "PROTAHUNAN" else "PRO"
+            "bisnis" -> if (billingCycle.lowercase() == "tahunan") "BISNISTAHUNAN" else "BISNIS"
+            else -> if (billingCycle.lowercase() == "tahunan") "PROTAHUNAN" else "PRO"
+        }
+        val kode = "KASIRPRO-$prefix-$suffix"
         android.util.Log.d("ADMIN", "Code generated: $kode")
         
         val now = System.currentTimeMillis()
         val codeMap = mapOf(
             "id" to kode,
-            "type" to type,
+            "type" to type.lowercase(),
+            "billingCycle" to billingCycle.lowercase(),
             "durationDays" to durationDays.toLong(),
             "isUsed" to false,
             "usedBy" to null,
@@ -2025,7 +2070,8 @@ data class GoogleLoginResult(
                 val updatedCodes = assignedCodes.toMutableMap().apply {
                     this[kode] = mapOf(
                         "code" to kode,
-                        "type" to type,
+                        "type" to type.lowercase(),
+                        "billingCycle" to billingCycle.lowercase(),
                         "durationDays" to durationDays.toLong(),
                         "isUsed" to false,
                         "createdAt" to now
@@ -2183,6 +2229,7 @@ data class GoogleLoginResult(
                 val ownerId = doc.getString("ownerId")
                 val assignedBranchId = doc.getString("assignedBranchId")
                 val subscriptionStatus = doc.getString("subscriptionStatus") ?: "free"
+                val subscriptionType = doc.getString("subscriptionType")
                 val subscriptionStartDate = doc.getLong("subscriptionStartDate")
                 val subscriptionEndDate = doc.getLong("subscriptionEndDate")
                 val createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
@@ -2196,6 +2243,7 @@ data class GoogleLoginResult(
                     ownerId = ownerId,
                     assignedBranchId = assignedBranchId,
                     subscriptionStatus = subscriptionStatus,
+                    subscriptionType = subscriptionType,
                     subscriptionStartDate = subscriptionStartDate,
                     subscriptionEndDate = subscriptionEndDate,
                     createdAt = createdAt,
@@ -2248,6 +2296,7 @@ data class GoogleLoginResult(
                                 ownerId = userDoc.getString("ownerId"),
                                 assignedBranchId = userDoc.getString("assignedBranchId"),
                                 subscriptionStatus = userDoc.getString("subscriptionStatus") ?: "free",
+                                subscriptionType = userDoc.getString("subscriptionType"),
                                 subscriptionStartDate = userDoc.getLong("subscriptionStartDate"),
                                 subscriptionEndDate = userDoc.getLong("subscriptionEndDate"),
                                 createdAt = userDoc.getLong("createdAt") ?: System.currentTimeMillis(),
@@ -2268,10 +2317,12 @@ data class GoogleLoginResult(
                                 val nama = cashierDoc.getString("cashierName") ?: cashierDoc.getString("nama") ?: "Kasir"
                                 val branchId = cashierDoc.getString("branchId") ?: "branch-1-biz-$ownerId"
                                 var subscriptionStatus = "free"
+                                var subscriptionType: String? = null
                                 try {
                                     val ownerDoc = firestore.collection("users").document(ownerId).get().await()
                                     if (ownerDoc.exists()) {
                                         subscriptionStatus = ownerDoc.getString("subscriptionStatus") ?: "free"
+                                        subscriptionType = ownerDoc.getString("subscriptionType")
                                     }
                                 } catch (ex: Exception) {
                                     android.util.Log.e("SYNC", "Error fetching owner state for cashier: ${ex.message}")
@@ -2284,6 +2335,7 @@ data class GoogleLoginResult(
                                     ownerId = ownerId,
                                     assignedBranchId = branchId,
                                     subscriptionStatus = subscriptionStatus,
+                                    subscriptionType = subscriptionType,
                                     subscriptionStartDate = null,
                                     subscriptionEndDate = null,
                                     createdAt = cashierDoc.getLong("createdAt") ?: System.currentTimeMillis(),

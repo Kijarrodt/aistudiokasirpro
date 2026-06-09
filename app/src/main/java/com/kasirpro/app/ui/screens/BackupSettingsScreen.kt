@@ -2118,6 +2118,8 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
     var selectedTab by remember { mutableStateOf(0) } // 0: Dashboard & Kinerja, 1: Kode Aktivasi (Terpisah)
     var targetUidInput by remember { mutableStateOf("") }
     var isSyncingCodes by remember { mutableStateOf(false) }
+    var selectedPackage by remember { mutableStateOf("dasar") } // "dasar", "profesional", "bisnis"
+    var selectedBillingCycle by remember { mutableStateOf("bulanan") } // "bulanan", "tahunan"
 
     Scaffold(
         topBar = {
@@ -2516,58 +2518,110 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                         )
                     )
 
-                    // Action to create codes
+                    // Selection for Package
+                    Text(
+                        text = "Pilih Paket Langganan:",
+                        color = Color.LightGray,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Button(
-                            onClick = { 
-                                if (targetUidInput.isBlank()) {
-                                    Toast.makeText(context, "ID Pengguna (UID) wajib diisi!", Toast.LENGTH_SHORT).show()
-                                    viewModel.showToast("ID Pengguna (UID) wajib diisi!")
-                                } else {
-                                    viewModel.generateCode(isYearly = false, targetUid = targetUidInput) { success ->
-                                        if (success) {
-                                            viewModel.showToast("Sukses: Kode Bulanan berhasil dibuat!")
-                                            targetUidInput = ""
-                                        } else {
-                                            viewModel.showToast("Gagal membuat kode Bulanan!")
-                                        }
-                                    }
+                        listOf("dasar", "profesional", "bisnis").forEach { pkg ->
+                            val isSel = selectedPackage == pkg
+                            Card(
+                                onClick = { selectedPackage = pkg },
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isSel) OrangePrimary else Slate800
+                                ),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Box(
+                                    modifier = Modifier.padding(10.dp).fillMaxWidth(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = pkg.uppercase(),
+                                        color = if (isSel) Slate900 else Color.White,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
                                 }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Generate Bulanan", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
+                    }
 
-                        Button(
-                            onClick = { 
-                                if (targetUidInput.isBlank()) {
-                                    Toast.makeText(context, "ID Pengguna (UID) wajib diisi!", Toast.LENGTH_SHORT).show()
-                                    viewModel.showToast("ID Pengguna (UID) wajib diisi!")
-                                } else {
-                                    viewModel.generateCode(isYearly = true, targetUid = targetUidInput) { success ->
-                                        if (success) {
-                                            viewModel.showToast("Sukses: Kode Tahunan berhasil dibuat!")
-                                            targetUidInput = ""
-                                        } else {
-                                            viewModel.showToast("Gagal membuat kode Tahunan!")
-                                        }
+                    // Selection for Billing Cycle
+                    Text(
+                        text = "Pilih Siklus Tagihan:",
+                        color = Color.LightGray,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf("bulanan", "tahunan").forEach { cycle ->
+                            val isSel = selectedBillingCycle == cycle
+                            Card(
+                                onClick = { selectedBillingCycle = cycle },
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isSel) Color.Green else Slate800
+                                ),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Box(
+                                    modifier = Modifier.padding(10.dp).fillMaxWidth(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = if (cycle == "bulanan") "BULANAN (30 Hari)" else "TAHUNAN (365 Hari)",
+                                        color = if (isSel) Slate900 else Color.White,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Unified Action to create codes
+                    Button(
+                        onClick = { 
+                            if (targetUidInput.isBlank()) {
+                                Toast.makeText(context, "ID Pengguna (UID) wajib diisi!", Toast.LENGTH_SHORT).show()
+                                viewModel.showToast("ID Pengguna (UID) wajib diisi!")
+                            } else {
+                                viewModel.generateCode(
+                                    packageType = selectedPackage,
+                                    billingCycle = selectedBillingCycle,
+                                    targetUid = targetUidInput
+                                ) { success ->
+                                    if (success) {
+                                        viewModel.showToast("Sukses: Kode ${selectedPackage.uppercase()} ${selectedBillingCycle.uppercase()} berhasil dibuat!")
+                                        targetUidInput = ""
+                                    } else {
+                                        viewModel.showToast("Gagal membuat kode!")
                                     }
                                 }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.Green),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = Slate900)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Generate Tahunan", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Slate900)
-                        }
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = Slate900)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Generate Kode ${selectedPackage.uppercase()} ${selectedBillingCycle.uppercase()}",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Slate900
+                        )
                     }
 
                     // Summary Stats Section
@@ -2657,7 +2711,8 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                             items(codes.size) { index ->
                                 val codeMap = codes[index]
                                 val codeId = codeMap["id"] as? String ?: ""
-                                val type = codeMap["type"] as? String ?: "bulanan"
+                                val type = codeMap["type"] as? String ?: "profesional"
+                                val billingCycle = codeMap["billingCycle"] as? String ?: "bulanan"
                                 val isUsed = codeMap["isUsed"] as? Boolean ?: false
                                 val usedBy = codeMap["usedBy"] as? String
                                 val usedAt = (codeMap["usedAt"] as? Number)?.toLong()
@@ -2698,21 +2753,47 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                                     verticalAlignment = Alignment.CenterVertically,
                                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                                 ) {
+                                                    // Package Capsule
                                                     Box(
                                                         modifier = Modifier
                                                             .background(
-                                                                if (type == "tahunan") Color.Green.copy(alpha = 0.2f) else OrangePrimary.copy(alpha = 0.2f),
+                                                                when(type.lowercase()) {
+                                                                    "dasar" -> Color.Cyan.copy(alpha = 0.2f)
+                                                                    "bisnis" -> Color.Magenta.copy(alpha = 0.2f)
+                                                                    else -> OrangePrimary.copy(alpha = 0.2f)
+                                                                },
                                                                 RoundedCornerShape(4.dp)
                                                             )
                                                             .padding(horizontal = 6.dp, vertical = 2.dp)
                                                     ) {
                                                         Text(
                                                             text = type.uppercase(),
-                                                            color = if (type == "tahunan") Color.Green else OrangePrimary,
+                                                            color = when(type.lowercase()) {
+                                                                "dasar" -> Color.Cyan
+                                                                "bisnis" -> Color.Magenta
+                                                                else -> OrangePrimary
+                                                            },
                                                             fontSize = 10.sp,
                                                             fontWeight = FontWeight.Bold
                                                         )
                                                     }
+                                                    // Billing Cycle Capsule
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .background(
+                                                                if (billingCycle == "tahunan") Color.Green.copy(alpha = 0.2f) else Color.Yellow.copy(alpha = 0.2f),
+                                                                RoundedCornerShape(4.dp)
+                                                            )
+                                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                                    ) {
+                                                        Text(
+                                                            text = billingCycle.uppercase(),
+                                                            color = if (billingCycle == "tahunan") Color.Green else Color.Yellow,
+                                                            fontSize = 10.sp,
+                                                            fontWeight = FontWeight.Bold
+                                                        )
+                                                    }
+                                                    // Used/Active Capsule
                                                     Box(
                                                         modifier = Modifier
                                                             .background(
