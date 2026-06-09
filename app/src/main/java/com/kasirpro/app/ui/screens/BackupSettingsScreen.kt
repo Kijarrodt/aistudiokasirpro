@@ -2118,6 +2118,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
     var selectedTab by remember { mutableStateOf(0) } // 0: Dashboard & Kinerja, 1: Kode Aktivasi (Terpisah), 2: Broadcast Notifikasi
     var targetUidInput by remember { mutableStateOf("") }
     var isSyncingCodes by remember { mutableStateOf(false) }
+    var isGenerationFormExpanded by remember { mutableStateOf(false) }
     var selectedPackage by remember { mutableStateOf("dasar") } // "dasar", "profesional", "bisnis"
     var selectedBillingCycle by remember { mutableStateOf("bulanan") } // "bulanan", "tahunan"
 
@@ -2510,378 +2511,471 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                     }
                 }
             } else if (selectedTab == 1) {
-                // KODE AKTIVASI (ACTIVATION CODES MANAGER - SEPARATED AS REQUESTED)
-                Column(
+                // KODE AKTIVASI (ACTIVATION CODES MANAGER - OPTIMIZED FOR ALL SCREEN SIZES)
+                val totalActive = codes.count { !(it["isUsed"] as? Boolean ?: false) }
+                val totalUsed = codes.count { it["isUsed"] as? Boolean ?: false }
+
+                androidx.compose.foundation.lazy.LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
                         .weight(1f)
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(
-                        text = "Generasi Kode Sekali Pakai (Khusus Pengguna)",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    OutlinedTextField(
-                        value = targetUidInput,
-                        onValueChange = { targetUidInput = it },
-                        label = { Text("ID Pengguna / UID (Wajib)", color = Color.Gray, fontSize = 12.sp) },
-                        placeholder = { Text("Masukkan atau tempel UID pengguna...", color = Color.DarkGray, fontSize = 12.sp) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = OrangePrimary,
-                            unfocusedBorderColor = Color.Gray,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        )
-                    )
-
-                    // Selection for Package
-                    Text(
-                        text = "Pilih Paket Langganan:",
-                        color = Color.LightGray,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf("dasar", "profesional", "bisnis").forEach { pkg ->
-                            val isSel = selectedPackage == pkg
+                    // Item 1: Summary Statistics (Bird's Eye View)
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
                             Card(
-                                onClick = { selectedPackage = pkg },
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (isSel) OrangePrimary else Slate800
-                                ),
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                colors = CardDefaults.cardColors(containerColor = Slate800)
                             ) {
-                                Box(
-                                    modifier = Modifier.padding(10.dp).fillMaxWidth(),
-                                    contentAlignment = Alignment.Center
+                                Column(
+                                    modifier = Modifier.padding(10.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
-                                    Text(
-                                        text = pkg.uppercase(),
-                                        color = if (isSel) Slate900 else Color.White,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
+                                    Text("Aktif (Belum Dipakai)", color = Color.Green, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text("$totalActive", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
+                                }
+                            }
+
+                            Card(
+                                modifier = Modifier.weight(1f),
+                                colors = CardDefaults.cardColors(containerColor = Slate800)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(10.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text("Terpakai (Sudah Aktif)", color = Color.Red, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text("$totalUsed", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
                                 }
                             }
                         }
                     }
 
-                    // Selection for Billing Cycle
-                    Text(
-                        text = "Pilih Siklus Tagihan:",
-                        color = Color.LightGray,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf("bulanan", "tahunan").forEach { cycle ->
-                            val isSel = selectedBillingCycle == cycle
-                            Card(
-                                onClick = { selectedBillingCycle = cycle },
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (isSel) Color.Green else Slate800
-                                ),
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Box(
-                                    modifier = Modifier.padding(10.dp).fillMaxWidth(),
-                                    contentAlignment = Alignment.Center
+                    // Item 2: Expandable Form Card to prevent layout bugs & optimize vertical space
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = Slate800),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (isGenerationFormExpanded) OrangePrimary else Color.DarkGray)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { isGenerationFormExpanded = !isGenerationFormExpanded }
+                                        .padding(vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(
-                                        text = if (cycle == "bulanan") "BULANAN (30 Hari)" else "TAHUNAN (365 Hari)",
-                                        color = if (isSel) Slate900 else Color.White,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Unified Action to create codes
-                    Button(
-                        onClick = { 
-                            if (targetUidInput.isBlank()) {
-                                Toast.makeText(context, "ID Pengguna (UID) wajib diisi!", Toast.LENGTH_SHORT).show()
-                                viewModel.showToast("ID Pengguna (UID) wajib diisi!")
-                            } else {
-                                viewModel.generateCode(
-                                    packageType = selectedPackage,
-                                    billingCycle = selectedBillingCycle,
-                                    targetUid = targetUidInput
-                                ) { success ->
-                                    if (success) {
-                                        viewModel.showToast("Sukses: Kode ${selectedPackage.uppercase()} ${selectedBillingCycle.uppercase()} berhasil dibuat!")
-                                        targetUidInput = ""
-                                    } else {
-                                        viewModel.showToast("Gagal membuat kode!")
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.VpnKey,
+                                            contentDescription = null,
+                                            tint = OrangePrimary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "Buat Kode Aktivasi Baru",
+                                            color = Color.White,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
                                     }
+                                    
+                                    Icon(
+                                        imageVector = if (isGenerationFormExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                        contentDescription = "Toggle Form",
+                                        tint = OrangePrimary
+                                    )
                                 }
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = Slate900)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Generate Kode ${selectedPackage.uppercase()} ${selectedBillingCycle.uppercase()}",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Slate900
-                        )
-                    }
 
-                    // Summary Stats Section
-                    val totalActive = codes.count { !(it["isUsed"] as? Boolean ?: false) }
-                    val totalUsed = codes.count { it["isUsed"] as? Boolean ?: false }
+                                if (isGenerationFormExpanded) {
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    HorizontalDivider(color = Color.DarkGray.copy(alpha = 0.5f))
+                                    Spacer(modifier = Modifier.height(12.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Card(
-                            modifier = Modifier.weight(1f),
-                            colors = CardDefaults.cardColors(containerColor = Slate800)
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(12.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text("Aktif (Belum Dipakai)", color = Color.Green, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text("$totalActive", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
-                            }
-                        }
+                                    OutlinedTextField(
+                                        value = targetUidInput,
+                                        onValueChange = { targetUidInput = it },
+                                        label = { Text("ID Pengguna / UID (Wajib)", color = Color.Gray, fontSize = 11.sp) },
+                                        placeholder = { Text("Masukkan atau tempel UID pengguna...", color = Color.DarkGray, fontSize = 11.sp) },
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = OrangePrimary,
+                                            unfocusedBorderColor = Color.Gray,
+                                            focusedTextColor = Color.White,
+                                            unfocusedTextColor = Color.White
+                                        )
+                                    )
 
-                        Card(
-                            modifier = Modifier.weight(1f),
-                            colors = CardDefaults.cardColors(containerColor = Slate800)
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(12.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text("Terpakai (Sudah Aktif)", color = Color.Red, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text("$totalUsed", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
-                            }
-                        }
-                    }
+                                    Spacer(modifier = Modifier.height(10.dp))
 
-                    Button(
-                        onClick = {
-                            isSyncingCodes = true
-                            viewModel.syncAllCodesToUsers { success ->
-                                isSyncingCodes = false
-                                if (success) {
-                                    viewModel.showToast("Sukses: Semua kode lama berhasil disinkronkan ke user!")
-                                } else {
-                                    viewModel.showToast("Gagal menyinkronkan kode.")
-                                }
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = Slate800),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.Gray.copy(alpha = 0.3f)),
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isSyncingCodes
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Sync,
-                            contentDescription = null,
-                            tint = OrangePrimary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (isSyncingCodes) "Menyeimbangkan Database..." else "Sinkronkan Kode ke Akun User (Atasi Error)",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                    }
-
-                    Text("Daftar Kode Aktivasi (${codes.size})", color = Color.Gray, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-
-                    if (codes.isEmpty()) {
-                        Box(modifier = Modifier.fillMaxSize().weight(1f), contentAlignment = Alignment.Center) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.VpnKey, contentDescription = null, tint = Color.DarkGray, modifier = Modifier.size(64.dp))
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Text("Belum ada kode dibuat.", color = Color.Gray, fontSize = 14.sp)
-                            }
-                        }
-                    } else {
-                        androidx.compose.foundation.lazy.LazyColumn(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            items(codes.size) { index ->
-                                val codeMap = codes[index]
-                                val codeId = codeMap["id"] as? String ?: ""
-                                val type = codeMap["type"] as? String ?: "profesional"
-                                val billingCycle = codeMap["billingCycle"] as? String ?: "bulanan"
-                                val isUsed = codeMap["isUsed"] as? Boolean ?: false
-                                val usedBy = codeMap["usedBy"] as? String
-                                val usedAt = (codeMap["usedAt"] as? Number)?.toLong()
-                                val createdAt = (codeMap["createdAt"] as? Number)?.toLong() ?: 0L
-                                
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = CardDefaults.cardColors(containerColor = Slate800)
-                                ) {
-                                    Column(modifier = Modifier.padding(14.dp)) {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Column(modifier = Modifier.weight(1f)) {
-                                                Text(
-                                                    text = codeId,
-                                                    fontWeight = FontWeight.Bold,
-                                                    fontSize = 15.sp,
-                                                    color = if (isUsed) Color.Gray else Color.White,
-                                                    style = androidx.compose.ui.text.TextStyle(
-                                                        textDecoration = if (isUsed) androidx.compose.ui.text.style.TextDecoration.LineThrough else null
-                                                    )
-                                                )
-                                                val targetUid = codeMap["targetUid"] as? String ?: ""
-                                                if (targetUid.isNotBlank()) {
-                                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "Pilih Paket Langganan:",
+                                        color = Color.LightGray,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        listOf("dasar", "profesional", "bisnis").forEach { pkg ->
+                                            val isSel = selectedPackage == pkg
+                                            Card(
+                                                onClick = { selectedPackage = pkg },
+                                                colors = CardDefaults.cardColors(
+                                                    containerColor = if (isSel) OrangePrimary else Slate900
+                                                ),
+                                                shape = RoundedCornerShape(6.dp),
+                                                modifier = Modifier.weight(1f)
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier.padding(8.dp).fillMaxWidth(),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
                                                     Text(
-                                                        text = "Target UID: $targetUid",
-                                                        color = OrangePrimary,
-                                                        fontSize = 11.sp,
+                                                        text = pkg.uppercase(),
+                                                        color = if (isSel) Slate900 else Color.White,
+                                                        fontSize = 10.sp,
                                                         fontWeight = FontWeight.Bold
                                                     )
                                                 }
-                                                Spacer(modifier = Modifier.height(4.dp))
-                                                Row(
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            }
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(10.dp))
+
+                                    Text(
+                                        text = "Pilih Siklus Tagihan:",
+                                        color = Color.LightGray,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    
+                                    Spacer(modifier = Modifier.height(6.dp))
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        listOf("bulanan", "tahunan").forEach { cycle ->
+                                            val isSel = selectedBillingCycle == cycle
+                                            Card(
+                                                onClick = { selectedBillingCycle = cycle },
+                                                colors = CardDefaults.cardColors(
+                                                    containerColor = if (isSel) Color.Green else Slate900
+                                                ),
+                                                shape = RoundedCornerShape(6.dp),
+                                                modifier = Modifier.weight(1f)
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier.padding(8.dp).fillMaxWidth(),
+                                                    contentAlignment = Alignment.Center
                                                 ) {
-                                                    // Package Capsule
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .background(
-                                                                when(type.lowercase()) {
-                                                                    "dasar" -> Color.Cyan.copy(alpha = 0.2f)
-                                                                    "bisnis" -> Color.Magenta.copy(alpha = 0.2f)
-                                                                    else -> OrangePrimary.copy(alpha = 0.2f)
-                                                                },
-                                                                RoundedCornerShape(4.dp)
-                                                            )
-                                                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                                                    ) {
-                                                        Text(
-                                                            text = type.uppercase(),
-                                                            color = when(type.lowercase()) {
-                                                                "dasar" -> Color.Cyan
-                                                                "bisnis" -> Color.Magenta
-                                                                else -> OrangePrimary
-                                                            },
-                                                            fontSize = 10.sp,
-                                                            fontWeight = FontWeight.Bold
-                                                        )
-                                                    }
-                                                    // Billing Cycle Capsule
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .background(
-                                                                if (billingCycle == "tahunan") Color.Green.copy(alpha = 0.2f) else Color.Yellow.copy(alpha = 0.2f),
-                                                                RoundedCornerShape(4.dp)
-                                                            )
-                                                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                                                    ) {
-                                                        Text(
-                                                            text = billingCycle.uppercase(),
-                                                            color = if (billingCycle == "tahunan") Color.Green else Color.Yellow,
-                                                            fontSize = 10.sp,
-                                                            fontWeight = FontWeight.Bold
-                                                        )
-                                                    }
-                                                    // Used/Active Capsule
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .background(
-                                                                if (isUsed) Color.Red.copy(alpha = 0.2f) else Color.Green.copy(alpha = 0.2f),
-                                                                RoundedCornerShape(4.dp)
-                                                            )
-                                                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                                                    ) {
-                                                        Text(
-                                                            text = if (isUsed) "TERPAKAI" else "AKTIF",
-                                                            color = if (isUsed) Color.Red else Color.Green,
-                                                            fontSize = 10.sp,
-                                                            fontWeight = FontWeight.Bold
-                                                        )
-                                                    }
                                                     Text(
-                                                        text = "Dibuat: ${android.text.format.DateFormat.format("dd/MM", createdAt)}",
-                                                        color = Color.Gray,
-                                                        fontSize = 11.sp
+                                                        text = if (cycle == "bulanan") "BULANAN (30 h)" else "TAHUNAN (365 h)",
+                                                        color = if (isSel) Slate900 else Color.White,
+                                                        fontSize = 10.sp,
+                                                        fontWeight = FontWeight.Bold
                                                     )
                                                 }
                                             }
+                                        }
+                                    }
 
-                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                                // Copy Button
-                                                IconButton(
-                                                    onClick = {
-                                                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(codeId))
-                                                        Toast.makeText(context, "Kode disalin: $codeId", Toast.LENGTH_SHORT).show()
-                                                        viewModel.showToast("Salin: Kode $codeId berhasil disalin")
+                                    Spacer(modifier = Modifier.height(14.dp))
+
+                                    Button(
+                                        onClick = { 
+                                            if (targetUidInput.isBlank()) {
+                                                Toast.makeText(context, "ID Pengguna (UID) wajib diisi!", Toast.LENGTH_SHORT).show()
+                                                viewModel.showToast("ID Pengguna (UID) wajib diisi!")
+                                            } else {
+                                                viewModel.generateCode(
+                                                    packageType = selectedPackage,
+                                                    billingCycle = selectedBillingCycle,
+                                                    targetUid = targetUidInput
+                                                ) { success ->
+                                                    if (success) {
+                                                        viewModel.showToast("Sukses: Kode ${selectedPackage.uppercase()} ${selectedBillingCycle.uppercase()} berhasil dibuat!")
+                                                        targetUidInput = ""
+                                                        isGenerationFormExpanded = false
+                                                    } else {
+                                                        viewModel.showToast("Gagal membuat kode!")
                                                     }
+                                                }
+                                            }
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp), tint = Slate900)
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "Generate Kode Aktivasi",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = Slate900
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Item 3: Direct troubleshooting link or Database Re-alignment Trigger
+                    item {
+                        Button(
+                            onClick = {
+                                isSyncingCodes = true
+                                viewModel.syncAllCodesToUsers { success ->
+                                    isSyncingCodes = false
+                                    if (success) {
+                                        viewModel.showToast("Sukses: Semua kode lama berhasil disinkronkan ke user!")
+                                    } else {
+                                        viewModel.showToast("Gagal menyinkronkan kode.")
+                                    }
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Slate800),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color.Gray.copy(alpha = 0.3f)),
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !isSyncingCodes
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Sync,
+                                contentDescription = null,
+                                tint = OrangePrimary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (isSyncingCodes) "Menyeimbangkan Database..." else "Sinkronkan Kode ke Akun User",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                    }
+
+                    // Item 4: Header Title for Codes List
+                    item {
+                        Text(
+                            text = "Daftar Kode Aktivasi (${codes.size})",
+                            color = OrangePrimary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    if (codes.isEmpty()) {
+                        item {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 16.dp),
+                                colors = CardDefaults.cardColors(containerColor = Slate800.copy(alpha = 0.5f))
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .padding(24.dp)
+                                        .fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.VpnKey,
+                                        contentDescription = null,
+                                        tint = Color.DarkGray,
+                                        modifier = Modifier.size(48.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    Text(
+                                        text = "Belum ada kode dibuat.",
+                                        color = Color.Gray,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        items(codes.size) { index ->
+                            val codeMap = codes[index]
+                            val codeId = codeMap["id"] as? String ?: ""
+                            val type = codeMap["type"] as? String ?: "profesional"
+                            val billingCycle = codeMap["billingCycle"] as? String ?: "bulanan"
+                            val isUsed = codeMap["isUsed"] as? Boolean ?: false
+                            val usedBy = codeMap["usedBy"] as? String
+                            val usedAt = (codeMap["usedAt"] as? Number)?.toLong()
+                            val createdAt = (codeMap["createdAt"] as? Number)?.toLong() ?: 0L
+                            
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = Slate800)
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = codeId,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 14.sp,
+                                                color = if (isUsed) Color.Gray else Color.White,
+                                                style = androidx.compose.ui.text.TextStyle(
+                                                    textDecoration = if (isUsed) androidx.compose.ui.text.style.TextDecoration.LineThrough else null
+                                                )
+                                            )
+                                            val targetUid = codeMap["targetUid"] as? String ?: ""
+                                            if (targetUid.isNotBlank()) {
+                                                Spacer(modifier = Modifier.height(2.dp))
+                                                Text(
+                                                    text = "Target UID: $targetUid",
+                                                    color = OrangePrimary,
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                // Package Capsule
+                                                Box(
+                                                    modifier = Modifier
+                                                        .background(
+                                                            when(type.lowercase()) {
+                                                                "dasar" -> Color.Cyan.copy(alpha = 0.2f)
+                                                                "bisnis" -> Color.Magenta.copy(alpha = 0.2f)
+                                                                else -> OrangePrimary.copy(alpha = 0.2f)
+                                                            },
+                                                            RoundedCornerShape(4.dp)
+                                                        )
+                                                        .padding(horizontal = 6.dp, vertical = 2.dp)
                                                 ) {
-                                                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = Color.LightGray)
+                                                    Text(
+                                                        text = type.uppercase(),
+                                                        color = when(type.lowercase()) {
+                                                            "dasar" -> Color.Cyan
+                                                            "bisnis" -> Color.Magenta
+                                                            else -> OrangePrimary
+                                                        },
+                                                        fontSize = 9.sp,
+                                                        fontWeight = FontWeight.Bold
+                                                    )
                                                 }
-
-                                                // Delete Button (only if not used yet)
-                                                if (!isUsed) {
-                                                    IconButton(
-                                                        onClick = {
-                                                            viewModel.deleteCode(codeId)
-                                                            Toast.makeText(context, "Kode dihapus!", Toast.LENGTH_SHORT).show()
-                                                            viewModel.showToast("Hapus: Kode $codeId berhasil dihapus")
-                                                        }
-                                                    ) {
-                                                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
-                                                    }
+                                                // Billing Cycle Capsule
+                                                Box(
+                                                    modifier = Modifier
+                                                        .background(
+                                                            if (billingCycle == "tahunan") Color.Green.copy(alpha = 0.2f) else Color.Yellow.copy(alpha = 0.2f),
+                                                            RoundedCornerShape(4.dp)
+                                                        )
+                                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                                ) {
+                                                    Text(
+                                                        text = billingCycle.uppercase(),
+                                                        color = if (billingCycle == "tahunan") Color.Green else Color.Yellow,
+                                                        fontSize = 9.sp,
+                                                        fontWeight = FontWeight.Bold
+                                                    )
                                                 }
+                                                // Used/Active Capsule
+                                                Box(
+                                                    modifier = Modifier
+                                                        .background(
+                                                            if (isUsed) Color.Red.copy(alpha = 0.2f) else Color.Green.copy(alpha = 0.2f),
+                                                            RoundedCornerShape(4.dp)
+                                                        )
+                                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                                ) {
+                                                    Text(
+                                                        text = if (isUsed) "TERPAKAI" else "AKTIF",
+                                                        color = if (isUsed) Color.Red else Color.Green,
+                                                        fontSize = 9.sp,
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                }
+                                                Text(
+                                                    text = "Dibuat: ${android.text.format.DateFormat.format("dd/MM", createdAt)}",
+                                                    color = Color.Gray,
+                                                    fontSize = 10.sp
+                                                )
                                             }
                                         }
 
-                                        if (isUsed) {
-                                            Spacer(modifier = Modifier.height(10.dp))
-                                            HorizontalDivider(color = Color.DarkGray)
-                                            Spacer(modifier = Modifier.height(6.dp))
-                                            Text(
-                                                text = "Digunakan oleh: ${usedBy?.take(8) ?: "Unknown"}",
-                                                color = Color.LightGray,
-                                                fontSize = 11.sp
-                                            )
-                                            if (usedAt != null) {
-                                                Text(
-                                                    text = "Pada tanggal: ${android.text.format.DateFormat.format("dd MMM yyyy HH:mm", usedAt)}",
-                                                    color = Color.Gray,
-                                                    fontSize = 11.sp
+                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            // Copy Button
+                                            IconButton(
+                                                modifier = Modifier.size(36.dp),
+                                                onClick = {
+                                                    clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(codeId))
+                                                    Toast.makeText(context, "Kode disalin: $codeId", Toast.LENGTH_SHORT).show()
+                                                    viewModel.showToast("Salin: Kode $codeId berhasil disalin")
+                                                }
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.ContentCopy,
+                                                    contentDescription = "Copy",
+                                                    tint = Color.LightGray,
+                                                    modifier = Modifier.size(16.dp)
                                                 )
                                             }
+
+                                            // Delete Button (only if not used yet)
+                                            if (!isUsed) {
+                                                IconButton(
+                                                    modifier = Modifier.size(36.dp),
+                                                    onClick = {
+                                                        viewModel.deleteCode(codeId)
+                                                        Toast.makeText(context, "Kode dihapus!", Toast.LENGTH_SHORT).show()
+                                                        viewModel.showToast("Hapus: Kode $codeId berhasil dihapus")
+                                                    }
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Delete,
+                                                        contentDescription = "Delete",
+                                                        tint = Color.Red,
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if (isUsed) {
+                                        Spacer(modifier = Modifier.height(10.dp))
+                                        HorizontalDivider(color = Color.DarkGray)
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Text(
+                                            text = "Digunakan oleh: ${usedBy?.take(8) ?: "Unknown"}",
+                                            color = Color.LightGray,
+                                            fontSize = 10.sp
+                                        )
+                                        if (usedAt != null) {
+                                            Text(
+                                                text = "Pada tanggal: ${android.text.format.DateFormat.format("dd MMM yyyy HH:mm", usedAt)}",
+                                                color = Color.Gray,
+                                                fontSize = 10.sp
+                                            )
                                         }
                                     }
                                 }
