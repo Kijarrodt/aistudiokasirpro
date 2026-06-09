@@ -497,6 +497,27 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                 var localExpenseNominal by remember { mutableStateOf("") }
                 var localExpenseKet by remember { mutableStateOf("") }
 
+                // Collect local offline expenses
+                val localExpensesList by viewModel.localExpensesList.collectAsState()
+
+                // Merge remote and local expenses dynamically
+                val mergedExpenses = remember(expensesState.value, localExpensesList) {
+                    val mergedList = mutableListOf<LocalExpenseItem>()
+                    // Add firestore expenses
+                    mergedList.addAll(expensesState.value)
+                    // Add local expenses if not already in the list
+                    localExpensesList.forEach { exp ->
+                        val id = exp["id"] as? String ?: ""
+                        if (mergedList.none { it.id == id }) {
+                            val amt = exp["amount"] as? Double ?: 0.0
+                            val date = exp["createdAt"] as? Long ?: System.currentTimeMillis()
+                            val ket = exp["keterangan"] as? String ?: ""
+                            mergedList.add(LocalExpenseItem(id, amt, date, ket))
+                        }
+                    }
+                    mergedList.sortedByDescending { it.createdAt }
+                }
+
                 // Dialog states for receipt and supervisor validation code
                 var selectedTxForReceipt by remember { mutableStateOf<TransactionEntity?>(null) }
                 var showCorrectionAuthDialog by remember { mutableStateOf(false) }
@@ -534,9 +555,9 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                     }
                 }
 
-                val activeShiftExpenses = remember(activeShiftState, expensesState.value) {
+                val activeShiftExpenses = remember(activeShiftState, mergedExpenses) {
                     if (activeShiftState != null) {
-                        expensesState.value.filter { exp ->
+                        mergedExpenses.filter { exp ->
                             exp.createdAt >= activeShiftState!!.startTime
                         }
                     } else {
@@ -2083,7 +2104,10 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
 
     // State collections
     val codes by viewModel.activationCodes.collectAsState()
-    val usersList by viewModel.allFirestoreUsers.collectAsState()
+    val rawUsersList by viewModel.allFirestoreUsers.collectAsState()
+    val usersList = remember(rawUsersList) {
+        rawUsersList.filter { it.role.equals("owner", ignoreCase = true) }
+    }
     val isLoadingUsers by viewModel.isLoadingFirestoreUsers.collectAsState()
 
     // Refresh users on enter

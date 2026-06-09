@@ -100,6 +100,21 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
     // Cashier Session Shift definitions
     val activeShift = MutableStateFlow<ShiftReport?>(null)
     val allShifts = MutableStateFlow<List<ShiftReport>>(emptyList())
+    val localExpensesList = MutableStateFlow<List<Map<String, Any?>>>(emptyList())
+
+    fun refreshLocalExpenses(ownerId: String? = null) {
+        viewModelScope.launch {
+            val user = currentUser.value ?: repository.getCurrentUserRaw()
+            val oId = ownerId ?: if (user != null) {
+                if (user.role == "kasir" || user.role == "kasir_invited") user.ownerId ?: user.uid else user.uid
+            } else {
+                com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: "owner-uid"
+            }
+            if (!oId.isNullOrBlank()) {
+                localExpensesList.value = repository.getLocalExpenses(oId)
+            }
+        }
+    }
 
     // Navigation and Pop-Up dialog states
     val activeScreen = MutableStateFlow("splash") // splash, onboarding, login, register, forgot_password, setup_toko, home, cashier, manage, settings, premium_pricing
@@ -217,6 +232,9 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             currentUser.collect { user ->
                 if (user != null) {
+                    val uid = user.uid
+                    val ownerId = if (user.role == "kasir" || user.role == "kasir_invited") user.ownerId ?: uid else uid
+                    refreshLocalExpenses(ownerId)
                     if (user.role == "kasir") {
                         loadActiveShift()
                     } else if (user.role == "owner") {
@@ -225,6 +243,7 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
                 } else {
                     activeShift.value = null
                     allShifts.value = emptyList()
+                    localExpensesList.value = emptyList()
                 }
             }
         }
@@ -764,11 +783,17 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
 
                 val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
                 val idVal = java.util.UUID.randomUUID().toString()
+                val timestamp = System.currentTimeMillis()
+
+                // Save locally first for robust offline support and to ensure it displays everywhere immediately
+                repository.saveLocalExpense(idVal, ownerId, amount, keterangan, timestamp)
+                refreshLocalExpenses(ownerId)
+
                 val exp = hashMapOf(
                     "ownerId" to ownerId,
                     "amount" to amount,
                     "keterangan" to keterangan,
-                    "createdAt" to System.currentTimeMillis()
+                    "createdAt" to timestamp
                 )
 
                 // Call set() which saves to the local cache immediately, ensuring the offline UI gets updated.

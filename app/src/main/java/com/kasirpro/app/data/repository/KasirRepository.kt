@@ -255,6 +255,57 @@ class KasirRepository(private val context: Context) {
         }
     }
 
+    fun getLocalExpenses(ownerId: String): List<Map<String, Any?>> {
+        val jsonStr = prefs.getString("local_expenses_$ownerId", "[]") ?: "[]"
+        return try {
+            val arr = org.json.JSONArray(jsonStr)
+            val list = mutableListOf<Map<String, Any?>>()
+            for (i in 0 until arr.length()) {
+                val obj = arr.getJSONObject(i)
+                val map = mutableMapOf<String, Any?>()
+                map["id"] = obj.optString("id")
+                map["ownerId"] = obj.optString("ownerId")
+                map["amount"] = obj.optDouble("amount")
+                map["keterangan"] = obj.optString("keterangan")
+                map["createdAt"] = obj.optLong("createdAt")
+                list.add(map)
+            }
+            list
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    fun saveLocalExpense(id: String, ownerId: String, amount: Double, keterangan: String, createdAt: Long) {
+        try {
+            val list = getLocalExpenses(ownerId).toMutableList()
+            if (list.none { it["id"] == id }) {
+                val map = mapOf(
+                    "id" to id,
+                    "ownerId" to ownerId,
+                    "amount" to amount,
+                    "keterangan" to keterangan,
+                    "createdAt" to createdAt
+                )
+                list.add(map)
+                
+                val arr = org.json.JSONArray()
+                for (item in list) {
+                    val obj = org.json.JSONObject()
+                    obj.put("id", item["id"])
+                    obj.put("ownerId", item["ownerId"])
+                    obj.put("amount", item["amount"])
+                    obj.put("keterangan", item["keterangan"])
+                    obj.put("createdAt", item["createdAt"])
+                    arr.put(obj)
+                }
+                prefs.edit().putString("local_expenses_$ownerId", arr.toString()).apply()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     fun setLoggedInDeviceUser(uid: String?) {
         prefs.edit().putString("logged_in_uid", uid).apply()
         _loggedInUid.value = uid

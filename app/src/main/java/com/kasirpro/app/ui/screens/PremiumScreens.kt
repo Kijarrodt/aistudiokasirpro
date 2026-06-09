@@ -204,6 +204,26 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
     val expensesState = remember { mutableStateOf<List<ExpenseItem>>(emptyList()) }
     val shiftsState = remember { mutableStateOf<List<ShiftReport>>(emptyList()) }
 
+    // Collect local offline expenses
+    val localExpensesList by viewModel.localExpensesList.collectAsState()
+
+    // Merge remote and local expenses dynamically
+    val mergedExpenses = remember(expensesState.value, localExpensesList) {
+        val mergedList = mutableListOf<ExpenseItem>()
+        // Add firestore expenses
+        mergedList.addAll(expensesState.value)
+        // Add local expenses if not already in the list
+        localExpensesList.forEach { exp ->
+            val id = exp["id"] as? String ?: ""
+            if (mergedList.none { it.id == id }) {
+                val amt = exp["amount"] as? Double ?: 0.0
+                val date = exp["createdAt"] as? Long ?: System.currentTimeMillis()
+                mergedList.add(ExpenseItem(id, amt, date))
+            }
+        }
+        mergedList.sortedByDescending { it.createdAt }
+    }
+
     DisposableEffect(ownerId) {
         if (ownerId.isNullOrBlank()) return@DisposableEffect onDispose {}
         
@@ -323,7 +343,7 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
     val calculatedNetProfit = finalIncome - calculatedCapital
 
     // Filter historical expenses based on interval
-    val filteredExpenses = expensesState.value.filter { exp ->
+    val filteredExpenses = mergedExpenses.filter { exp ->
         when (reportInterval) {
             "HARIAN" -> exp.createdAt >= todayStart
             "MINGGUAN" -> exp.createdAt >= sevenDaysAgoStart
