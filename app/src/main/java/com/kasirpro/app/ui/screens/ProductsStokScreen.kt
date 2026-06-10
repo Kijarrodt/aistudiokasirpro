@@ -1363,18 +1363,62 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
 
                     // Progress Loader Screen
                     if (isUploading) {
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            LinearProgressIndicator(
-                                progress = uploadProgress,
-                                color = OrangePrimary,
-                                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp))
-                            )
-                            Text(uploadStatusText, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OrangePrimary)
+                        androidx.compose.ui.window.Dialog(onDismissRequest = {}) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    CircularProgressIndicator(
+                                        color = OrangePrimary,
+                                        strokeWidth = 4.dp,
+                                        modifier = Modifier.size(52.dp)
+                                    )
+                                    
+                                    Text(
+                                        text = "Mengunggah Produk Massal",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    
+                                    LinearProgressIndicator(
+                                        progress = uploadProgress,
+                                        color = OrangePrimary,
+                                        trackColor = OrangeLight,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(8.dp)
+                                            .clip(RoundedCornerShape(4.dp))
+                                    )
+                                    
+                                    Text(
+                                        text = "${(uploadProgress * 100).toInt()}% Selesai",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = OrangePrimary
+                                    )
+
+                                    Text(
+                                        text = uploadStatusText,
+                                        fontSize = 11.sp,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                        color = Color.Gray,
+                                        maxLines = 2,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
                         }
                     }
                 }

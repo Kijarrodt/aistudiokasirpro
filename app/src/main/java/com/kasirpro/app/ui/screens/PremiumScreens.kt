@@ -1171,6 +1171,34 @@ fun PremiumHutangTab(viewModel: KasirViewModel) {
 }
 
 // ==== 3. PELANGGAN CRM ====
+data class RewardItem(
+    val id: String = "",
+    val name: String = "",
+    val pointsCost: Int = 0,
+    val financialCost: Double = 0.0,
+    val ownerId: String = ""
+) {
+    fun toMap(): Map<String, Any?> = mapOf(
+        "id" to id,
+        "name" to name,
+        "pointsCost" to pointsCost,
+        "financialCost" to financialCost,
+        "ownerId" to ownerId
+    )
+
+    companion object {
+        fun fromMap(map: Map<String, Any?>): RewardItem {
+            return RewardItem(
+                id = map["id"] as? String ?: "",
+                name = map["name"] as? String ?: "",
+                pointsCost = (map["pointsCost"] as? Number)?.toInt() ?: 0,
+                financialCost = (map["financialCost"] as? Number)?.toDouble() ?: 0.0,
+                ownerId = map["ownerId"] as? String ?: ""
+            )
+        }
+    }
+}
+
 @Composable
 fun PremiumPelangganTab(viewModel: KasirViewModel) {
     val customersList by viewModel.customers.collectAsState()
@@ -1179,9 +1207,37 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
     val context = LocalContext.current
     val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
 
+    val user by viewModel.currentUser.collectAsState()
+    val ownerId = remember(user) {
+        if (user?.role == "kasir" || user?.role == "kasir_invited") user?.ownerId else user?.uid
+    }
+
     var showConfigLoyalty by remember { mutableStateOf(false) }
+    var showConfigRewards by remember { mutableStateOf(false) }
+    var showAddRewardDialog by remember { mutableStateOf(false) }
+    var editRewardTarget by remember { mutableStateOf<RewardItem?>(null) }
+
     var earnRateInput by remember { mutableStateOf(viewModel.getPointEarnRate().toInt().toString()) }
     var redeemRateInput by remember { mutableStateOf(viewModel.getPointRedeemRate().toInt().toString()) }
+
+    val localRewardsMapList by viewModel.localRewardsList.collectAsState()
+    val rewardsState = remember(localRewardsMapList) {
+        localRewardsMapList.map { map ->
+            RewardItem(
+                id = map["id"] as? String ?: "",
+                name = map["name"] as? String ?: "",
+                pointsCost = (map["pointsCost"] as? Number)?.toInt() ?: 0,
+                financialCost = (map["financialCost"] as? Number)?.toDouble() ?: 0.0,
+                ownerId = map["ownerId"] as? String ?: ""
+            )
+        }
+    }
+
+    LaunchedEffect(ownerId) {
+        if (!ownerId.isNullOrBlank()) {
+            viewModel.refreshLocalRewards(ownerId)
+        }
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -1266,6 +1322,94 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
             }
         }
 
+        // Katalog Hadiah configuration panel
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable { showConfigRewards = !showConfigRewards },
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(imageVector = Icons.Default.CardGiftcard, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Katalog Hadiah Loyalty (Tukar Hadiah)", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                        Icon(
+                            imageVector = if (showConfigRewards) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    if (showConfigRewards) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Katalog Hadiah untuk Ditukar Poin:", fontSize = 11.sp, color = Color.Gray)
+                            TextButton(
+                                onClick = { showAddRewardDialog = true },
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                modifier = Modifier.height(26.dp)
+                            ) {
+                                Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp), tint = OrangePrimary)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Tambah Hadiah", fontSize = 11.sp, color = OrangePrimary)
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        val currentRewards = rewardsState
+                        if (currentRewards.isEmpty()) {
+                            Text("Memuat daftar hadiah...", fontSize = 11.sp, modifier = Modifier.padding(vertical = 8.dp), color = Color.Gray)
+                        } else {
+                            currentRewards.forEach { reward ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp)
+                                        .border(0.5.dp, Color.Gray.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+                                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(reward.name, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                        Text("${reward.pointsCost} Poin • Biaya: Rp${reward.financialCost.toInt()}", fontSize = 10.sp, color = Color.Gray)
+                                    }
+                                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        IconButton(
+                                            onClick = { editRewardTarget = reward },
+                                            modifier = Modifier.size(24.dp)
+                                        ) {
+                                            Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit", tint = OrangePrimary, modifier = Modifier.size(14.dp))
+                                        }
+                                        IconButton(
+                                            onClick = {
+                                                if (!ownerId.isNullOrBlank()) {
+                                                    viewModel.deleteLocalReward(reward.id, ownerId)
+                                                    Toast.makeText(context, "Hadiah berhasil dihapus!", Toast.LENGTH_SHORT).show()
+                                                }
+                                            },
+                                            modifier = Modifier.size(24.dp)
+                                        ) {
+                                            Icon(imageVector = Icons.Default.Delete, contentDescription = "Hapus", tint = Color.Red, modifier = Modifier.size(14.dp))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         if (customersList.isEmpty()) {
             item {
                 Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
@@ -1275,8 +1419,8 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
         } else {
             items(customersList) { c ->
                 Card(
-                    modifier = Modifier.fillMaxWidth().clickable { selectedCustForDetail = c },
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                     modifier = Modifier.fillMaxWidth().clickable { selectedCustForDetail = c },
+                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Row(
                         modifier = Modifier
@@ -1333,6 +1477,127 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
                     colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
                 ) {
                     Text("Daftar")
+                }
+            }
+        )
+    }
+
+    if (showAddRewardDialog) {
+        var rName by remember { mutableStateOf("") }
+        var rPoints by remember { mutableStateOf("") }
+        var rFinCost by remember { mutableStateOf("") }
+
+        AlertDialog(
+            onDismissRequest = { showAddRewardDialog = false },
+            title = { Text("Tambah Hadiah Baru") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = rName,
+                        onValueChange = { rName = it },
+                        label = { Text("Nama Hadiah (misal: Mug Cantik)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = rPoints,
+                        onValueChange = { rPoints = it },
+                        label = { Text("Biaya Poin (misal: 100)") },
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = rFinCost,
+                        onValueChange = { rFinCost = it },
+                        label = { Text("Biaya Hadiah untuk Pembukuan (Rp)") },
+                        placeholder = { Text("Nilai/harga modal hadiah") },
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val points = rPoints.toIntOrNull() ?: 0
+                        val cost = rFinCost.toDoubleOrNull() ?: 0.0
+                        if (rName.isNotBlank() && points > 0 && !ownerId.isNullOrBlank()) {
+                            val newId = java.util.UUID.randomUUID().toString()
+                            val newReward = RewardItem(newId, rName, points, cost, ownerId)
+                            viewModel.saveLocalReward(newReward.toMap(), ownerId)
+                            Toast.makeText(context, "Hadiah berhasil ditambahkan!", Toast.LENGTH_SHORT).show()
+                            showAddRewardDialog = false
+                        } else {
+                            Toast.makeText(context, "Kolom tidak valid!", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+                ) {
+                    Text("Tambah")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddRewardDialog = false }) {
+                    Text("Batal", color = Color.Gray)
+                }
+            }
+        )
+    }
+
+    if (editRewardTarget != null) {
+        val target = editRewardTarget!!
+        var rName by remember(target) { mutableStateOf(target.name) }
+        var rPoints by remember(target) { mutableStateOf(target.pointsCost.toString()) }
+        var rFinCost by remember(target) { mutableStateOf(target.financialCost.toInt().toString()) }
+
+        AlertDialog(
+            onDismissRequest = { editRewardTarget = null },
+            title = { Text("Edit Hadiah") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = rName,
+                        onValueChange = { rName = it },
+                        label = { Text("Nama Hadiah") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = rPoints,
+                        onValueChange = { rPoints = it },
+                        label = { Text("Biaya Poin") },
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = rFinCost,
+                        onValueChange = { rFinCost = it },
+                        label = { Text("Biaya Hadiah untuk Pembukuan (Rp)") },
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val points = rPoints.toIntOrNull() ?: 0
+                        val cost = rFinCost.toDoubleOrNull() ?: 0.0
+                        if (rName.isNotBlank() && points > 0 && !ownerId.isNullOrBlank()) {
+                            val updated = target.copy(name = rName, pointsCost = points, financialCost = cost)
+                            viewModel.saveLocalReward(updated.toMap(), ownerId)
+                            Toast.makeText(context, "Hadiah berhasil diperbarui!", Toast.LENGTH_SHORT).show()
+                            editRewardTarget = null
+                        } else {
+                            Toast.makeText(context, "Kolom tidak valid!", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+                ) {
+                    Text("Simpan")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { editRewardTarget = null }) {
+                    Text("Batal", color = Color.Gray)
                 }
             }
         )
@@ -1456,45 +1721,53 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("Pilih Hadiah Poin Pelanggan:", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color.Gray)
                             
-                            val rewards = listOf(
-                                Pair("Voucher Diskon Rp5.000", 50),
-                                Pair("Gantungan Kunci Cantik", 100),
-                                Pair("Buku Saku KasirPro", 150),
-                                Pair("Kaos Polo Eksklusif", 350)
-                            )
+                            val rewards = rewardsState
+                            if (rewards.isEmpty()) {
+                                Text("Tidak ada hadiah tersedia di katalog.", fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(8.dp))
+                            } else {
+                                rewards.forEach { reward ->
+                                    val cost = reward.pointsCost
+                                    val gift = reward.name
+                                    val finCost = reward.financialCost
+                                    val listColor = if (cust.totalPoin >= cost) OrangePrimary else Color.Gray
 
-                            rewards.forEach { (gift, cost) ->
-                                val listColor = if (cust.totalPoin >= cost) OrangePrimary else Color.Gray
-
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .border(1.dp, listColor.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-                                        .padding(8.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column {
-                                        Text(gift, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                        Text("Butuh $cost Poin", fontSize = 11.sp, color = listColor)
-                                    }
-                                    Button(
-                                        onClick = {
-                                            if (cust.totalPoin >= cost) {
-                                                val updated = cust.copy(totalPoin = cust.totalPoin - cost)
-                                                viewModel.updateCustomer(updated)
-                                                selectedCustForDetail = updated
-                                                Toast.makeText(context, "Hadiah '$gift' berhasil ditukarkan! $cost Poin dikurangi.", Toast.LENGTH_LONG).show()
-                                            } else {
-                                                Toast.makeText(context, "Poin tidak cukup!", Toast.LENGTH_SHORT).show()
-                                            }
-                                        },
-                                        enabled = (cust.totalPoin >= cost),
-                                        colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
-                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                                        modifier = Modifier.height(28.dp)
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .border(1.dp, listColor.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                                            .padding(8.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Text("Tukar", fontSize = 10.sp)
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(gift, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                            Text("Butuh $cost Poin" + if (finCost > 0) " • Biaya Toko: Rp${finCost.toInt()}" else "", fontSize = 11.sp, color = listColor)
+                                        }
+                                        Button(
+                                            onClick = {
+                                                if (cust.totalPoin >= cost) {
+                                                    val updated = cust.copy(totalPoin = cust.totalPoin - cost)
+                                                    viewModel.updateCustomer(updated)
+                                                    selectedCustForDetail = updated
+                                                    
+                                                    // Integrate into pembukuan/keuangan as expense
+                                                    if (finCost > 0) {
+                                                        viewModel.recordExpense(finCost, "Tukar Hadiah: $gift (Pelanggan: ${cust.nama})") { _, _ -> }
+                                                        Toast.makeText(context, "Hadiah '$gift' berhasil ditukarkan! $cost Poin dikurangi dan Biaya Rp${finCost.toInt()} dicatat di Pengeluaran.", Toast.LENGTH_LONG).show()
+                                                    } else {
+                                                        Toast.makeText(context, "Hadiah '$gift' berhasil ditukarkan! $cost Poin dikurangi.", Toast.LENGTH_LONG).show()
+                                                    }
+                                                } else {
+                                                    Toast.makeText(context, "Poin tidak cukup!", Toast.LENGTH_SHORT).show()
+                                                }
+                                            },
+                                            enabled = (cust.totalPoin >= cost),
+                                            colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                            modifier = Modifier.height(28.dp)
+                                        ) {
+                                            Text("Tukar", fontSize = 10.sp)
+                                        }
                                     }
                                 }
                             }

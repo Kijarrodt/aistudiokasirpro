@@ -671,6 +671,139 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // ==== REWARDS LOYALTY (OFFLINE-FIRST WITH FIRESTORE SYNC) ====
+    val localRewardsList = kotlinx.coroutines.flow.MutableStateFlow<List<Map<String, Any?>>>(emptyList())
+
+    fun refreshLocalRewards(ownerId: String) {
+        if (ownerId.isBlank()) return
+        viewModelScope.launch {
+            try {
+                val jsonStr = prefs.getString("local_rewards_$ownerId", "[]") ?: "[]"
+                var arr = org.json.JSONArray(jsonStr)
+                if (arr.length() == 0) {
+                    // Populate defaults
+                    val defaultRewards = listOf(
+                        mapOf("id" to java.util.UUID.randomUUID().toString(), "name" to "Voucher Diskon Rp5.000", "pointsCost" to 50, "financialCost" to 5000.0, "ownerId" to ownerId),
+                        mapOf("id" to java.util.UUID.randomUUID().toString(), "name" to "Gantungan Kunci Cantik", "pointsCost" to 100, "financialCost" to 15000.0, "ownerId" to ownerId),
+                        mapOf("id" to java.util.UUID.randomUUID().toString(), "name" to "Buku Saku KasirPro", "pointsCost" to 150, "financialCost" to 25000.0, "ownerId" to ownerId),
+                        mapOf("id" to java.util.UUID.randomUUID().toString(), "name" to "Kaos Polo Eksklusif", "pointsCost" to 350, "financialCost" to 75000.0, "ownerId" to ownerId)
+                    )
+                    arr = org.json.JSONArray()
+                    for (reward in defaultRewards) {
+                        val obj = org.json.JSONObject()
+                        obj.put("id", reward["id"])
+                        obj.put("name", reward["name"])
+                        obj.put("pointsCost", reward["pointsCost"])
+                        obj.put("financialCost", reward["financialCost"])
+                        obj.put("ownerId", reward["ownerId"])
+                        arr.put(obj)
+                    }
+                    prefs.edit().putString("local_rewards_$ownerId", arr.toString()).apply()
+                    // Try saving default rewards to firestore asynchronously
+                    val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                    for (reward in defaultRewards) {
+                        val id = reward["id"] as String
+                        db.collection("rewards").document(id).set(reward)
+                    }
+                }
+                
+                val list = mutableListOf<Map<String, Any?>>()
+                for (i in 0 until arr.length()) {
+                    val obj = arr.getJSONObject(i)
+                    list.add(mapOf(
+                        "id" to obj.optString("id", ""),
+                        "name" to obj.optString("name", ""),
+                        "pointsCost" to obj.optInt("pointsCost", 0),
+                        "financialCost" to obj.optDouble("financialCost", 0.0),
+                        "ownerId" to obj.optString("ownerId", "")
+                    ))
+                }
+                localRewardsList.value = list.sortedBy { (it["pointsCost"] as? Number)?.toInt() ?: 0 }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun saveLocalReward(reward: Map<String, Any?>, ownerId: String) {
+        if (ownerId.isBlank()) return
+        viewModelScope.launch {
+            try {
+                val jsonStr = prefs.getString("local_rewards_$ownerId", "[]") ?: "[]"
+                val arr = org.json.JSONArray(jsonStr)
+                val newArr = org.json.JSONArray()
+                
+                val rewardId = reward["id"] as? String ?: java.util.UUID.randomUUID().toString()
+                var updated = false
+                
+                for (i in 0 until arr.length()) {
+                    val obj = arr.getJSONObject(i)
+                    if (obj.optString("id") == rewardId) {
+                        val newObj = org.json.JSONObject()
+                        newObj.put("id", rewardId)
+                        newObj.put("name", reward["name"])
+                        newObj.put("pointsCost", reward["pointsCost"])
+                        newObj.put("financialCost", reward["financialCost"])
+                        newObj.put("ownerId", ownerId)
+                        newArr.put(newObj)
+                        updated = true
+                    } else {
+                        newArr.put(obj)
+                    }
+                }
+                
+                if (!updated) {
+                    val newObj = org.json.JSONObject()
+                    newObj.put("id", rewardId)
+                    newObj.put("name", reward["name"])
+                    newObj.put("pointsCost", reward["pointsCost"])
+                    newObj.put("financialCost", reward["financialCost"])
+                    newObj.put("ownerId", ownerId)
+                    newArr.put(newObj)
+                }
+                
+                prefs.edit().putString("local_rewards_$ownerId", newArr.toString()).apply()
+                refreshLocalRewards(ownerId)
+                
+                // Write to Firestore asynchronously
+                val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                val firestoreReward = reward.toMutableMap()
+                firestoreReward["ownerId"] = ownerId
+                firestoreReward["id"] = rewardId
+                db.collection("rewards").document(rewardId).set(firestoreReward)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun deleteLocalReward(rewardId: String, ownerId: String) {
+        if (ownerId.isBlank()) return
+        viewModelScope.launch {
+            try {
+                val jsonStr = prefs.getString("local_rewards_$ownerId", "[]") ?: "[]"
+                val arr = org.json.JSONArray(jsonStr)
+                val newArr = org.json.JSONArray()
+                
+                for (i in 0 until arr.length()) {
+                    val obj = arr.getJSONObject(i)
+                    if (obj.optString("id") != rewardId) {
+                        newArr.put(obj)
+                    }
+                }
+                
+                prefs.edit().putString("local_rewards_$ownerId", newArr.toString()).apply()
+                refreshLocalRewards(ownerId)
+                
+                // Delete from Firestore asynchronously
+                val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                db.collection("rewards").document(rewardId).delete()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
     // DEBTS WITH PREMIUM CHECKS
     fun settleDebt(debtId: String) {
         viewModelScope.launch {
