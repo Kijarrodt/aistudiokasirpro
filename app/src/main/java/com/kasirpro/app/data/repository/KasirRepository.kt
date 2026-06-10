@@ -1796,7 +1796,7 @@ data class GoogleLoginResult(
         return true
     }
 
-    suspend fun redeemActivationCode(uid: String, rawCode: String): RedeemResult {
+    suspend fun redeemActivationCode(uid: String, rawCode: String, expectedPackage: String? = null, expectedBillingCycle: String? = null): RedeemResult {
         return try {
             val code = rawCode.trim().uppercase()
             // Check if user is already premium
@@ -1914,6 +1914,41 @@ data class GoogleLoginResult(
             } else if (code.startsWith("KASIRPRO-BISNIS-")) {
                 codeType = "bisnis"
                 billingCycle = "bulanan"
+            }
+
+            // Check if code matches the selected subscription package
+            val cleanExpected = expectedPackage?.trim()?.lowercase()
+            if (cleanExpected != null) {
+                val cleanType = codeType.trim().lowercase()
+                val isCompatible = cleanType == cleanExpected || 
+                        (cleanType == "premium" && cleanExpected == "profesional") || 
+                        (cleanType == "profesional" && cleanExpected == "premium")
+                if (!isCompatible) {
+                    val expectedName = when (cleanExpected) {
+                        "dasar" -> "Paket Dasar"
+                        "profesional" -> "Paket Profesional"
+                        "bisnis" -> "Paket Bisnis"
+                        else -> cleanExpected.replaceFirstChar { it.uppercase() }
+                    }
+                    val codeTypeName = when (cleanType) {
+                        "dasar" -> "Paket Dasar"
+                        "profesional" -> "Paket Profesional"
+                        "bisnis" -> "Paket Bisnis"
+                        else -> cleanType.replaceFirstChar { it.uppercase() }
+                    }
+                    return RedeemResult.Error("Kode yang dimasukkan adalah untuk $codeTypeName, sedangkan opsi yang Anda pilih adalah $expectedName. Silakan masukkan kode yang sesuai.")
+                }
+            }
+
+            // Check if code matches the selected billing cycle
+            val cleanExpectedCycle = expectedBillingCycle?.trim()?.lowercase()
+            if (cleanExpectedCycle != null) {
+                val cleanCycle = billingCycle.trim().lowercase()
+                if (cleanCycle != cleanExpectedCycle) {
+                    val expectedCycleName = if (cleanExpectedCycle == "tahunan") "Tahunan" else "Bulanan"
+                    val codeCycleName = if (cleanCycle == "tahunan") "Tahunan" else "Bulanan"
+                    return RedeemResult.Error("Kode yang dimasukkan adalah untuk tipe billing $codeCycleName, sedangkan opsi yang Anda pilih adalah $expectedCycleName. Silakan pilih tab opsi paket yang sesuai atau masukkan kode yang sesuai.")
+                }
             }
 
             val calculatedDays = if (billingCycle.lowercase() == "tahunan") 365L else 30L

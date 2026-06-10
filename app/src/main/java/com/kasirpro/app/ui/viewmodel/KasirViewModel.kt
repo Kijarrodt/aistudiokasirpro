@@ -508,7 +508,7 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
 
     // PROMOS
     fun addPromo(nama: String, tipe: String, nilai: Double, minTx: Double, kode: String, durationDays: Int) {
-        val isPremium = currentUser.value?.subscriptionStatus == "premium"
+        val isPremium = currentUser.value?.isPremium ?: false
         if (!isPremium) {
             showLimitPopup.value = "Fitur Promo & Voucher Kupon hanya untuk pengguna Premium. Upgrade sekarang!"
             return
@@ -520,7 +520,7 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun togglePromo(id: String, active: Boolean) {
-        val isPremium = currentUser.value?.subscriptionStatus == "premium"
+        val isPremium = currentUser.value?.isPremium ?: false
         if (!isPremium) {
             showLimitPopup.value = "Fitur Promo & Voucher Kupon hanya untuk pengguna Premium. Upgrade sekarang!"
             return
@@ -655,7 +655,7 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
 
     // CUSTOMERS WITH FREE TIER VALIDATION
     fun addCustomer(nama: String, hp: String, alamat: String? = null) {
-        val isPremium = currentUser.value?.subscriptionStatus == "premium"
+        val isPremium = currentUser.value?.isPremium ?: false
         if (!isPremium) {
             showLimitPopup.value = "Fitur Database Pelanggan & Loyalty Poin hanya untuk pengguna Premium!"
             return
@@ -680,7 +680,7 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
 
     // MANUAL BACKUP
     fun runBackup() {
-        val isPremium = currentUser.value?.subscriptionStatus == "premium"
+        val isPremium = currentUser.value?.isPremium ?: false
         if (!isPremium) {
             showLimitPopup.value = "Backup data otomatis & manual ke cloud hanya didukung untuk tipe akun Premium!"
             return
@@ -702,11 +702,11 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
     val codeRedeemResult = MutableStateFlow<com.kasirpro.app.data.repository.RedeemResult?>(null)
     val isRedeemingCode = MutableStateFlow(false)
 
-    fun redeemCode(code: String, onComplete: (com.kasirpro.app.data.repository.RedeemResult) -> Unit = {}) {
+    fun redeemCode(code: String, expectedPackage: String? = null, expectedBillingCycle: String? = null, onComplete: (com.kasirpro.app.data.repository.RedeemResult) -> Unit = {}) {
         val user = currentUser.value ?: return
         isRedeemingCode.value = true
         viewModelScope.launch {
-            val result = repository.redeemActivationCode(user.uid, code)
+            val result = repository.redeemActivationCode(user.uid, code, expectedPackage, expectedBillingCycle)
             codeRedeemResult.value = result
             isRedeemingCode.value = false
             onComplete(result)
@@ -770,7 +770,7 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
 
     // SECTIONS CONTROL
     fun toggleOnlineMode() {
-        val isPremium = currentUser.value?.subscriptionStatus == "premium"
+        val isPremium = currentUser.value?.isPremium ?: false
         if (!isPremium) {
             showLimitPopup.value = "Mode Offline & Sinkronisasi hanya tersedia bagi pengguna Premium!"
             return

@@ -1038,7 +1038,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                 Button(
                     onClick = {
                         val user = viewModel.currentUser.value
-                        val isPremium = user?.subscriptionStatus == "premium"
+                        val isPremium = user?.isPremium ?: false
 
                         // Debt/DP Customer mandatory check
                         if (statusTrx == "dp" && currentCustomer == null) {
@@ -1078,7 +1078,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
 
     // Secondarypicker: Customer choose Loyalty DB Dialog
     if (showCustomerPicker) {
-        val isPremium = user?.subscriptionStatus == "premium"
+        val isPremium = user?.isPremium ?: false
         if (customersList.isEmpty()) {
             if (isPremium) {
                 AlertDialog(

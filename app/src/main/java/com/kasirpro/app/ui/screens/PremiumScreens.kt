@@ -48,7 +48,7 @@ import java.io.FileOutputStream
 @Composable
 fun PremiumScreens(viewModel: KasirViewModel) {
     val user by viewModel.currentUser.collectAsState()
-    val isPremium = user?.subscriptionStatus == "premium"
+    val isPremium = user?.isPremium ?: false
 
     var selectedModule by remember { mutableStateOf("LAPORAN") } // LAPORAN, HUTANG, CRM POIN
 

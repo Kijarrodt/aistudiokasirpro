@@ -65,7 +65,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
     val stockHistList by viewModel.stockHistory.collectAsState()
     val currentUserState by viewModel.currentUser.collectAsState()
     val isKasir = currentUserState?.role == "kasir"
-    val isPremiumState = currentUserState?.subscriptionStatus == "premium"
+    val isPremiumState = currentUserState?.isPremium ?: false
 
     var activeTab by remember { mutableStateOf("PRODUK") } // "PRODUK", "STOK", "RIWAYAT"
 

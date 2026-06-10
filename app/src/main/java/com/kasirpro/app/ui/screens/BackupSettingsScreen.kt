@@ -42,7 +42,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun BackupSettingsScreen(viewModel: KasirViewModel) {
     val user by viewModel.currentUser.collectAsState()
-    val isPremium = user?.subscriptionStatus == "premium"
+    val isPremium = user?.isPremium ?: false
     val isDarkState by viewModel.isDarkMode.collectAsState()
     val langState by viewModel.language.collectAsState()
     val backupDateState by viewModel.lastBackupDate.collectAsState()
@@ -1260,9 +1260,21 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             Icon(imageVector = Icons.Default.Person, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(32.dp))
                         }
                         Spacer(modifier = Modifier.width(16.dp))
-                        Column {
-                            Text(user?.nama ?: "Pengusaha Sukses", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            Text(user?.email ?: "mimin@kasirpro.id", fontSize = 12.sp, color = Color.Gray)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = user?.nama ?: "Pengusaha Sukses",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = user?.email ?: "mimin@kasirpro.id",
+                                fontSize = 12.sp,
+                                color = Color.Gray,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
                             Box(
                                 modifier = Modifier
                                     .padding(top = 4.dp)
@@ -1365,10 +1377,13 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Column {
+                            Column(
+                                modifier = Modifier.weight(1f)
+                            ) {
                                 Text("Layanan Aktif", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
                                 Text("Tingkatkan durasi langganan sebelum berakhir", fontSize = 11.sp, color = Color.LightGray)
                             }
+                            Spacer(modifier = Modifier.width(12.dp))
                             Button(
                                 onClick = { viewModel.activeScreen.value = "premium_pricing" },
                                 colors = ButtonDefaults.buttonColors(containerColor = Slate900),
@@ -2063,6 +2078,48 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
                         }
                     }
 
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Button(
+                        onClick = {
+                            val cycleStr = if (selectedIsYearly) "TAHUNAN" else "BULANAN"
+                            val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                            val msg = "Halo Admin Kasir Pro,\n\nSaya ingin memesan/mengaktifkan:\nPackage: *$selectedPackageName ($cycleStr)*\nUID Pengguna: `$currentUserId`"
+                            val encodedMsg = java.net.URLEncoder.encode(msg, "UTF-8")
+                            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                                data = android.net.Uri.parse("https://api.whatsapp.com/send?phone=6289655751681&text=$encodedMsg")
+                            }
+                            context.startActivity(intent)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Send,
+                            contentDescription = "WhatsApp",
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Kirim UID & Paket via WhatsApp", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 12.sp)
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        HorizontalDivider(modifier = Modifier.weight(1f), color = Color.Gray.copy(alpha = 0.2f))
+                        Text(
+                            " ATAU MASUKKAN KODE ",
+                            fontSize = 9.sp,
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        )
+                        HorizontalDivider(modifier = Modifier.weight(1f), color = Color.Gray.copy(alpha = 0.2f))
+                    }
+
                     OutlinedTextField(
                         value = activationCodeInput,
                         onValueChange = {
@@ -2118,7 +2175,8 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
                 Button(
                     enabled = activationCodeInput.isNotBlank() && !isRedeemingCode,
                     onClick = {
-                        viewModel.redeemCode(activationCodeInput) { result ->
+                        val expectedCycle = if (selectedIsYearly) "tahunan" else "bulanan"
+                        viewModel.redeemCode(activationCodeInput, selectedPackageKey, expectedCycle) { result ->
                             when (result) {
                                 is com.kasirpro.app.data.repository.RedeemResult.Success -> {
                                     showActivationDialog = false
@@ -2371,8 +2429,8 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                         val totalRegistered = usersList.size
                         val activeToday = usersList.count { (it.lastActiveAt ?: 0L) > oneDayAgo }
                         val activeTodayCount = if (activeToday == 0 && totalRegistered > 0) 1 else activeToday // Ensure at least 1 active if registered
-                        val premiumCount = usersList.count { it.subscriptionStatus == "premium" }
-                        val freeCount = usersList.count { it.subscriptionStatus == "free" || it.subscriptionStatus != "premium" }
+                        val premiumCount = usersList.count { it.isPremium }
+                        val freeCount = usersList.count { !it.isPremium }
 
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Row(
@@ -2477,7 +2535,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                     } else {
                         items(usersList.size) { idx ->
                             val user = usersList[idx]
-                            val isUserPremium = user.subscriptionStatus == "premium"
+                            val isUserPremium = user.isPremium
 
                             Card(
                                 modifier = Modifier.fillMaxWidth(),

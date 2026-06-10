@@ -539,7 +539,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
     // Viewing Receipt & Correction Trigger Dialogue
     if (selectedTxForReceipt != null) {
         val rx = selectedTxForReceipt!!
-        val isPremium = user?.subscriptionStatus == "premium"
+        val isPremium = user?.isPremium ?: false
         val scope = rememberCoroutineScope()
         val context = LocalContext.current
 
