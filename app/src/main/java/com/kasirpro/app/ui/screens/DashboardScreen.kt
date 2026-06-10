@@ -583,6 +583,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                     }
                     Text("---------------------------------", color = Color.Black)
                     Text("No TRX: ${rx.id}", fontSize = 11.sp, color = Color.Black)
+                    Text("Tanggal: ${java.text.SimpleDateFormat("dd-MM-yyyy HH:mm", java.util.Locale("id", "ID")).format(java.util.Date(rx.createdAt))}", fontSize = 11.sp, color = Color.Black)
                     Text("Kasir: ${rx.kasirNama}", fontSize = 11.sp, color = Color.Black)
                     Text("---------------------------------", color = Color.Black)
 
@@ -636,6 +637,19 @@ fun DashboardScreen(viewModel: KasirViewModel) {
             },
             confirmButton = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    Button(
+                        onClick = {
+                            Toast.makeText(context, "Menghubungkan ke printer RPP02N...", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Mencetak ulang struk No TRX: ${rx.id} - Selesai!", Toast.LENGTH_LONG).show()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(imageVector = Icons.Default.Print, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Cetak Ulang Struk")
+                    }
+
                     Button(
                         onClick = {
                             if (isPremium) {

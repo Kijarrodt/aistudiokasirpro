@@ -2388,7 +2388,7 @@ fun PremiumKasirTab(viewModel: KasirViewModel) {
                             } else {
                                 Icon(imageVector = Icons.Default.Error, contentDescription = null, tint = Color.Red, modifier = Modifier.size(12.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Username sudah digunakan pengguna lain!", fontSize = 11.sp, color = Color.Red)
+                                Text("Maaf Username Tidak Tersedia!", fontSize = 11.sp, color = Color.Red)
                             }
                         }
                     }
@@ -2521,7 +2521,7 @@ fun PremiumKasirTab(viewModel: KasirViewModel) {
                             } else {
                                 Icon(imageVector = Icons.Default.Error, contentDescription = null, tint = Color.Red, modifier = Modifier.size(12.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Username sudah digunakan pengguna lain!", fontSize = 11.sp, color = Color.Red)
+                                Text("Maaf Username Tidak Tersedia!", fontSize = 11.sp, color = Color.Red)
                             }
                         }
                     }

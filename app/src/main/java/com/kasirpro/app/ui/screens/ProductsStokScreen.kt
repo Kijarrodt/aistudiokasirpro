@@ -69,6 +69,21 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
 
     var activeTab by remember { mutableStateOf("PRODUK") } // "PRODUK", "STOK", "RIWAYAT"
 
+    var searchQueryProduct by remember { mutableStateOf("") }
+    var selectedCategoryFilter by remember { mutableStateOf("Semua") }
+
+    val categories = remember(productsList) {
+        listOf("Semua") + productsList.map { it.kategori }.filter { it.isNotBlank() }.distinct()
+    }
+
+    val filteredProducts = remember(productsList, searchQueryProduct, selectedCategoryFilter) {
+        productsList.filter { prod ->
+            val matchName = prod.nama.contains(searchQueryProduct, ignoreCase = true)
+            val matchCat = selectedCategoryFilter == "Semua" || prod.kategori.equals(selectedCategoryFilter, ignoreCase = true)
+            matchName && matchCat
+        }
+    }
+
     // Dialog state controllers
     var showAddProductDialog by remember { mutableStateOf(false) }
     var showBulkUploadDialog by remember { mutableStateOf(false) }
@@ -202,6 +217,68 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                 }
             }
 
+            if (activeTab == "PRODUK" || activeTab == "STOK") {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = searchQueryProduct,
+                        onValueChange = { searchQueryProduct = it },
+                        placeholder = { Text("Cari nama produk...", fontSize = 13.sp) },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                        trailingIcon = {
+                            if (searchQueryProduct.isNotBlank()) {
+                                IconButton(onClick = { searchQueryProduct = "" }) {
+                                    Icon(Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(18.dp))
+                                }
+                            }
+                        },
+                        singleLine = true,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = OrangePrimary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                        ),
+                        modifier = Modifier.fillMaxWidth().height(48.dp)
+                    )
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Kategori:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                        
+                        androidx.compose.foundation.lazy.LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            items(categories) { cat ->
+                                val isSelected = selectedCategoryFilter == cat
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(30.dp))
+                                        .background(if (isSelected) OrangePrimary else MaterialTheme.colorScheme.surfaceVariant)
+                                        .clickable { selectedCategoryFilter = cat }
+                                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = cat,
+                                        color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             when (activeTab) {
                 "PRODUK" -> {
                     if (productsList.isEmpty()) {
@@ -209,12 +286,19 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                             title = "Produk Belum Ada",
                             desc = "Klik tombol '+' di pojok kanan atas untuk menambahkan produk jualan utama Anda!"
                         )
+                    } else if (filteredProducts.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize().padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("Tidak ada produk yang cocok dengan pencarian atau kategori Anda.", color = Color.Gray, fontSize = 12.sp, textAlign = TextAlign.Center)
+                        }
                     } else {
                         LazyColumn(
                             contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 88.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                             items(productsList) { prod ->
+                             items(filteredProducts) { prod ->
                                 Card(
                                     modifier = Modifier.fillMaxWidth(),
                                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)

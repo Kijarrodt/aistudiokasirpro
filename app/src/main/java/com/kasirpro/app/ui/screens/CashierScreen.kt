@@ -1386,6 +1386,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                     }
                     Text("---------------------------------", color = Color.Black)
                     Text("No TRX: ${rx.id}", fontSize = 11.sp, color = Color.Black)
+                    Text("Tanggal: ${java.text.SimpleDateFormat("dd-MM-yyyy HH:mm", java.util.Locale("id", "ID")).format(java.util.Date(rx.createdAt))}", fontSize = 11.sp, color = Color.Black)
                     Text("Kasir: ${rx.kasirNama}", fontSize = 11.sp, color = Color.Black)
                     Text("---------------------------------", color = Color.Black)
 
@@ -1612,6 +1613,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                         Text(viewModel.currentBusiness.value?.namaBisnis ?: "KASIR PRO", fontWeight = FontWeight.Bold, color = Color.Black, fontSize = 13.sp, textAlign = TextAlign.Center)
                         Text("---------------------------------", color = Color.Black)
                         Text("No TRX: ${rx.id}", fontSize = 10.sp, color = Color.Black)
+                        Text("Tanggal: ${java.text.SimpleDateFormat("dd-MM-yyyy HH:mm", java.util.Locale("id", "ID")).format(java.util.Date(rx.createdAt))}", fontSize = 10.sp, color = Color.Black)
                         Text("Kasir: ${rx.kasirNama}", fontSize = 10.sp, color = Color.Black)
                         Text("---------------------------------", color = Color.Black)
 
@@ -1664,6 +1666,18 @@ fun CashierScreen(viewModel: KasirViewModel) {
                 },
                 confirmButton = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        Button(
+                            onClick = {
+                                viewModel.activeReceipt.value = rx
+                                selectedTxForReceipt = null
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(imageVector = Icons.Default.Print, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Cetak Ulang Struk")
+                        }
                         Button(
                             onClick = {
                                 showCorrectionAuthDialog = true

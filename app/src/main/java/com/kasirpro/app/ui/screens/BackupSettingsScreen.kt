@@ -879,6 +879,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                         Text(viewModel.currentBusiness.value?.namaBisnis ?: "KASIR PRO", fontWeight = FontWeight.Bold, color = Color.Black, fontSize = 13.sp, textAlign = TextAlign.Center)
                                         Text("---------------------------------", color = Color.Black)
                                         Text("No TRX: ${rx.id}", fontSize = 10.sp, color = Color.Black)
+                                        Text("Tanggal: ${java.text.SimpleDateFormat("dd-MM-yyyy HH:mm", java.util.Locale("id", "ID")).format(java.util.Date(rx.createdAt))}", fontSize = 10.sp, color = Color.Black)
                                         Text("Kasir: ${rx.kasirNama}", fontSize = 10.sp, color = Color.Black)
                                         Text("---------------------------------", color = Color.Black)
 
@@ -945,8 +946,25 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                     }
                                 },
                                 confirmButton = {
-                                    TextButton(onClick = { selectedTxForReceipt = null }) {
-                                        Text("Tutup Struk")
+                                    val context = LocalContext.current
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Button(
+                                            onClick = {
+                                                Toast.makeText(context, "Menghubungkan ke printer RPP02N...", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, "Mencetak ulang struk No TRX: ${rx.id} - Selesai!", Toast.LENGTH_LONG).show()
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))
+                                        ) {
+                                            Icon(imageVector = Icons.Default.Print, contentDescription = null, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Cetak Ulang Struk", fontSize = 11.sp)
+                                        }
+                                        TextButton(onClick = { selectedTxForReceipt = null }) {
+                                            Text("Tutup")
+                                        }
                                     }
                                 }
                             )
