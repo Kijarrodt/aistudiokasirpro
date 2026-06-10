@@ -636,6 +636,13 @@ class KasirRepository(val context: Context) {
                 )
 
                 setLoggedInDeviceUser(cashierDoc.id)
+                withContext(Dispatchers.IO) {
+                    try {
+                        database.clearAllTables()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
                 dao.clearUsers()
                 dao.insertUser(cashierUser)
 
@@ -674,6 +681,15 @@ class KasirRepository(val context: Context) {
             val firebaseUid = result.user?.uid ?: throw Exception("Gagal masuk. Silakan coba lagi.")
 
             setLoggedInDeviceUser(firebaseUid)
+
+            // Clear any stale local data of other accounts before syncing
+            withContext(Dispatchers.IO) {
+                try {
+                    database.clearAllTables()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
 
             // Synchronize All Real User Data from Firestore to local Room Cache
             try {
@@ -749,6 +765,15 @@ data class GoogleLoginResult(
 
             setLoggedInDeviceUser(resultUid)
             android.util.Log.d("AUTH", "User UID: ${resultUid}")
+
+            // Clear any stale local data of other accounts before Google session starts
+            withContext(Dispatchers.IO) {
+                try {
+                    database.clearAllTables()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
 
             // 1. Check if user document already exists in Firestore users collection
             var userExists = false

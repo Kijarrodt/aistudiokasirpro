@@ -1015,10 +1015,8 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun logout() {
-        viewModelScope.launch {
-            repository.logout()
-        }
+    suspend fun logout() {
+        repository.logout()
     }
 
     fun sendBroadcast(title: String, message: String, type: String, downloadUrl: String?, version: String?, isActive: Boolean) {
