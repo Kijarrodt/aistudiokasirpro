@@ -376,6 +376,33 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    val showUpgrade by viewModel.showUpgradePopup.collectAsState()
+                    val upgradeMsg by viewModel.upgradeMessage.collectAsState()
+                    if (showUpgrade) {
+                        AlertDialog(
+                            onDismissRequest = { viewModel.showUpgradePopup.value = false },
+                            icon = { Icon(Icons.Default.Lock, contentDescription = null, tint = OrangePrimary) },
+                            title = { Text("Fitur Terkunci", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) },
+                            text = { Text(upgradeMsg) },
+                            confirmButton = {
+                                Button(
+                                    onClick = {
+                                        viewModel.showUpgradePopup.value = false
+                                        viewModel.activeScreen.value = "premium_pricing"
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+                                ) {
+                                    Text("Lihat Paket")
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { viewModel.showUpgradePopup.value = false }) {
+                                    Text("Nanti")
+                                }
+                            }
+                        )
+                    }
+
                     if (showUpdateDialog && updateDownloadUrl.isNotBlank()) {
                         AlertDialog(
                             onDismissRequest = { showUpdateDialog = false },

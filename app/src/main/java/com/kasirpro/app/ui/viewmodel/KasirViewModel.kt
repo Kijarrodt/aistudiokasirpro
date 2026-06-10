@@ -145,6 +145,14 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
     val showLimitPopup = MutableStateFlow<String?>(null) // Contains message of limit reached
     val customNotification = MutableStateFlow<String?>(null)
 
+    val showUpgradePopup = MutableStateFlow(false)
+    val upgradeMessage = MutableStateFlow("")
+
+    fun triggerUpgradePopup(minPackage: String) {
+        upgradeMessage.value = "Fitur ini membutuhkan minimal $minPackage untuk digunakan."
+        showUpgradePopup.value = true
+    }
+
     fun showToast(message: String) {
         viewModelScope.launch {
             customNotification.value = message
@@ -524,24 +532,24 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
 
     // BRANCHES WITH FREE TIER VALIDATION
     fun addBranch(nama: String, alamat: String) {
-        val user = currentUser.value
-        val isPremium = user?.isPremium ?: false
-        val isAtLeastProfesional = user?.isAtLeastProfesional ?: false
-        val isAtLeastBisnis = user?.isAtLeastBisnis ?: false
+        val userVal = currentUser.value
+        val subStatus = userVal?.subscriptionStatus?.lowercase() ?: "free"
+        val isPremiumActive = userVal?.isPremium ?: false
         val count = branches.value.size
 
-        if (!isPremium) {
-            showLimitPopup.value = "Fitur Multi-Cabang hanya untuk pengguna Premium. Hubungi Admin atau gunakan Kode Aktivasi Paket!"
+        if (!isPremiumActive || subStatus == "free") {
+            triggerUpgradePopup("Paket Dasar")
             return
         }
-        if (isPremium && !isAtLeastProfesional && count >= 1) {
-            showLimitPopup.value = "Paket Dasar dibatasi maksimal 1 cabang. Silakan tingkatkan ke Paket Profesional atau Bisnis!"
+        if (subStatus == "dasar" && count >= 3) {
+            triggerUpgradePopup("Paket Profesional")
             return
         }
-        if (isAtLeastProfesional && !isAtLeastBisnis && count >= 3) {
-            showLimitPopup.value = "Paket Profesional dibatasi maksimal 3 cabang. Silakan tingkatkan ke Paket Bisnis untuk cabang tanpa batas!"
+        if (subStatus == "profesional" && count >= 3) {
+            triggerUpgradePopup("Paket Bisnis")
             return
         }
+
         viewModelScope.launch {
             repository.addBranch(nama, alamat)
         }
@@ -602,27 +610,27 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun addCashier(nama: String, username: String, pass: String, branchId: String, onResult: (Boolean, String) -> Unit) {
-        val user = currentUser.value
-        val isPremium = user?.isPremium ?: false
-        val isAtLeastProfesional = user?.isAtLeastProfesional ?: false
-        val isAtLeastBisnis = user?.isAtLeastBisnis ?: false
+        val userVal = currentUser.value
+        val subStatus = userVal?.subscriptionStatus?.lowercase() ?: "free"
+        val isPremiumActive = userVal?.isPremium ?: false
         val count = cashiers.value.size
 
-        if (!isPremium) {
-            showLimitPopup.value = "Fitur Manajemen Kasir hanya untuk pengguna Premium!"
+        if (!isPremiumActive || subStatus == "free") {
+            triggerUpgradePopup("Paket Dasar")
             onResult(false, "Fitur Premium")
             return
         }
-        if (isPremium && !isAtLeastProfesional && count >= 1) {
-            showLimitPopup.value = "Paket Dasar dibatasi maksimal 1 kasir. Silakan tingkatkan ke Paket Profesional atau Bisnis!"
+        if (subStatus == "dasar" && count >= 1) {
+            triggerUpgradePopup("Paket Profesional")
             onResult(false, "Limit 1 kasir terlampaui")
             return
         }
-        if (isAtLeastProfesional && !isAtLeastBisnis && count >= 5) {
-            showLimitPopup.value = "Paket Profesional dibatasi maksimal 5 kasir. Silakan upgrade ke Paket Bisnis untuk kasir tanpa batas!"
+        if (subStatus == "profesional" && count >= 5) {
+            triggerUpgradePopup("Paket Bisnis")
             onResult(false, "Limit 5 kasir terlampaui")
             return
         }
+
         viewModelScope.launch {
             val success = repository.addCashier(nama, username, pass, branchId)
             if (success) {

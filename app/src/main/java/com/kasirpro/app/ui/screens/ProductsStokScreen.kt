@@ -610,10 +610,19 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
             confirmButton = {
                 Button(
                     onClick = {
-                        val limitCheck = !isPremiumState && productsList.size >= 10
-                        if (limitCheck) {
+                        val subscriptionStatus = currentUserState?.subscriptionStatus?.lowercase() ?: "free"
+                        val isPremiumActive = currentUserState?.isPremium ?: false
+                        
+                        val isProductLimitReached = when {
+                            !isPremiumActive || subscriptionStatus == "free" -> productsList.size >= 10
+                            subscriptionStatus == "dasar" -> productsList.size >= 50
+                            else -> false
+                        }
+                        
+                        if (isProductLimitReached) {
                             showAddProductDialog = false
-                            viewModel.showLimitPopup.value = "Akun Gratis dibatasi maksimal 10 produk. Upgrade ke premium sekarang!"
+                            val minRequired = if (!isPremiumActive || subscriptionStatus == "free") "Paket Dasar" else "Paket Profesional"
+                            viewModel.triggerUpgradePopup(minRequired)
                             return@Button
                         }
 
@@ -1374,9 +1383,19 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                 val validProducts = parsedProducts.filter { it.isValid }
                 Button(
                     onClick = {
-                        val limitCheck = !isPremiumState && (productsList.size + validProducts.size) > 10
-                        if (limitCheck) {
-                            Toast.makeText(context, "Jumlah total melebihi batas 10 produk untuk akun Gratis. upgrade ke premium!", Toast.LENGTH_LONG).show()
+                        val subscriptionStatus = currentUserState?.subscriptionStatus?.lowercase() ?: "free"
+                        val isPremiumActive = currentUserState?.isPremium ?: false
+                        
+                        val isProductLimitReached = when {
+                            !isPremiumActive || subscriptionStatus == "free" -> (productsList.size + validProducts.size) > 10
+                            subscriptionStatus == "dasar" -> (productsList.size + validProducts.size) > 50
+                            else -> false
+                        }
+                        
+                        if (isProductLimitReached) {
+                            val limitCount = if (!isPremiumActive || subscriptionStatus == "free") 10 else 50
+                            val minRequired = if (!isPremiumActive || subscriptionStatus == "free") "Paket Dasar" else "Paket Profesional"
+                            Toast.makeText(context, "Jumlah total melebihi batas $limitCount produk untuk paket Anda. Memerlukan minimal $minRequired!", Toast.LENGTH_LONG).show()
                             return@Button
                         }
 

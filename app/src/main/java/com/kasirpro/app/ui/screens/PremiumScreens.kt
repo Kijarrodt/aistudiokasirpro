@@ -186,10 +186,26 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
     val idrFormatter = NumberFormat.getCurrencyInstance(Locale("id", "ID"))
     idrFormatter.maximumFractionDigits = 0
 
+    val isAtLeastProfesional = user?.isAtLeastProfesional ?: false
+    val isAtLeastBisnis = user?.isAtLeastBisnis ?: false
+
     var selectedBranchId by remember { mutableStateOf("all") }
     var selectedCashierId by remember { mutableStateOf("all") }
-    var reportInterval by remember { mutableStateOf("BULANAN") } // HARIAN, MINGGUAN, BULANAN
+    var reportInterval by remember { mutableStateOf(if (user?.isAtLeastProfesional == true) "BULANAN" else "HARIAN") } // HARIAN, MINGGUAN, BULANAN
     var isShiftsExpanded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isAtLeastProfesional, user) {
+        if (!isAtLeastProfesional && reportInterval == "BULANAN") {
+            reportInterval = "HARIAN"
+        }
+    }
+
+    LaunchedEffect(isAtLeastBisnis, branchesList, user) {
+        if (!isAtLeastBisnis && selectedBranchId == "all" && branchesList.isNotEmpty()) {
+            val defaultBranch = user?.assignedBranchId ?: branchesList.firstOrNull()?.id ?: "all"
+            selectedBranchId = defaultBranch
+        }
+    }
 
     var showAddExpenseDialog by remember { mutableStateOf(false) }
     var editExpenseNominal by remember { mutableStateOf("") }
@@ -429,7 +445,13 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(if (selectedBranchId == "all") OrangePrimary else MaterialTheme.colorScheme.surface)
-                                    .clickable { selectedBranchId = "all" }
+                                    .clickable {
+                                        if (isAtLeastBisnis) {
+                                            selectedBranchId = "all"
+                                        } else {
+                                            viewModel.triggerUpgradePopup("Paket Bisnis")
+                                        }
+                                    }
                                     .padding(horizontal = 12.dp, vertical = 6.dp)
                             ) {
                                 Text("Semua Cabang", fontSize = 11.sp, color = if (selectedBranchId == "all") Color.White else MaterialTheme.colorScheme.onSurface)
@@ -498,7 +520,13 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                     Card(
                         modifier = Modifier
                             .weight(1f)
-                            .clickable { reportInterval = mode },
+                            .clickable {
+                                if (mode == "BULANAN" && !isAtLeastProfesional) {
+                                    viewModel.triggerUpgradePopup("Paket Profesional")
+                                } else {
+                                    reportInterval = mode
+                                }
+                            },
                         colors = CardDefaults.cardColors(containerColor = if (sel) OrangePrimary else MaterialTheme.colorScheme.surface)
                     ) {
                         Text(
@@ -647,121 +675,123 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
 
         // === REALTIME CASHER SHIFT HISTORICAL TRACKING ===
         item {
-            val filteredShifts = remember(shiftsState.value, selectedBranchId, selectedCashierId) {
-                shiftsState.value.filter { shift ->
-                    val matchBranch = (selectedBranchId == "all" || shift.branchId == selectedBranchId)
-                    val matchCashier = (selectedCashierId == "all" || shift.cashierId == selectedCashierId)
-                    matchBranch && matchCashier
-                }
-            }
-
-            Card(
-                modifier = Modifier.fillMaxWidth().testTag("historic_shifts_card"),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Riwayat Laporan Shift Kasir", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Icon(imageVector = Icons.Default.SupervisorAccount, contentDescription = null, tint = OrangePrimary)
+            if (isAtLeastProfesional) {
+                val filteredShifts = remember(shiftsState.value, selectedBranchId, selectedCashierId) {
+                    shiftsState.value.filter { shift ->
+                        val matchBranch = (selectedBranchId == "all" || shift.branchId == selectedBranchId)
+                        val matchCashier = (selectedCashierId == "all" || shift.cashierId == selectedCashierId)
+                        matchBranch && matchCashier
                     }
-                    Text("Pantau uang modal awal, omset tunai/non-tunai, dan pencocokan uang kas fisik di laci per sesi kasir langsung dari Firestore.", fontSize = 11.sp, color = Color.Gray)
+                }
 
-                    HorizontalDivider()
-
-                    if (filteredShifts.isEmpty()) {
-                        Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                            Text("Belum ada pertanggungjawaban shift kasir tercatat sesuai filter saat ini.", fontSize = 11.sp, color = Color.Gray, textAlign = TextAlign.Center)
+                Card(
+                    modifier = Modifier.fillMaxWidth().testTag("historic_shifts_card"),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Riwayat Laporan Shift Kasir", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Icon(imageVector = Icons.Default.SupervisorAccount, contentDescription = null, tint = OrangePrimary)
                         }
-                    } else {
-                        val displayShifts = if (isShiftsExpanded) filteredShifts else filteredShifts.take(3)
-                        displayShifts.forEach { shift ->
-                            Card(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                        Text(shift.cashierName, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                        Box(
-                                            modifier = Modifier
-                                                .clip(RoundedCornerShape(4.dp))
-                                                .background(if (shift.status == "aktif") Color(0xFFFEF08A) else Color(0xFFDCFCE7))
-                                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                                        ) {
-                                            Text(
-                                                shift.status.uppercase(),
-                                                fontSize = 9.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = if (shift.status == "aktif") Color(0xFF854D0E) else Color(0xFF15803D)
-                                            )
+                        Text("Pantau uang modal awal, omset tunai/non-tunai, dan pencocokan uang kas fisik di laci per sesi kasir langsung dari Firestore.", fontSize = 11.sp, color = Color.Gray)
+
+                        HorizontalDivider()
+
+                        if (filteredShifts.isEmpty()) {
+                            Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                Text("Belum ada pertanggungjawaban shift kasir tercatat sesuai filter saat ini.", fontSize = 11.sp, color = Color.Gray, textAlign = TextAlign.Center)
+                            }
+                        } else {
+                            val displayShifts = if (isShiftsExpanded) filteredShifts else filteredShifts.take(3)
+                            displayShifts.forEach { shift ->
+                                Card(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                            Text(shift.cashierName, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(4.dp))
+                                                    .background(if (shift.status == "aktif") Color(0xFFFEF08A) else Color(0xFFDCFCE7))
+                                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                                            ) {
+                                                Text(
+                                                    shift.status.uppercase(),
+                                                    fontSize = 9.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (shift.status == "aktif") Color(0xFF854D0E) else Color(0xFF15803D)
+                                                )
+                                            }
                                         }
-                                    }
-                                    
-                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("Cabang:", fontSize = 11.sp, color = Color.Gray)
-                                        Text(shift.branchName, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                                    }
-
-                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("Mulai Shift:", fontSize = 11.sp, color = Color.Gray)
-                                        val startStr = java.text.SimpleDateFormat("dd MMM, HH:mm", java.util.Locale("id", "ID")).format(java.util.Date(shift.startTime))
-                                        Text(startStr, fontSize = 11.sp)
-                                    }
-
-                                    if (shift.endTime != null) {
+                                        
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                            Text("Selesai Shift:", fontSize = 11.sp, color = Color.Gray)
-                                            val endStr = java.text.SimpleDateFormat("dd MMM, HH:mm", java.util.Locale("id", "ID")).format(java.util.Date(shift.endTime))
-                                            Text(endStr, fontSize = 11.sp)
+                                            Text("Cabang:", fontSize = 11.sp, color = Color.Gray)
+                                            Text(shift.branchName, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                                         }
-                                    }
 
-                                    HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
-
-                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("Uang Modal Awal:", fontSize = 11.sp, color = Color.Gray)
-                                        Text(idrFormatter.format(shift.modalAwal), fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                                    }
-
-                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("Omset Tunai (Cash):", fontSize = 11.sp, color = Color.Gray)
-                                        Text(idrFormatter.format(shift.totalTunai), fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                                    }
-
-                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("Omset Non-Tunai:", fontSize = 11.sp, color = Color.Gray)
-                                        Text(idrFormatter.format(shift.totalNonTunai), fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                                    }
-
-                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("Teoritis Seharusnya (Sistem):", fontSize = 11.sp, color = Color.Gray)
-                                        Text(idrFormatter.format(shift.modalAwal + shift.totalTunai), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                                    }
-
-                                    if (shift.status != "aktif") {
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                            Text("Uang Fisik Dilaporkan:", fontSize = 11.sp, color = Color.Gray)
-                                            Text(idrFormatter.format(shift.actualDrawerCash), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                            Text("Mulai Shift:", fontSize = 11.sp, color = Color.Gray)
+                                            val startStr = java.text.SimpleDateFormat("dd MMM, HH:mm", java.util.Locale("id", "ID")).format(java.util.Date(shift.startTime))
+                                            Text(startStr, fontSize = 11.sp)
                                         }
 
-                                        val selisihVal = shift.selisih
-                                        val selisihColor = if (selisihVal == 0.0) Color.DarkGray else if (selisihVal > 0.0) Color(0xFF16A34A) else Color(0xFFDC2626)
-                                        val labelText = if (selisihVal == 0.0) {
-                                            "Sesuai (Rp 0)"
-                                        } else if (selisihVal > 0.0) {
-                                            "Surplus (+${idrFormatter.format(selisihVal)})"
-                                        } else {
-                                            "Defisit / Minus (${idrFormatter.format(selisihVal)})"
+                                        if (shift.endTime != null) {
+                                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                                Text("Selesai Shift:", fontSize = 11.sp, color = Color.Gray)
+                                                val endStr = java.text.SimpleDateFormat("dd MMM, HH:mm", java.util.Locale("id", "ID")).format(java.util.Date(shift.endTime))
+                                                Text(endStr, fontSize = 11.sp)
+                                            }
                                         }
+
+                                        HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                            Text("Selisih Kas Laci Fisik:", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                            Text(labelText, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = selisihColor)
+                                            Text("Uang Modal Awal:", fontSize = 11.sp, color = Color.Gray)
+                                            Text(idrFormatter.format(shift.modalAwal), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                        }
+
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text("Omset Tunai (Cash):", fontSize = 11.sp, color = Color.Gray)
+                                            Text(idrFormatter.format(shift.totalTunai), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                        }
+
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text("Omset Non-Tunai:", fontSize = 11.sp, color = Color.Gray)
+                                            Text(idrFormatter.format(shift.totalNonTunai), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                        }
+
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text("Teoritis Seharusnya (Sistem):", fontSize = 11.sp, color = Color.Gray)
+                                            Text(idrFormatter.format(shift.modalAwal + shift.totalTunai), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                        }
+
+                                        if (shift.status != "aktif") {
+                                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                                Text("Uang Fisik Dilaporkan:", fontSize = 11.sp, color = Color.Gray)
+                                                Text(idrFormatter.format(shift.actualDrawerCash), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                            }
+
+                                            val selisihVal = shift.selisih
+                                            val selisihColor = if (selisihVal == 0.0) Color.DarkGray else if (selisihVal > 0.0) Color(0xFF16A34A) else Color(0xFFDC2626)
+                                            val labelText = if (selisihVal == 0.0) {
+                                                "Sesuai (Rp 0)"
+                                            } else if (selisihVal > 0.0) {
+                                                "Surplus (+${idrFormatter.format(selisihVal)})"
+                                            } else {
+                                                "Defisit / Minus (${idrFormatter.format(selisihVal)})"
+                                            }
+                                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                                Text("Selisih Kas Laci Fisik:", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                Text(labelText, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = selisihColor)
+                                            }
                                         }
                                     }
                                 }
@@ -795,6 +825,32 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                                 }
                             }
                         }
+                    }
+                }
+            } else {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { viewModel.triggerUpgradePopup("Paket Profesional") }
+                        .testTag("shifts_locked_card"),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(18.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(imageVector = Icons.Default.Lock, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(36.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Riwayat Laporan Shift Kasir (Terkunci)", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Fitur riwayat laporan shift kasir hanya tersedia untuk minimal Paket Profesional. Klik untuk upgrade sekarang!",
+                            fontSize = 11.sp,
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center
+                        )
                     }
                 }
             }

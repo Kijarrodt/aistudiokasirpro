@@ -1801,9 +1801,6 @@ data class GoogleLoginResult(
             val code = rawCode.trim().uppercase()
             // Check if user is already premium
             val user = getUserById(uid) ?: return RedeemResult.Error("Pengguna tidak ditemukan")
-            if (user.subscriptionStatus != "free" && user.subscriptionEndDate != null && user.subscriptionEndDate > System.currentTimeMillis()) {
-                return RedeemResult.Error("Kode tidak bisa dipakai karena Anda sudah memiliki paket aktif (${user.subscriptionStatus.uppercase()})")
-            }
 
             // Check local first!
             val localList = getLocalActivationCodes()
@@ -1919,8 +1916,9 @@ data class GoogleLoginResult(
                 billingCycle = "bulanan"
             }
 
+            val calculatedDays = if (billingCycle.lowercase() == "tahunan") 365L else 30L
             val now = System.currentTimeMillis()
-            val endDate = now + (durationDays * 24L * 60L * 60L * 1000L)
+            val endDate = now + (calculatedDays * 24L * 60L * 60L * 1000L)
 
             // Update local status map
             val updatedLocal = localList.map { map ->

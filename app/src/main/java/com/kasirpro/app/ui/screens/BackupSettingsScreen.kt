@@ -1232,6 +1232,19 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                 // User Profile Header Info
+                val subStatus = user?.subscriptionStatus?.lowercase() ?: "free"
+                val isPremiumActive = user?.isPremium ?: false
+                val isExpired = user != null && user!!.subscriptionEndDate != null && user!!.subscriptionEndDate!! <= System.currentTimeMillis() && subStatus != "free"
+
+                val (badgeText, badgeBg, badgeTextClr) = when {
+                    isExpired || subStatus == "free" -> Triple("GRATIS", Color(0xFFF1F5F9), Color.DarkGray)
+                    subStatus == "dasar" -> Triple("PAKET DASAR", Color(0xFFEFF6FF), Color(0xFF1D4ED8))
+                    subStatus == "profesional" -> Triple("PAKET PROFESIONAL", Color(0xFFFFF7ED), Color(0xFFC2410C))
+                    subStatus == "bisnis" -> Triple("PAKET BISNIS", Color(0xFFFAF5FF), Color(0xFF7E22CE))
+                    subStatus == "premium" -> Triple("PAKET PROFESIONAL", Color(0xFFFFF7ED), Color(0xFFC2410C))
+                    else -> Triple("GRATIS", Color(0xFFF1F5F9), Color.DarkGray)
+                }
+
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -1254,22 +1267,57 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                 modifier = Modifier
                                     .padding(top = 4.dp)
                                     .clip(RoundedCornerShape(4.dp))
-                                    .background(if (isPremium) Color(0xFFDCFCE7) else Color(0xFFF1F5F9))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    .background(badgeBg)
+                                    .padding(horizontal = 8.dp, vertical = 3.dp)
                             ) {
                                 Text(
-                                    text = if (isPremium) "TIER: PREMIUM PRO" else "TIER: GRATIS",
+                                    text = badgeText,
                                     fontSize = 10.sp,
-                                    color = if (isPremium) Color(0xFF15803D) else Color.DarkGray,
+                                    color = badgeTextClr,
                                     fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            if (isPremiumActive && user?.subscriptionEndDate != null) {
+                                val sdf = remember { java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale("id", "ID")) }
+                                val endFormatted = sdf.format(java.util.Date(user!!.subscriptionEndDate!!))
+                                Text(
+                                    text = "Aktif hingga: $endFormatted",
+                                    fontSize = 11.sp,
+                                    color = Color.Gray,
+                                    modifier = Modifier.padding(top = 4.dp)
                                 )
                             }
                         }
                     }
                 }
 
-                // Subscription Controller Info Card
-                if (!isPremium) {
+                // Subscription Controller Info Cards
+                if (isExpired) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFEF2F2)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF87171)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { viewModel.activeScreen.value = "premium_pricing" }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(imageVector = Icons.Default.Cancel, contentDescription = null, tint = Color(0xFFDC2626))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Langganan Anda telah berakhir. Perpanjang sekarang",
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF991B1B),
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                }
+
+                if (subStatus == "free" || subStatus == "dasar" || isExpired) {
                     Card(
                         colors = CardDefaults.cardColors(containerColor = OrangeLight),
                         modifier = Modifier.fillMaxWidth()
@@ -1279,7 +1327,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                 Icon(imageVector = Icons.Default.Stars, contentDescription = null, tint = OrangePrimary)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Batas Fitur Gratis Terdeteksi",
+                                    text = "Upgrade ke Paket Lebih Tinggi",
                                     fontWeight = FontWeight.Bold,
                                     color = OrangeDark,
                                     fontSize = 14.sp
@@ -1287,7 +1335,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             }
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                    text = "Maksimal 10 produk, 1 kasir, dan laporan hari ini harian saja. Upgrade hari ini untuk performa maksimal!",
+                                text = "Buka batasan laporan, outlet cabang, backup data, dan kelola kasir tanpa batas dengan paket premium.",
                                 fontSize = 12.sp,
                                 color = OrangeDark
                             )
@@ -1297,9 +1345,38 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                     viewModel.activeScreen.value = "premium_pricing"
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
-                                shape = RoundedCornerShape(8.dp)
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.testTag("settings_upgrade_button")
                             ) {
-                                Text("Upgrade Premium Sekarang")
+                                Text("Upgrade Sekarang")
+                            }
+                        }
+                    }
+                }
+
+                if (isPremiumActive) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Slate800),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.Gray.copy(alpha = 0.2f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp).fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text("Layanan Aktif", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
+                                Text("Tingkatkan durasi langganan sebelum berakhir", fontSize = 11.sp, color = Color.LightGray)
+                            }
+                            Button(
+                                onClick = { viewModel.activeScreen.value = "premium_pricing" },
+                                colors = ButtonDefaults.buttonColors(containerColor = Slate900),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, OrangePrimary),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.testTag("settings_renew_button")
+                            ) {
+                                Text("Perpanjang", color = OrangePrimary, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -1648,7 +1725,10 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
     val scope = rememberCoroutineScope()
     val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
 
+    var selectedIsYearly by remember { mutableStateOf(false) }
     var showActivationDialog by remember { mutableStateOf(false) }
+    var selectedPackageName by remember { mutableStateOf("") }
+    var selectedPackageKey by remember { mutableStateOf("") }
     var activationCodeInput by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf("") }
     var showSuccessDialog by remember { mutableStateOf(false) }
@@ -1672,326 +1752,409 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
             }
         }
 
-        Icon(imageVector = Icons.Default.Stars, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(72.dp))
-        Spacer(modifier = Modifier.height(12.dp))
-        Text("Kasir Pro Premium", style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold, color = Color.White))
-        Text("Tingkatkan produktivitas outlet Anda dengan fitur pro bisnis terlengkap!", color = Color.LightGray, textAlign = TextAlign.Center, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp))
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Compare checklist card panel
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Slate800)
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Bandingkan Fitur:", fontWeight = FontWeight.Bold, color = OrangePrimary)
-                
-                listOf(
-                    Triple("Maksimal Produk", "10 Produk", "Tanpa Batas!"),
-                    Triple("Jumlah Transaksi", "50 / Bulan", "Murni Tanpa Batas!"),
-                    Triple("Jumlah Toko Cabang", "1 Cabang", "Kelola Multi Cabang!"),
-                    Triple("Laporan Keuangan", "Hanya Hari ini", "Detail Grafik Mingguan-Tahunan!"),
-                    Triple("Database Hutang & Pelanggan", "Tidak Ada", " CRM & Tagihan Piutang!"),
-                    Triple("Backup Google Drive & Sync", "Tidak Ada", "Awan Cloud Backup Realtime!")
-                ).forEach { (metric, freeVal, premiumVal) ->
-                    Column {
-                        Text(metric, fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Gratis: $freeVal", fontSize = 11.sp, color = Color.LightGray)
-                            Text("Premium: $premiumVal", fontSize = 11.sp, color = Color.Green, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                    HorizontalDivider(color = Color.DarkGray)
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        var selectedIsYearly by remember { mutableStateOf(false) }
-
-        // Card Subscription pricing packs
-        Card(
-            onClick = { selectedIsYearly = false },
-            modifier = Modifier.fillMaxWidth(),
-            border = if (!selectedIsYearly) androidx.compose.foundation.BorderStroke(2.dp, OrangePrimary) else null,
-            colors = CardDefaults.cardColors(containerColor = if (!selectedIsYearly) Slate700 else Slate800)
-        ) {
-            Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Column {
-                    Text("PRO BULANAN", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 16.sp)
-                    Text("Hemat waktu operasional kencang", fontSize = 11.sp, color = Color.LightGray)
-                }
-                Text("Rp 29.000 / bln", fontWeight = FontWeight.ExtraBold, color = OrangePrimary, fontSize = 18.sp)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Card(
-            onClick = { selectedIsYearly = true },
-            modifier = Modifier.fillMaxWidth(),
-            border = if (selectedIsYearly) androidx.compose.foundation.BorderStroke(2.dp, Color.Green) else null,
-            colors = CardDefaults.cardColors(containerColor = if (selectedIsYearly) Slate700 else Slate800)
-        ) {
-            Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Column {
-                    Text("PRO TAHUNAN", fontWeight = FontWeight.Bold, color = Color.Green, fontSize = 16.sp)
-                    Text("Hemat 42% paket langganan tahunan!", fontSize = 11.sp, color = Color.LightGray)
-                }
-                Text("Rp 199.000 / thn", fontWeight = FontWeight.ExtraBold, color = Color.Green, fontSize = 18.sp)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(30.dp))
-
-        Button(
-            onClick = {
-                val userId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: "unknown-id"
-                val label = if (selectedIsYearly) "Tahunan" else "Bulanan"
-                val message = "Saya ingin Berlangganan Kasir Pro ($label)\nID Pengguna: $userId"
-                val encodedMsg = java.net.URLEncoder.encode(message, "UTF-8")
-                val url = "https://wa.me/6289655751681?text=$encodedMsg"
-                try {
-                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
-                    context.startActivity(intent)
-                } catch (e: Exception) {
-                    Toast.makeText(context, "Tidak dapat membuka WhatsApp. Silakan hubungi WA: 089655751681", Toast.LENGTH_LONG).show()
-                }
-            },
-            colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp)
-                .testTag("whatsapp_pay_trigger")
-        ) {
-            Icon(imageVector = Icons.Default.Send, contentDescription = null, tint = Color.White)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("HUBUNGI ADMIN VIA WHATSAPP", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-        }
+        Icon(imageVector = Icons.Default.Stars, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(64.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            "Pilih Paket Langganan",
+            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold, color = Color.White)
+        )
+        Text(
+            "Pilih paket terbaik untuk kelola usahamu secara profesional",
+            color = Color.LightGray,
+            textAlign = TextAlign.Center,
+            fontSize = 12.sp,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Display current user UID for quick copying
-        val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
-        if (currentUserId.isNotEmpty()) {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Slate800),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color.Gray.copy(alpha = 0.3f)),
-                modifier = Modifier.fillMaxWidth()
+        // Toggle Bulanan / Tahunan
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(24.dp))
+                .background(Slate800)
+                .padding(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(if (!selectedIsYearly) OrangePrimary else Color.Transparent)
+                    .clickable { selectedIsYearly = false }
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
             ) {
-                Row(
-                    modifier = Modifier.padding(14.dp).fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("ID Pengguna (UID) Anda:", fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = currentUserId,
-                            fontSize = 12.sp,
-                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                            color = Color.White,
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                        )
-                    }
-                    IconButton(
-                        onClick = {
-                            clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(currentUserId))
-                            viewModel.showToast("Sukses: ID Pengguna berhasil disalin!")
-                        },
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ContentCopy,
-                            contentDescription = "Salin ID",
-                            tint = OrangePrimary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
+                Text(
+                    "Bulanan",
+                    color = if (!selectedIsYearly) Color.White else Color.Gray,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(if (selectedIsYearly) OrangePrimary else Color.Transparent)
+                    .clickable { selectedIsYearly = true }
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    "Tahunan",
+                    color = if (selectedIsYearly) Color.White else Color.Gray,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
-        OutlinedButton(
-            onClick = { showActivationDialog = true },
-            border = androidx.compose.foundation.BorderStroke(1.5.dp, OrangePrimary),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp)
-                .testTag("activate_code_trigger")
-        ) {
-            Icon(imageVector = Icons.Default.VpnKey, contentDescription = null, tint = OrangePrimary)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Aktifkan dengan Kode", fontWeight = FontWeight.Bold, color = OrangePrimary, fontSize = 15.sp)
-        }
-
-        if (showActivationDialog) {
-            AlertDialog(
-                onDismissRequest = { if (!isRedeemingCode) showActivationDialog = false },
-                title = {
-                    Text(
-                        text = "Aktifkan Premium Pro",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = Color.White
-                    )
-                },
-                containerColor = Slate800,
-                titleContentColor = Color.White,
-                textContentColor = Color.LightGray,
-                text = {
-                    Column(
+        // Cards list
+        listOf(
+            Triple("dasar", "PAKET DASAR", if (selectedIsYearly) "Rp 500.000 / thn" else "Rp 50.000 / bln"),
+            Triple("profesional", "PAKET PROFESIONAL", if (selectedIsYearly) "Rp 1.000.000 / thn" else "Rp 100.000 / bln"),
+            Triple("bisnis", "PAKET BISNIS", if (selectedIsYearly) "Rp 1.500.000 / thn" else "Rp 150.000 / bln")
+        ).forEach { (key, name, priceLabel) ->
+            val isPro = key == "profesional"
+            Spacer(modifier = Modifier.height(12.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                border = if (isPro) androidx.compose.foundation.BorderStroke(3.dp, OrangePrimary) else androidx.compose.foundation.BorderStroke(1.dp, Color.Gray.copy(alpha = 0.3f)),
+                colors = CardDefaults.cardColors(containerColor = if (isPro) Slate800 else Slate900)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "Masukkan kode aktivasi Anda di bawah untuk mengaktifkan status Premium Pro.",
-                            fontSize = 12.sp,
-                            color = Color.LightGray
-                        )
-
-                        if (currentUserId.isNotEmpty()) {
-                            Card(
-                                colors = CardDefaults.cardColors(containerColor = Slate900),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, Color.Gray.copy(alpha = 0.2f)),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(10.dp).fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text("Kirim ID ini ke Admin:", fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    name,
+                                    fontWeight = FontWeight.Black,
+                                    color = if (isPro) OrangePrimary else Color.White,
+                                    fontSize = 16.sp
+                                )
+                                if (isPro) {
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(OrangePrimary)
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
                                         Text(
-                                            text = currentUserId,
-                                            fontSize = 11.sp,
-                                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                                            color = Color.Green,
-                                            maxLines = 1,
-                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                            "PALING POPULER",
+                                            color = Color.White,
+                                            fontSize = 8.sp,
+                                            fontWeight = FontWeight.Bold
                                         )
                                     }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = priceLabel,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                fontSize = 18.sp
+                            )
+                        }
+
+                        if (selectedIsYearly) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(Color(0xFFDCFCE7))
+                                    .padding(horizontal = 6.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    "Hemat 2 Bulan",
+                                    color = Color(0xFF15803D),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f))
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Features block
+                    val features = when (key) {
+                        "dasar" -> listOf(
+                            "Maksimal 50 produk" to true,
+                            "Transaksi tidak terbatas" to true,
+                            "1 Kasir" to true,
+                            "Laporan harian & mingguan" to true,
+                            "Semua metode bayar" to true,
+                            "Scan barcode aktif" to true,
+                            "Foto produk aktif" to true,
+                            "Struk WhatsApp aktif" to true,
+                            "Maksimal 3 cabang" to false,
+                            "Maksimal 5 kasir" to false,
+                            "Laporan bulanan & tahunan" to false,
+                            "Export PDF & Excel" to false,
+                            "Hutang & database pelanggan" to false
+                        )
+                        "profesional" -> listOf(
+                            "Semua fitur Dasar" to true,
+                            "Produk & transaksi tidak terbatas" to true,
+                            "Maksimal 3 cabang & 5 kasir" to true,
+                            "Laporan bulanan & tahunan" to true,
+                            "Export PDF & Excel" to true,
+                            "Hutang & database pelanggan aktif" to true,
+                            "Diskon & promo aktif" to true,
+                            "Bulk upload Excel & Varian produk" to true,
+                            "Laporan shift kasir aktif" to true,
+                            "Backup otomatis" to false,
+                            "Laporan gabungan semua cabang" to false
+                        )
+                        else -> listOf(
+                            "Semua fitur Profesional" to true,
+                            "Cabang & kasir tidak terbatas" to true,
+                            "Backup otomatis aktif" to true,
+                            "Laporan gabungan semua cabang" to true
+                        )
+                    }
+
+                    features.forEach { (text, checked) ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (checked) Icons.Default.Check else Icons.Default.Close,
+                                contentDescription = null,
+                                tint = if (checked) Color.Green else Color.Gray,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = text,
+                                fontSize = 12.sp,
+                                color = if (checked) Color.LightGray else Color.Gray
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = {
+                            selectedPackageName = name
+                            selectedPackageKey = key
+                            showActivationDialog = true
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isPro) OrangePrimary else Slate800
+                        ),
+                        border = if (!isPro) androidx.compose.foundation.BorderStroke(1.dp, Color.Gray) else null,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .testTag("choose_pack_$key")
+                    ) {
+                        Text(
+                            "PILIH PAKET",
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+    }
+
+    if (showActivationDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!isRedeemingCode) showActivationDialog = false },
+            title = {
+                Text(
+                    text = "Aktifkan Paket $selectedPackageName",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Color.White
+                )
+            },
+            containerColor = Slate800,
+            titleContentColor = Color.White,
+            textContentColor = Color.LightGray,
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "Masukkan kode aktivasi Anda di bawah untuk mengaktifkan status $selectedPackageName.",
+                        fontSize = 12.sp,
+                        color = Color.LightGray
+                    )
+
+                    val cycleStr = if (selectedIsYearly) "TAHUNAN" else "BULANAN"
+                    val formatExample = when (selectedPackageKey) {
+                        "dasar" -> if (selectedIsYearly) "KASIRPRO-DASARTAHUNAN-XXXXXX" else "KASIRPRO-DASAR-XXXXXX"
+                        "profesional" -> if (selectedIsYearly) "KASIRPRO-PROTAHUNAN-XXXXXX" else "KASIRPRO-PRO-XXXXXX"
+                        else -> if (selectedIsYearly) "KASIRPRO-BISNISTAHUNAN-XXXXXX" else "KASIRPRO-BISNIS-XXXXXX"
+                    }
+
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Slate900),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Text(
+                                "Informasi format kode:",
+                                fontSize = 10.sp,
+                                color = Color.Gray,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = formatExample,
+                                fontSize = 11.sp,
+                                color = OrangePrimary,
+                                fontWeight = FontWeight.SemiBold,
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                            if (currentUserId.isNotEmpty()) {
+                                Text(
+                                    "UID Anda (Kirim ke Admin):",
+                                    fontSize = 10.sp,
+                                    color = Color.Gray,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = currentUserId,
+                                        fontSize = 10.sp,
+                                        color = Color.Green,
+                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                        maxLines = 1,
+                                        modifier = Modifier.weight(1f)
+                                    )
                                     IconButton(
                                         onClick = {
                                             clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(currentUserId))
                                             viewModel.showToast("Sukses: ID Pengguna berhasil disalin!")
                                         },
-                                        modifier = Modifier.size(28.dp)
+                                        modifier = Modifier.size(24.dp)
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.ContentCopy,
                                             contentDescription = "Salin ID",
                                             tint = OrangePrimary,
-                                            modifier = Modifier.size(16.dp)
+                                            modifier = Modifier.size(14.dp)
                                         )
                                     }
                                 }
                             }
                         }
-                        
-                        OutlinedTextField(
-                            value = activationCodeInput,
-                            onValueChange = { 
-                                activationCodeInput = it.uppercase() 
-                                errorMessage = ""
-                            },
-                            placeholder = { Text("KASIRPRO-BULANAN-XXXXXX", color = Color.Gray, fontSize = 13.sp) },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(
-                                capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Characters,
-                                autoCorrectEnabled = false
-                            ),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("activation_code_input_field"),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White,
-                                focusedBorderColor = OrangePrimary,
-                                unfocusedBorderColor = Color.Gray,
-                                focusedContainerColor = Slate900,
-                                unfocusedContainerColor = Slate900
-                            )
-                        )
-
-                        if (errorMessage.isNotEmpty()) {
-                            Text(
-                                text = errorMessage,
-                                color = Color.Red,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        if (isRedeemingCode) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                CircularProgressIndicator(
-                                    color = OrangePrimary,
-                                    modifier = Modifier.size(20.dp),
-                                    strokeWidth = 2.dp
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Memverifikasi...", fontSize = 11.sp, color = Color.Gray)
-                            }
-                        }
                     }
-                },
-                confirmButton = {
-                    Button(
-                        enabled = activationCodeInput.isNotBlank() && !isRedeemingCode,
-                        onClick = {
-                            viewModel.redeemCode(activationCodeInput) { result ->
-                                when (result) {
-                                    is com.kasirpro.app.data.repository.RedeemResult.Success -> {
-                                        showActivationDialog = false
-                                        activationCodeInput = ""
-                                        errorMessage = ""
-                                        val sdf = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale("id", "ID"))
-                                        successEndDateFormatted = sdf.format(java.util.Date(result.endDate))
-                                        showSuccessDialog = true
-                                        viewModel.showToast("Sukses: Fitur Premium Kasir Pro berhasil diaktifkan!")
-                                    }
-                                    is com.kasirpro.app.data.repository.RedeemResult.Error -> {
-                                        errorMessage = result.message
-                                        viewModel.showToast("Gagal: ${result.message}")
-                                    }
-                                }
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
-                    ) {
-                        Text("Aktifkan", fontWeight = FontWeight.Bold)
-                    }
-                },
-                dismissButton = {
-                    TextButton(
-                        enabled = !isRedeemingCode,
-                        onClick = { 
-                            showActivationDialog = false 
-                            activationCodeInput = ""
+
+                    OutlinedTextField(
+                        value = activationCodeInput,
+                        onValueChange = {
+                            activationCodeInput = it.uppercase()
                             errorMessage = ""
+                        },
+                        placeholder = { Text("KASIRPRO-XXXXXX", color = Color.Gray, fontSize = 13.sp) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Characters,
+                            autoCorrectEnabled = false
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("activation_code_input_field"),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = OrangePrimary,
+                            unfocusedBorderColor = Color.Gray,
+                            focusedContainerColor = Slate900,
+                            unfocusedContainerColor = Slate900
+                        )
+                    )
+
+                    if (errorMessage.isNotEmpty()) {
+                        Text(
+                            text = errorMessage,
+                            color = Color.Red,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    if (isRedeemingCode) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(
+                                color = OrangePrimary,
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Memverifikasi...", fontSize = 11.sp, color = Color.Gray)
                         }
-                    ) {
-                        Text("Batal", color = Color.Gray)
                     }
                 }
-            )
-        }
+            },
+            confirmButton = {
+                Button(
+                    enabled = activationCodeInput.isNotBlank() && !isRedeemingCode,
+                    onClick = {
+                        viewModel.redeemCode(activationCodeInput) { result ->
+                            when (result) {
+                                is com.kasirpro.app.data.repository.RedeemResult.Success -> {
+                                    showActivationDialog = false
+                                    activationCodeInput = ""
+                                    errorMessage = ""
+                                    val sdf = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale("id", "ID"))
+                                    successEndDateFormatted = sdf.format(java.util.Date(result.endDate))
+                                    showSuccessDialog = true
+                                    viewModel.showToast("Sukses: Status $selectedPackageName berhasil diaktifkan!")
+                                }
+                                is com.kasirpro.app.data.repository.RedeemResult.Error -> {
+                                    errorMessage = result.message
+                                    viewModel.showToast("Gagal: ${result.message}")
+                                }
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+                ) {
+                    Text("Aktifkan", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    enabled = !isRedeemingCode,
+                    onClick = {
+                        showActivationDialog = false
+                        activationCodeInput = ""
+                        errorMessage = ""
+                    }
+                ) {
+                    Text("Batal", color = Color.Gray)
+                }
+            }
+        )
+    }
 
         if (showSuccessDialog) {
             AlertDialog(
@@ -2086,8 +2249,6 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
             )
         }
     }
-}
-
 data class LocalExpenseItem(
     val id: String,
     val amount: Double,
