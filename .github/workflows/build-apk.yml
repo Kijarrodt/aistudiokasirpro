@@ -33,12 +33,14 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '9.5.1'
 
       - run: cat debug.keystore.base64 | base64 --decode > debug.keystore
 
-      - run: gradle assembleDebug
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Build with Gradle Wrapper
+        run: ./gradlew assembleDebug
 
       - run: mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/kasir-pro.apk
 

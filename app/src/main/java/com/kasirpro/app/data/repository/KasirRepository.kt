@@ -505,96 +505,59 @@ class KasirRepository(val context: Context) {
             }
         } catch (e: Exception) { e.printStackTrace() }
         
-        var isOfflineBypass = false
-        var finalUid = ""
-        var localUser = UserEntity(
-            uid = "offline_" + Math.abs(email.trim().lowercase().hashCode()),
-            nama = nama,
-            email = email,
-            role = "owner",
-            ownerId = null,
-            assignedBranchId = null,
-            subscriptionStatus = "profesional",
-            subscriptionStartDate = System.currentTimeMillis(),
-            subscriptionEndDate = System.currentTimeMillis() + (365L * 24 * 60 * 60 * 1000L) // 1 year
-        )
-
-        var firebaseUid: String? = null
+        val firebaseUid: String
         try {
-            val result = withTimeoutOrNull(10000L) {
+            val result = withTimeoutOrNull(15000L) {
                 auth.createUserWithEmailAndPassword(email.trim(), pass).await()
-            }
-            if (result == null) {
-                throw Exception("Gagal mendaftarkan email. Coba lagi.")
-            }
-            firebaseUid = result.user?.uid
-            isOfflineBypass = false
+            } ?: throw Exception("Registrasi gagal. Hubungan ke server tertunda atau gagal.")
+            firebaseUid = result.user?.uid ?: throw Exception("Pendaftaran gagal. Sesi tidak ditemukan.")
         } catch (e: com.google.firebase.auth.FirebaseAuthUserCollisionException) {
             throw Exception("Email sudah digunakan. Silakan login")
         } catch (e: com.google.firebase.auth.FirebaseAuthException) {
             val errorCode = e.errorCode
-            if (errorCode == "ERROR_EMAIL_ALREADY_IN_USE" || errorCode == "auth/email-already-in-use") {
-                throw Exception("Email sudah digunakan. Silakan login")
-            } else if (errorCode == "ERROR_INVALID_EMAIL" || errorCode == "auth/invalid-email") {
-                throw Exception("Format email tidak valid")
-            } else if (errorCode == "ERROR_WEAK_PASSWORD" || errorCode == "auth/weak-password") {
-                throw Exception("Password minimal terdiri dari 6 karakter")
-            } else {
-                isOfflineBypass = true
-                android.util.Log.w("KASIR_AUTH", "Firebase Auth Exception (code=$errorCode). Fallback to offline registration: $localUser", e)
+            val msg = when {
+                errorCode == "ERROR_EMAIL_ALREADY_IN_USE" || errorCode == "auth/email-already-in-use" -> "Email sudah digunakan. Silakan login"
+                errorCode == "ERROR_INVALID_EMAIL" || errorCode == "auth/invalid-email" -> "Format email tidak valid"
+                errorCode == "ERROR_WEAK_PASSWORD" || errorCode == "auth/weak-password" -> "Password minimal terdiri dari 6 karakter"
+                else -> e.localizedMessage ?: "Registrasi gagal, silakan coba lagi."
             }
+            throw Exception(msg)
         } catch (e: Exception) {
-            isOfflineBypass = true
-            android.util.Log.w("KASIR_AUTH", "Firebase Auth connection error. Fallback to offline registration: $localUser", e)
+            e.printStackTrace()
+            throw Exception("Koneksi gagal. Silakan periksa jaringan internet Anda.")
         }
 
-        if (isOfflineBypass) {
-            finalUid = "offline_" + Math.abs(email.trim().lowercase().hashCode())
-            withContext(Dispatchers.Main) {
-                try {
-                    android.widget.Toast.makeText(
-                        context,
-                        "Koneksi Firebase Auth gagal! Mengaktifkan Mode Offline/Lokal (USB Debug).",
-                        android.widget.Toast.LENGTH_LONG
-                    ).show()
-                } catch (t: Exception) {}
+        val localUser = UserEntity(
+            uid = firebaseUid,
+            nama = nama,
+            email = email.trim(),
+            role = "owner",
+            ownerId = null,
+            assignedBranchId = null,
+            subscriptionStatus = "free",
+            subscriptionStartDate = null,
+            subscriptionEndDate = null
+        )
+
+        // Save to Firestore using map-serialization (gracefully ignore cloud failures if needed)
+        try {
+            withTimeoutOrNull(8000L) {
+                firestore.collection("users").document(firebaseUid).set(localUser.toMap()).await()
             }
-        } else {
-            finalUid = firebaseUid ?: throw Exception("Registrasi gagal, silakan coba lagi.")
-            localUser = UserEntity(
-                uid = finalUid,
-                nama = nama,
-                email = email,
-                role = "owner",
-                ownerId = null,
-                assignedBranchId = null,
-                subscriptionStatus = "free",
-                subscriptionStartDate = null,
-                subscriptionEndDate = null
-            )
-            // Save to Firestore using map-serialization (gracefully ignore cloud failures)
-            try {
-                withTimeoutOrNull(5000L) {
-                    firestore.collection("users").document(finalUid).set(localUser.toMap()).await()
-                }
-            } catch (f: Exception) {
-                f.printStackTrace()
-            }
+        } catch (f: Exception) {
+            f.printStackTrace()
         }
 
         // Save to local Room (MUST succeed to keep the app working locally)
         dao.clearUsers()
         dao.insertUser(localUser)
 
-        setLoggedInDeviceUser(finalUid)
+        setLoggedInDeviceUser(firebaseUid)
         
-        // Try to load any other user data from cloud if applicable
-        if (!isOfflineBypass) {
-            try {
-                syncFromFirestore()
-            } catch (s: Exception) {
-                s.printStackTrace()
-            }
+        try {
+            syncFromFirestore()
+        } catch (s: Exception) {
+            s.printStackTrace()
         }
         return true
     }
@@ -709,84 +672,39 @@ class KasirRepository(val context: Context) {
 
         // 2. Standard flow for Owner Email Login
         try {
-            var firebaseUid: String? = null
-            var isOfflineBypass = false
+            val firebaseUid: String
             try {
-                val result = withTimeoutOrNull(10000L) {
+                val result = withTimeoutOrNull(15000L) {
                     auth.signInWithEmailAndPassword(cleanInput, pass).await()
-                }
-                if (result == null) {
-                    throw Exception("Gagal masuk. Silakan coba lagi.")
-                }
-                firebaseUid = result.user?.uid ?: throw Exception("Gagal masuk. Silakan coba lagi.")
+                } ?: throw Exception("Gagal masuk. Koneksi tertunda.")
+                firebaseUid = result.user?.uid ?: throw Exception("Gagal masuk. Sesi tidak ditemukan.")
             } catch (e: com.google.firebase.auth.FirebaseAuthInvalidUserException) {
                 throw Exception("Email tidak terdaftar. Silakan daftar terlebih dahulu")
             } catch (e: com.google.firebase.auth.FirebaseAuthInvalidCredentialsException) {
                 throw Exception("Password salah. Silakan coba lagi")
             } catch (e: com.google.firebase.auth.FirebaseAuthException) {
                 val errorCode = e.errorCode
-                if (errorCode == "ERROR_USER_NOT_FOUND" || errorCode == "auth/user-not-found") {
-                    throw Exception("Email tidak terdaftar. Silakan daftar terlebih dahulu")
-                } else if (errorCode == "ERROR_WRONG_PASSWORD" || errorCode == "auth/wrong-password") {
-                    throw Exception("Password salah. Silakan coba lagi")
-                } else if (errorCode == "ERROR_INVALID_EMAIL" || errorCode == "auth/invalid-email") {
-                    throw Exception("Format email tidak valid")
-                } else if (errorCode == "ERROR_TOO_MANY_REQUESTS" || errorCode == "auth/too-many-requests") {
-                    throw Exception("Terlalu banyak percobaan. Coba lagi nanti")
-                } else {
-                    isOfflineBypass = true
-                    firebaseUid = "offline_" + Math.abs(cleanInput.hashCode())
-                    android.util.Log.w("KASIR_AUTH", "Firebase Exception ($errorCode). Local login bypass: $firebaseUid", e)
+                val msg = when {
+                    errorCode == "ERROR_USER_NOT_FOUND" || errorCode == "auth/user-not-found" -> "Email tidak terdaftar. Silakan daftar terlebih dahulu"
+                    errorCode == "ERROR_WRONG_PASSWORD" || errorCode == "auth/wrong-password" -> "Password salah. Silakan coba lagi"
+                    errorCode == "ERROR_INVALID_EMAIL" || errorCode == "auth/invalid-email" -> "Format email tidak valid"
+                    errorCode == "ERROR_TOO_MANY_REQUESTS" || errorCode == "auth/too-many-requests" -> "Terlalu banyak percobaan. Coba lagi nanti"
+                    else -> e.localizedMessage ?: "Gagal masuk. Silakan coba lagi."
                 }
+                throw Exception(msg)
             } catch (e: Exception) {
-                isOfflineBypass = true
-                firebaseUid = "offline_" + Math.abs(cleanInput.hashCode())
-                android.util.Log.w("KASIR_AUTH", "Firebase Auth unreachable. Local login bypass: $firebaseUid", e)
+                e.printStackTrace()
+                throw Exception("Koneksi gagal. Silakan periksa jaringan internet Anda.")
             }
 
-            if (isOfflineBypass) {
-                withContext(Dispatchers.Main) {
-                    try {
-                        android.widget.Toast.makeText(
-                            context,
-                            "Gagal menghubungkan ke Firebase Auth! Masuk via Mode Offline (USB Debug).",
-                            android.widget.Toast.LENGTH_LONG
-                        ).show()
-                    } catch (t: Exception) {}
-                }
-                
-                val userInDb = dao.getUserById(firebaseUid)
-                if (userInDb == null) {
-                    val role = "owner"
-                    val defaultUser = UserEntity(
-                        uid = firebaseUid,
-                        nama = "Owner Toko (Lokal/USB)",
-                        email = cleanInput,
-                        role = role,
-                        ownerId = null,
-                        assignedBranchId = null,
-                        subscriptionStatus = "profesional",
-                        subscriptionStartDate = System.currentTimeMillis(),
-                        subscriptionEndDate = System.currentTimeMillis() + (365L * 24 * 60 * 60 * 1000L) // 1 year
-                    )
-                    dao.clearUsers()
-                    dao.insertUser(defaultUser)
-                } else {
-                    dao.clearUsers()
-                    dao.insertUser(userInDb)
-                }
-                setLoggedInDeviceUser(firebaseUid)
-                return true
-            }
-
-            setLoggedInDeviceUser(firebaseUid!!)
+            setLoggedInDeviceUser(firebaseUid)
 
             // Clear any stale local data of other accounts before syncing
             withContext(Dispatchers.IO) {
                 try {
                     database.clearAllTables()
-                } catch (e: Exception) {
-                    e.printStackTrace()
+                } catch (ex: Exception) {
+                    ex.printStackTrace()
                 }
             }
 
@@ -823,66 +741,10 @@ class KasirRepository(val context: Context) {
                 dao.insertUser(defaultUser)
             }
             return true
-        } catch (e: FirebaseAuthInvalidUserException) {
-            throw Exception("Email tidak terdaftar. Silakan daftar terlebih dahulu")
-        } catch (e: FirebaseAuthInvalidCredentialsException) {
-            throw Exception("Password salah. Silakan coba lagi")
-        } catch (e: FirebaseAuthException) {
-            val msg = when (e.errorCode) {
-                "ERROR_USER_NOT_FOUND", "auth/user-not-found" -> "Email tidak terdaftar. Silakan daftar terlebih dahulu"
-                "ERROR_WRONG_PASSWORD", "auth/wrong-password" -> "Password salah. Silakan coba lagi"
-                "ERROR_INVALID_EMAIL", "auth/invalid-email" -> "Format email tidak valid"
-                "ERROR_TOO_MANY_REQUESTS", "auth/too-many-requests" -> "Terlalu banyak percobaan. Coba lagi nanti"
-                else -> e.localizedMessage ?: "Email atau password salah!"
-            }
-            throw Exception(msg)
         } catch (e: Exception) {
-            if (e.message != null && (e.message!!.contains("tidak terdaftar") || e.message!!.contains("salah") || e.message!!.contains("Format email"))) {
-                throw e
-            }
             e.printStackTrace()
             throw Exception(e.localizedMessage ?: "Email atau password salah!")
         }
-    }
-
-    suspend fun loginOfflineBypass(email: String, pass: String, customNama: String = "Owner Toko (Lokal/USB)"): Boolean {
-        val cleanInput = email.trim().lowercase()
-        val finalUid = "offline_" + Math.abs(cleanInput.hashCode())
-        
-        withContext(Dispatchers.IO) {
-            try {
-                database.clearAllTables()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-
-        val localUser = UserEntity(
-            uid = finalUid,
-            nama = customNama,
-            email = cleanInput,
-            role = "owner",
-            ownerId = null,
-            assignedBranchId = null,
-            subscriptionStatus = "profesional",
-            subscriptionStartDate = System.currentTimeMillis(),
-            subscriptionEndDate = System.currentTimeMillis() + (365L * 24 * 60 * 60 * 1000L) // 1 year
-        )
-        
-        dao.clearUsers()
-        dao.insertUser(localUser)
-        setLoggedInDeviceUser(finalUid)
-        
-        withContext(Dispatchers.Main) {
-            try {
-                android.widget.Toast.makeText(
-                    context,
-                    "Sukses masuk via Mode Offline (USB Debug)!",
-                    android.widget.Toast.LENGTH_LONG
-                ).show()
-            } catch (t: Exception) {}
-        }
-        return true
     }
 
 data class GoogleLoginResult(
