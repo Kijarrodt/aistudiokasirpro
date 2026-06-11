@@ -2617,7 +2617,25 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
                                         Text(
-                                            text = "Created: ${android.text.format.DateFormat.format("dd/MM/yyyy", user.createdAt)}",
+                                            text = "Created: ${android.text.format.DateFormat.format("dd/MM/yyyy", user.createdAt)}\n" + run {
+                                                 if (isUserPremium) {
+                                                     val uEndDate = user.subscriptionEndDate
+                                                     val formattedDate = if (uEndDate != null && uEndDate > 0L) {
+                                                         java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault()).format(java.util.Date(uEndDate))
+                                                     } else {
+                                                         "Tidak Terbatas"
+                                                     }
+                                                     val isExpired = uEndDate != null && uEndDate < System.currentTimeMillis()
+                                                     val dLeft = if (uEndDate != null && uEndDate > System.currentTimeMillis()) {
+                                                         (uEndDate - System.currentTimeMillis()) / (24 * 60 * 60 * 1000)
+                                                     } else {
+                                                         0L
+                                                     }
+                                                     if (isExpired) "⚠️ EXPIRED ($formattedDate)" else "✅ AKTIF S/D $formattedDate ($dLeft HARI LAGI)"
+                                                 } else {
+                                                     "FREE TIER"
+                                                 }
+                                             },
                                             color = Color.Gray,
                                             fontSize = 9.sp
                                         )
@@ -3203,7 +3221,30 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                         HorizontalDivider(color = Color.DarkGray)
                                         Spacer(modifier = Modifier.height(6.dp))
                                         Text(
-                                            text = "Digunakan oleh: ${usedBy?.take(8) ?: "Unknown"}",
+                                            text = run {
+                                                 val matchedUser = rawUsersList.find { it.uid == usedBy }
+                                                 if (matchedUser != null) {
+                                                     val endDateObj = matchedUser.subscriptionEndDate
+                                                     val isExpired = endDateObj != null && endDateObj < System.currentTimeMillis()
+                                                     val formattedEndDate = if (endDateObj != null && endDateObj > 0L) {
+                                                         val sdf = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault())
+                                                         sdf.format(java.util.Date(endDateObj))
+                                                     } else {
+                                                         "Tidak Terbatas"
+                                                     }
+                                                     val daysLeft = if (endDateObj != null && endDateObj > System.currentTimeMillis()) {
+                                                         (endDateObj - System.currentTimeMillis()) / (24 * 60 * 60 * 1000)
+                                                     } else {
+                                                         0L
+                                                     }
+                                                     
+                                                     "Pengguna: ${matchedUser.nama} (${matchedUser.email})\n" +
+                                                     "Paket: ${matchedUser.subscriptionStatus.uppercase()} (${matchedUser.subscriptionType?.uppercase() ?: "BULANAN"})\n" +
+                                                     (if (isExpired) "⚠️ STATUS: EXPIRED (Habis s/d $formattedEndDate)" else "✅ STATUS: AKTIF (Masa Aktif s/d $formattedEndDate, $daysLeft Hari Lagi)")
+                                                 } else {
+                                                     "Digunakan oleh: ${usedBy?.take(8) ?: "Unknown"}"
+                                                 }
+                                             },
                                             color = Color.LightGray,
                                             fontSize = 10.sp
                                         )
