@@ -1557,7 +1557,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                                     rx = rx,
                                                     businessName = viewModel.currentBusiness.value?.namaBisnis ?: "KASIR PRO",
                                                     address = viewModel.currentBusiness.value?.alamat ?: "",
-                                                    phone = viewModel.currentBusiness.value?.telepon ?: ""
+                                                    phone = viewModel.currentBusiness.value?.noTelpon ?: ""
                                                 )
                                                 isPrinting = false
                                                 if (success) {
