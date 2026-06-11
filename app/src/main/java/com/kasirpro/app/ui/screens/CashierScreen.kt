@@ -40,6 +40,9 @@ import com.kasirpro.app.data.repository.TransactionItem
 import com.kasirpro.app.ui.viewmodel.KasirViewModel
 import com.kasirpro.app.ui.theme.*
 import com.kasirpro.app.util.BarcodeScannerHelper
+import com.kasirpro.app.util.BluetoothPrinterHelper
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import com.kasirpro.app.util.ProductImage
 import com.kasirpro.app.util.ShopLogoImage
 import java.text.NumberFormat
@@ -1344,7 +1347,23 @@ fun CashierScreen(viewModel: KasirViewModel) {
     val activeReceiptState by viewModel.activeReceipt.collectAsState()
     if (activeReceiptState != null) {
         val rx = activeReceiptState!!
+        val context = LocalContext.current
+        val coroutineScope = rememberCoroutineScope()
         var showBluetoothSimulation by remember { mutableStateOf(false) }
+        var pairedPrinters by remember { mutableStateOf<List<android.bluetooth.BluetoothDevice>>(emptyList()) }
+        var isPrinting by remember { mutableStateOf(false) }
+
+        val permissionLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestMultiplePermissions()
+        ) { results ->
+            val allGranted = results.values.all { it }
+            if (allGranted) {
+                pairedPrinters = BluetoothPrinterHelper.getPairedPrinters(context)
+                showBluetoothSimulation = true
+            } else {
+                Toast.makeText(context, "Izin Bluetooth ditolak. Gagal menyambungkan ke printer.", Toast.LENGTH_SHORT).show()
+            }
+        }
 
         // Thermal Struk Dialog
         AlertDialog(
@@ -1460,7 +1479,14 @@ fun CashierScreen(viewModel: KasirViewModel) {
                         }
 
                         Button(
-                            onClick = { showBluetoothSimulation = true },
+                            onClick = {
+                                if (BluetoothPrinterHelper.hasBluetoothPermissions(context)) {
+                                    pairedPrinters = BluetoothPrinterHelper.getPairedPrinters(context)
+                                    showBluetoothSimulation = true
+                                } else {
+                                    permissionLauncher.launch(BluetoothPrinterHelper.bluetoothPermissions)
+                                }
+                            },
                             colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
                             modifier = Modifier.weight(1f)
                         ) {
@@ -1479,7 +1505,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
             }
         )
 
-        // Bluetooth Simulation Popup Helper
+        // Bluetooth Simulation/Real Printer Dialog Helper
         if (showBluetoothSimulation) {
             AlertDialog(
                 onDismissRequest = { showBluetoothSimulation = false },
@@ -1487,22 +1513,102 @@ fun CashierScreen(viewModel: KasirViewModel) {
                 title = { Text("Hubungkan Printer Thermal Bluetooth") },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("Mencari perangkat printer bluetooth kasir terdekat...", fontSize = 12.sp)
+                        Text("Pastikan printer Anda menyala dan telah dipasangkan (paired) di pengaturan Bluetooth HP.", fontSize = 11.sp)
+                        
+                        if (isPrinting) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = OrangePrimary)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Mencetak struk...", fontSize = 12.sp)
+                            }
+                        } else if (pairedPrinters.isEmpty()) {
+                            Text("Tidak ada printer Bluetooth berpasangan ditemukan.", color = Color.Red, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Button(
+                                onClick = {
+                                    if (BluetoothPrinterHelper.hasBluetoothPermissions(context)) {
+                                        pairedPrinters = BluetoothPrinterHelper.getPairedPrinters(context)
+                                    } else {
+                                        permissionLauncher.launch(BluetoothPrinterHelper.bluetoothPermissions)
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+                            ) {
+                                Text("Muat Ulang / Cari Printer", fontSize = 11.sp)
+                            }
+                        } else {
+                            Text("Pilih printer dari daftar di bawah ini:", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            LazyColumn(
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.heightIn(max = 200.dp)
+                            ) {
+                                items(pairedPrinters) { device ->
+                                    Card(
+                                        onClick = {
+                                            coroutineScope.launch {
+                                                isPrinting = true
+                                                val success = BluetoothPrinterHelper.printReceipt(
+                                                    context = context,
+                                                    device = device,
+                                                    rx = rx,
+                                                    businessName = viewModel.currentBusiness.value?.namaBisnis ?: "KASIR PRO",
+                                                    address = viewModel.currentBusiness.value?.alamat ?: "",
+                                                    phone = viewModel.currentBusiness.value?.telepon ?: ""
+                                                )
+                                                isPrinting = false
+                                                if (success) {
+                                                    Toast.makeText(context, "Berhasil mencetak ke printer: ${device.name ?: "Unknown"}", Toast.LENGTH_SHORT).show()
+                                                    showBluetoothSimulation = false
+                                                    viewModel.activeReceipt.value = null
+                                                } else {
+                                                    Toast.makeText(context, "Gagal mencetak. Harap sambungkan kembali printer Bluetooth Anda.", Toast.LENGTH_LONG).show()
+                                                }
+                                            }
+                                        },
+                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column {
+                                                Text(device.name ?: "Printer Tanpa Nama", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                                Text(device.address ?: "00:00:00:00:00:00", fontSize = 10.sp, color = Color.Gray)
+                                            }
+                                            Icon(Icons.Default.Bluetooth, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(18.dp))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Simulation mode fallback button
+                        Divider(modifier = Modifier.padding(vertical = 4.dp))
                         Card(
                             onClick = {
-                                Toast.makeText(context, "Cetak Struk Ke: RPP02N - Selesai!", Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, "Simulasi Cetak Struk ke printer RPP02N - Selesai!", Toast.LENGTH_LONG).show()
                                 showBluetoothSimulation = false
                                 viewModel.activeReceipt.value = null
                             },
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF3F4F6)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Row(modifier = Modifier.padding(12.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Row(
+                                modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Column {
-                                    Text("RPP02N (Printer Portable)", fontWeight = FontWeight.Bold)
-                                    Text("Mac: 00:11:22:33:FF:EE", fontSize = 10.sp, color = Color.Gray)
+                                    Text("Simulasi Cetak (Bypass)", fontWeight = FontWeight.SemiBold, fontSize = 11.sp, color = Color.Black)
+                                    Text("Gunakan jika tidak ada printer berpasangan", fontSize = 10.sp, color = Color.Gray)
                                 }
-                                Icon(Icons.Default.Bluetooth, contentDescription = null, tint = OrangePrimary)
+                                Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(18.dp))
                             }
                         }
                     }

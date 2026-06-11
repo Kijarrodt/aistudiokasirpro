@@ -2441,8 +2441,8 @@ fun PremiumKasirTab(viewModel: KasirViewModel) {
                             Toast.makeText(context, "Password minimal 6 karakter!", Toast.LENGTH_SHORT).show()
                             return@Button
                         }
-                        if (isAddUsernameAvailable == false) {
-                            Toast.makeText(context, "Username tidak tersedia / sudah digunakan!", Toast.LENGTH_SHORT).show()
+                        if (isAddUsernameAvailable != true) {
+                            Toast.makeText(context, "Username tidak tersedia atau sedang divalidasi. Silakan periksa kembali!", Toast.LENGTH_SHORT).show()
                             return@Button
                         }
                         viewModel.addCashier(
@@ -2548,8 +2548,8 @@ fun PremiumKasirTab(viewModel: KasirViewModel) {
                             Toast.makeText(context, "Password minimal 6 karakter!", Toast.LENGTH_SHORT).show()
                             return@Button
                         }
-                        if (isEditUsernameAvailable == false) {
-                            Toast.makeText(context, "Username tidak dapat digunakan karena sudah dimiliki akun lain!", Toast.LENGTH_SHORT).show()
+                        if (isEditUsernameAvailable != true) {
+                            Toast.makeText(context, "Username tidak tersedia atau sedang divalidasi. Silakan periksa kembali!", Toast.LENGTH_SHORT).show()
                             return@Button
                         }
                         
