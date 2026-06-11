@@ -88,6 +88,47 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope, SharingStarted.Eagerly, emptyList()
     )
 
+    val expiredProducts = products.map { list ->
+        val user = currentUser.value
+        val isAtLeastProfesional = user?.isAtLeastProfesional ?: false
+        if (!isAtLeastProfesional) {
+            emptyList<ProductEntity>()
+        } else {
+            val today = System.currentTimeMillis()
+            list.filter { p ->
+                p.expiryDate != null && p.expiryDate < today
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val nearExpiryProducts = products.map { list ->
+        val user = currentUser.value
+        val isAtLeastProfesional = user?.isAtLeastProfesional ?: false
+        if (!isAtLeastProfesional) {
+            emptyList<ProductEntity>()
+        } else {
+            val today = System.currentTimeMillis()
+            list.filter { p ->
+                p.expiryDate != null && 
+                p.expiryDate >= today && 
+                today >= (p.expiryDate - (p.expiryReminderDays * 24L * 60 * 60 * 1000))
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val totalExpiryWarningsCount = products.map { list ->
+        val user = currentUser.value
+        val isAtLeastProfesional = user?.isAtLeastProfesional ?: false
+        if (!isAtLeastProfesional) {
+            0
+        } else {
+            val today = System.currentTimeMillis()
+            list.count { p ->
+                p.expiryDate != null && (p.expiryDate < today || today >= (p.expiryDate - (p.expiryReminderDays * 24L * 60 * 60 * 1000)))
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+
     val transactions = repository.allTransactions.stateIn(
         viewModelScope, SharingStarted.Eagerly, emptyList()
     )
@@ -281,11 +322,19 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun getEffectivePriceForCartItem(product: ProductEntity, quantity: Int, hasVariant: Boolean): Double {
+        val user = currentUser.value
+        val isAtLeastProfesional = user?.isAtLeastProfesional ?: false
+        if (isAtLeastProfesional && !hasVariant && product.wholesaleMinQty > 0 && quantity >= product.wholesaleMinQty) {
+            return product.wholesalePrice
+        }
+        return product.hargaJual
+    }
+
     // CART ACTIONS
     fun addToCart(product: ProductEntity, selectedVariant: ProductVariant? = null) {
         val current = cartItems.value.toMutableList()
         val variantName = selectedVariant?.nama
-        val finalPrice = selectedVariant?.harga ?: product.hargaJual
         
         val existingIndex = current.indexOfFirst { 
             it.id == product.id && it.varianSelected == variantName 
@@ -293,8 +342,19 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
 
         if (existingIndex >= 0) {
             val item = current[existingIndex]
-            current[existingIndex] = item.copy(jumlah = item.jumlah + 1)
+            val newQty = item.jumlah + 1
+            val finalPrice = if (selectedVariant != null) {
+                selectedVariant.harga
+            } else {
+                getEffectivePriceForCartItem(product, newQty, false)
+            }
+            current[existingIndex] = item.copy(jumlah = newQty, harga = finalPrice)
         } else {
+            val finalPrice = if (selectedVariant != null) {
+                selectedVariant.harga
+            } else {
+                getEffectivePriceForCartItem(product, 1, false)
+            }
             current.add(
                 TransactionItem(
                     id = product.id,
@@ -318,7 +378,14 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             cartItems.value = cartItems.value.map {
                 if (it.id == item.id && it.varianSelected == item.varianSelected) {
-                    it.copy(jumlah = newQty)
+                    val prod = products.value.find { p -> p.id == item.id }
+                    val hasVariant = item.varianSelected != null
+                    val finalPrice = if (prod != null && !hasVariant) {
+                        getEffectivePriceForCartItem(prod, newQty, false)
+                    } else {
+                        item.harga
+                    }
+                    it.copy(jumlah = newQty, harga = finalPrice)
                 } else it
             }
         }
@@ -433,7 +500,11 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         barcode: String?,
         fotoBase64: String?,
         varianList: List<ProductVariant>,
-        satuan: String = "Pcs"
+        satuan: String = "Pcs",
+        wholesalePrice: Double = 0.0,
+        wholesaleMinQty: Int = 0,
+        expiryDate: Long? = null,
+        expiryReminderDays: Int = 7
     ) {
         val user = currentUser.value
         val isPremium = user?.isPremium ?: false
@@ -451,7 +522,22 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         viewModelScope.launch {
-            repository.insertProduct(nama, kategori, hargaJual, hargaModal, stok, stokMinimum, barcode, fotoBase64, varianList, satuan)
+            repository.insertProduct(
+                nama = nama,
+                kategori = kategori,
+                hargaJual = hargaJual,
+                hargaModal = hargaModal,
+                stok = stok,
+                stokMinimum = stokMinimum,
+                barcode = barcode,
+                fotoBase64 = fotoBase64,
+                varianList = varianList,
+                satuan = satuan,
+                wholesalePrice = wholesalePrice,
+                wholesaleMinQty = wholesaleMinQty,
+                expiryDate = expiryDate,
+                expiryReminderDays = expiryReminderDays
+            )
         }
     }
 
@@ -467,6 +553,10 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         fotoBase64: String?,
         branchId: String,
         satuan: String = "Pcs",
+        wholesalePrice: Double = 0.0,
+        wholesaleMinQty: Int = 0,
+        expiryDate: Long? = null,
+        expiryReminderDays: Int = 7,
         onComplete: (Boolean) -> Unit = {}
     ) {
         viewModelScope.launch {
@@ -481,7 +571,11 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
                 barcode = barcode,
                 fotoBase64 = fotoBase64,
                 branchId = branchId,
-                satuan = satuan
+                satuan = satuan,
+                wholesalePrice = wholesalePrice,
+                wholesaleMinQty = wholesaleMinQty,
+                expiryDate = expiryDate,
+                expiryReminderDays = expiryReminderDays
             )
             onComplete(success)
         }

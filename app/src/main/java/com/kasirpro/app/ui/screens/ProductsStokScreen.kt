@@ -2,6 +2,7 @@ package com.kasirpro.app.ui.screens
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -218,6 +219,125 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
             }
 
             if (activeTab == "PRODUK" || activeTab == "STOK") {
+                val totalExpiryCount by viewModel.totalExpiryWarningsCount.collectAsState()
+                val expiredList by viewModel.expiredProducts.collectAsState()
+                val nearExpiryList by viewModel.nearExpiryProducts.collectAsState()
+
+                var showExpiryWarningDialog by remember { mutableStateOf(false) }
+
+                if (totalExpiryCount > 0) {
+                    Card(
+                        onClick = { showExpiryWarningDialog = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .testTag("expiry_warning_alert_banner"),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3CD)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFFEBA2))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = "Warning",
+                                tint = Color(0xFF856404),
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "Peringatan Kedaluwarsa Produk!",
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF856404),
+                                    fontSize = 14.sp
+                                )
+                                Text(
+                                    "Ada $totalExpiryCount produk yang telah kedaluwarsa atau mendekati kedaluwarsa. Klik untuk melihat daftar.",
+                                    color = Color(0xFF856404),
+                                    fontSize = 11.sp
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.Default.ChevronRight,
+                                contentDescription = "Lihat",
+                                tint = Color(0xFF856404)
+                             )
+                        }
+                    }
+                }
+
+                if (showExpiryWarningDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showExpiryWarningDialog = false },
+                        icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFD32F2F)) },
+                        title = { Text("Daftar Produk Kedaluwarsa", fontWeight = FontWeight.Bold) },
+                        text = {
+                            LazyColumn(
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp).testTag("expiry_warning_list_dialog")
+                            ) {
+                                if (expiredList.isNotEmpty()) {
+                                    item {
+                                        Text("Produk Telah Kedaluwarsa:", fontWeight = FontWeight.Bold, color = Color(0xFFD32F2F), fontSize = 13.sp)
+                                    }
+                                    items(expiredList) { prod ->
+                                        val sdf = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
+                                        val dateStr = prod.expiryDate?.let { sdf.format(java.util.Date(it)) } ?: ""
+                                        Card(
+                                            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFCDD2)),
+                                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(8.dp),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Column {
+                                                    Text(prod.nama, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFFB71C1C))
+                                                    Text("Expired: $dateStr", fontSize = 11.sp, color = Color(0xFFB71C1C))
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (nearExpiryList.isNotEmpty()) {
+                                    item {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text("Produk Mendekati Kedaluwarsa:", fontWeight = FontWeight.Bold, color = Color(0xFFE65100), fontSize = 13.sp)
+                                    }
+                                    items(nearExpiryList) { prod ->
+                                        val sdf = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
+                                        val dateStr = prod.expiryDate?.let { sdf.format(java.util.Date(it)) } ?: ""
+                                        Card(
+                                            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF9C4)),
+                                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(8.dp),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Column {
+                                                    Text(prod.nama, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFFE65100))
+                                                    Text("Expired: $dateStr", fontSize = 11.sp, color = Color(0xFFE65100))
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { showExpiryWarningDialog = false }) {
+                                Text("Tutup")
+                            }
+                        }
+                    )
+                }
+
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -492,6 +612,10 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
         var addMinStok by remember { mutableStateOf("5") }
         var addBarcode by remember { mutableStateOf("") }
         var addSatuan by remember { mutableStateOf("Pcs") }
+        var addWholesalePrice by remember { mutableStateOf("") }
+        var addWholesaleMinQty by remember { mutableStateOf("") }
+        var addExpiryDate by remember { mutableStateOf<Long?>(null) }
+        var addExpiryReminderDays by remember { mutableStateOf("7") }
 
         val ownerId = currentUserState?.uid ?: "owner-main"
         val productId = remember { java.util.UUID.randomUUID().toString() }
@@ -679,6 +803,104 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                         }
                     }
 
+                    val isAtLeastProfesional = currentUserState?.isAtLeastProfesional == true
+                    if (!isAtLeastProfesional) {
+                        Card(
+                            onClick = { viewModel.triggerUpgradePopup("Paket Profesional") },
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
+                            modifier = Modifier.fillMaxWidth().testTag("upgrade_promo_card")
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(12.dp)
+                            ) {
+                                Icon(imageVector = androidx.compose.material.icons.Icons.Default.Lock, contentDescription = "Lock", tint = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "Aktifkan Fitur Harga Grosir & Kedaluwarsa (Profesional/Bisnis)",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                    } else {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                        Text("Pengaturan Grosir", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            OutlinedTextField(
+                                value = addWholesalePrice,
+                                onValueChange = { addWholesalePrice = it },
+                                label = { Text("Harga Grosir") },
+                                modifier = Modifier.weight(1f).testTag("add_prod_wholesale_price"),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                            )
+                            OutlinedTextField(
+                                value = addWholesaleMinQty,
+                                onValueChange = { addWholesaleMinQty = it },
+                                label = { Text("Min Qty Grosir") },
+                                modifier = Modifier.weight(1f).testTag("add_prod_wholesale_min_qty"),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                            )
+                        }
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                        Text("Pengaturan Kedaluwarsa", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                        
+                        val calendar = java.util.Calendar.getInstance()
+                        if (addExpiryDate != null) {
+                            calendar.timeInMillis = addExpiryDate!!
+                        }
+                        val datePickerDialog = android.app.DatePickerDialog(
+                            context,
+                            { _, year, month, dayOfMonth ->
+                                val selectedCal = java.util.Calendar.getInstance()
+                                selectedCal.set(year, month, dayOfMonth, 0, 0, 0)
+                                addExpiryDate = selectedCal.timeInMillis
+                            },
+                            calendar.get(java.util.Calendar.YEAR),
+                            calendar.get(java.util.Calendar.MONTH),
+                            calendar.get(java.util.Calendar.DAY_OF_MONTH)
+                        )
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { datePickerDialog.show() }
+                                .border(1.dp, Color.Gray, RoundedCornerShape(4.dp))
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(imageVector = androidx.compose.material.icons.Icons.Default.CalendarToday, contentDescription = "Date", tint = OrangePrimary)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = if (addExpiryDate != null) {
+                                    val sdf = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
+                                    "Kedaluwarsa: " + sdf.format(java.util.Date(addExpiryDate!!))
+                                } else {
+                                    "Pilih Tanggal Kedaluwarsa"
+                                },
+                                color = if (addExpiryDate != null) Color.Black else Color.Gray,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (addExpiryDate != null) {
+                                IconButton(
+                                    onClick = { addExpiryDate = null },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(imageVector = androidx.compose.material.icons.Icons.Default.Clear, contentDescription = "Clear date", modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        }
+
+                        OutlinedTextField(
+                            value = addExpiryReminderDays,
+                            onValueChange = { addExpiryReminderDays = it },
+                            label = { Text("Ingatkan sebelum kedaluwarsa (Hari)") },
+                            modifier = Modifier.fillMaxWidth().testTag("add_prod_expiry_reminder"),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+                    }
+
                     if (isUploadingPhoto) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -727,7 +949,11 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                 barcode = if (addBarcode.isBlank()) null else addBarcode,
                                 fotoBase64 = addUploadedFotoUrl,
                                 branchId = "branch-1-$ownerId", // default branch ID of owner
-                                satuan = addSatuan
+                                satuan = addSatuan,
+                                wholesalePrice = addWholesalePrice.toDoubleOrNull() ?: 0.0,
+                                wholesaleMinQty = addWholesaleMinQty.toIntOrNull() ?: 0,
+                                expiryDate = addExpiryDate,
+                                expiryReminderDays = addExpiryReminderDays.toIntOrNull() ?: 7
                             )
                             showAddProductDialog = false
                             Toast.makeText(context, "Menyimpan Produk", Toast.LENGTH_SHORT).show()
@@ -925,6 +1151,10 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
         var eMinStok by remember { mutableStateOf(prod.stokMinimum.toString()) }
         var eBarcode by remember { mutableStateOf(prod.barcode ?: "") }
         var eSatuan by remember { mutableStateOf(prod.satuan) }
+        var eWholesalePrice by remember { mutableStateOf(prod.wholesalePrice.toString()) }
+        var eWholesaleMinQty by remember { mutableStateOf(prod.wholesaleMinQty.toString()) }
+        var eExpiryDate by remember { mutableStateOf<Long?>(prod.expiryDate) }
+        var eExpiryReminderDays by remember { mutableStateOf(prod.expiryReminderDays.toString()) }
         
         var eImgBytes by remember { mutableStateOf<ByteArray?>(null) }
         var eImgUri by remember { mutableStateOf<Uri?>(null) }
@@ -1122,6 +1352,104 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                     }
 
                     OutlinedTextField(value = eBarcode, onValueChange = { eBarcode = it }, label = { Text("Barcode (Optional)") }, modifier = Modifier.fillMaxWidth())
+
+                    val isAtLeastProfesional = currentUserState?.isAtLeastProfesional == true
+                    if (!isAtLeastProfesional) {
+                        Card(
+                            onClick = { viewModel.triggerUpgradePopup("Paket Profesional") },
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
+                            modifier = Modifier.fillMaxWidth().testTag("edit_upgrade_promo_card")
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(12.dp)
+                            ) {
+                                Icon(imageVector = androidx.compose.material.icons.Icons.Default.Lock, contentDescription = "Lock", tint = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "Aktifkan Fitur Harga Grosir & Kedaluwarsa (Profesional/Bisnis)",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                    } else {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                        Text("Pengaturan Grosir", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            OutlinedTextField(
+                                value = eWholesalePrice,
+                                onValueChange = { eWholesalePrice = it },
+                                label = { Text("Harga Grosir") },
+                                modifier = Modifier.weight(1f).testTag("edit_prod_wholesale_price"),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                            )
+                            OutlinedTextField(
+                                value = eWholesaleMinQty,
+                                onValueChange = { eWholesaleMinQty = it },
+                                label = { Text("Min Qty Grosir") },
+                                modifier = Modifier.weight(1f).testTag("edit_prod_wholesale_min_qty"),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                            )
+                        }
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                        Text("Pengaturan Kedaluwarsa", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                        
+                        val calendar = java.util.Calendar.getInstance()
+                        if (eExpiryDate != null) {
+                            calendar.timeInMillis = eExpiryDate!!
+                        }
+                        val editDatePickerDialog = android.app.DatePickerDialog(
+                            context,
+                            { _, year, month, dayOfMonth ->
+                                val selectedCal = java.util.Calendar.getInstance()
+                                selectedCal.set(year, month, dayOfMonth, 0, 0, 0)
+                                eExpiryDate = selectedCal.timeInMillis
+                            },
+                            calendar.get(java.util.Calendar.YEAR),
+                            calendar.get(java.util.Calendar.MONTH),
+                            calendar.get(java.util.Calendar.DAY_OF_MONTH)
+                        )
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { editDatePickerDialog.show() }
+                                .border(1.dp, Color.Gray, RoundedCornerShape(4.dp))
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(imageVector = androidx.compose.material.icons.Icons.Default.CalendarToday, contentDescription = "Date", tint = OrangePrimary)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = if (eExpiryDate != null) {
+                                    val sdf = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
+                                    "Kedaluwarsa: " + sdf.format(java.util.Date(eExpiryDate!!))
+                                } else {
+                                    "Pilih Tanggal Kedaluwarsa"
+                                },
+                                color = if (eExpiryDate != null) Color.Black else Color.Gray,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (eExpiryDate != null) {
+                                IconButton(
+                                    onClick = { eExpiryDate = null },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(imageVector = androidx.compose.material.icons.Icons.Default.Clear, contentDescription = "Clear date", modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        }
+
+                        OutlinedTextField(
+                            value = eExpiryReminderDays,
+                            onValueChange = { eExpiryReminderDays = it },
+                            label = { Text("Ingatkan sebelum kedaluwarsa (Hari)") },
+                            modifier = Modifier.fillMaxWidth().testTag("edit_prod_expiry_reminder"),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+                    }
 
                     if (isEditingUploading) {
                         Row(

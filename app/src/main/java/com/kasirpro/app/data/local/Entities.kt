@@ -69,8 +69,14 @@ data class ProductEntity(
     val varianRaw: String? = "", // JSON payload string containing variant definitions
     val satuan: String = "Pcs",
     val isActive: Boolean = true,
-    val createdAt: Long = System.currentTimeMillis()
-)
+    val createdAt: Long = System.currentTimeMillis(),
+    val wholesalePrice: Double = 0.0,
+    val wholesaleMinQty: Int = 0,
+    val expiryDate: Long? = null,
+    val expiryReminderDays: Int = 7
+) {
+    val retailPrice: Double get() = hargaJual
+}
 
 @Entity(tableName = "transactions")
 data class TransactionEntity(

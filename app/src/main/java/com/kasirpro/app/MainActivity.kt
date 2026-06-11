@@ -13,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -179,7 +180,23 @@ class MainActivity : ComponentActivity() {
                                     NavigationBarItem(
                                         selected = activeScreenState == "manage",
                                         onClick = { viewModel.activeScreen.value = "manage" },
-                                        icon = { Icon(Icons.Default.Inventory, contentDescription = "Produk") },
+                                        icon = {
+                                            val expiryCount by viewModel.totalExpiryWarningsCount.collectAsState()
+                                            BadgedBox(
+                                                badge = {
+                                                    if (expiryCount > 0) {
+                                                        Badge(
+                                                            containerColor = Color(0xFFD32F2F),
+                                                            contentColor = Color.White
+                                                        ) {
+                                                            Text(expiryCount.toString(), modifier = Modifier.testTag("expiry_badge_count"))
+                                                        }
+                                                    }
+                                                }
+                                            ) {
+                                                Icon(Icons.Default.Inventory, contentDescription = "Produk")
+                                            }
+                                        },
                                         label = { Text("Stok") },
                                         colors = NavigationBarItemDefaults.colors(
                                             selectedIconColor = OrangePrimary,

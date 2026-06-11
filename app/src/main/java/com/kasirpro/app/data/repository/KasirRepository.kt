@@ -96,6 +96,7 @@ fun ProductEntity.toMap(): Map<String, Any?> = mapOf(
     "nama" to nama,
     "kategori" to kategori,
     "hargaJual" to hargaJual,
+    "retailPrice" to hargaJual,
     "hargaModal" to hargaModal,
     "stok" to stok,
     "stokMinimum" to stokMinimum,
@@ -104,7 +105,11 @@ fun ProductEntity.toMap(): Map<String, Any?> = mapOf(
     "varianRaw" to varianRaw,
     "satuan" to satuan,
     "isActive" to isActive,
-    "createdAt" to createdAt
+    "createdAt" to createdAt,
+    "wholesalePrice" to wholesalePrice,
+    "wholesaleMinQty" to wholesaleMinQty,
+    "expiryDate" to expiryDate?.let { com.google.firebase.Timestamp(java.util.Date(it)) },
+    "expiryReminderDays" to expiryReminderDays
 )
 
 fun TransactionEntity.toMap(): Map<String, Any?> = mapOf(
@@ -1060,13 +1065,20 @@ data class GoogleLoginResult(
         return try {
             val doc = firestore.collection("products").document(id).get().await()
             if (doc.exists()) {
+                val expRaw = doc.get("expiryDate")
+                val expVal = when (expRaw) {
+                    is com.google.firebase.Timestamp -> expRaw.toDate().time
+                    is Number -> expRaw.toLong()
+                    is String -> expRaw.toLongOrNull()
+                    else -> null
+                }
                 ProductEntity(
                     id = doc.id,
                     businessId = doc.getString("businessId") ?: getResolvedBusinessId(),
                     branchId = doc.getString("branchId") ?: "branch-1",
                     nama = doc.getString("nama") ?: "",
                     kategori = doc.getString("kategori") ?: "",
-                    hargaJual = doc.getSafeDouble("hargaJual"),
+                    hargaJual = doc.getSafeDouble("retailPrice").takeIf { it > 0.0 } ?: doc.getSafeDouble("hargaJual"),
                     hargaModal = doc.getSafeDouble("hargaModal"),
                     stok = doc.getLong("stok")?.toInt() ?: 0,
                     stokMinimum = doc.getLong("stokMinimum")?.toInt() ?: 0,
@@ -1075,7 +1087,11 @@ data class GoogleLoginResult(
                     varianRaw = doc.getString("varianRaw") ?: "",
                     satuan = doc.getString("satuan") ?: "Pcs",
                     isActive = doc.getBoolean("isActive") ?: true,
-                    createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
+                    createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis(),
+                    wholesalePrice = doc.getSafeDouble("wholesalePrice"),
+                    wholesaleMinQty = doc.getLong("wholesaleMinQty")?.toInt() ?: 0,
+                    expiryDate = expVal,
+                    expiryReminderDays = doc.getLong("expiryReminderDays")?.toInt() ?: 7
                 )
             } else {
                 dao.getProductById(id)
@@ -1097,7 +1113,11 @@ data class GoogleLoginResult(
         barcode: String?,
         fotoBase64: String?,
         varianList: List<ProductVariant>,
-        satuan: String = "Pcs"
+        satuan: String = "Pcs",
+        wholesalePrice: Double = 0.0,
+        wholesaleMinQty: Int = 0,
+        expiryDate: Long? = null,
+        expiryReminderDays: Int = 7
     ): Boolean {
         val varianString = varianList.joinToString(";") { "${it.nama}:${it.harga}" }
         val bizId = getResolvedBusinessId()
@@ -1115,7 +1135,11 @@ data class GoogleLoginResult(
             barcode = barcode,
             fotoBase64 = fotoBase64,
             varianRaw = varianString,
-            satuan = satuan
+            satuan = satuan,
+            wholesalePrice = wholesalePrice,
+            wholesaleMinQty = wholesaleMinQty,
+            expiryDate = expiryDate,
+            expiryReminderDays = expiryReminderDays
         )
         try {
             firestore.collection("products").document(product.id).set(product.toMap()).await()
@@ -1151,7 +1175,11 @@ data class GoogleLoginResult(
         barcode: String?,
         fotoBase64: String?,
         branchId: String,
-        satuan: String = "Pcs"
+        satuan: String = "Pcs",
+        wholesalePrice: Double = 0.0,
+        wholesaleMinQty: Int = 0,
+        expiryDate: Long? = null,
+        expiryReminderDays: Int = 7
     ): Boolean {
         val bizId = getResolvedBusinessId()
 
@@ -1168,7 +1196,11 @@ data class GoogleLoginResult(
             barcode = barcode,
             fotoBase64 = fotoBase64,
             varianRaw = "",
-            satuan = satuan
+            satuan = satuan,
+            wholesalePrice = wholesalePrice,
+            wholesaleMinQty = wholesaleMinQty,
+            expiryDate = expiryDate,
+            expiryReminderDays = expiryReminderDays
         )
         try {
             firestore.collection("products").document(product.id).set(product.toMap()).await()
@@ -2499,13 +2531,20 @@ data class GoogleLoginResult(
                         val prodSnap = firestore.collection("products").whereEqualTo("businessId", businessId).get().await()
                         android.util.Log.d("SYNC", "Products found: ${prodSnap.size()}")
                         for (doc in prodSnap.documents) {
+                            val expRaw = doc.get("expiryDate")
+                            val expVal = when (expRaw) {
+                                is com.google.firebase.Timestamp -> expRaw.toDate().time
+                                is Number -> expRaw.toLong()
+                                is String -> expRaw.toLongOrNull()
+                                else -> null
+                            }
                             val p = ProductEntity(
                                 id = doc.id,
                                 businessId = businessId,
                                 branchId = doc.getString("branchId") ?: "branch-1-$businessId",
                                 nama = doc.getString("nama") ?: "",
                                 kategori = doc.getString("kategori") ?: "",
-                                hargaJual = doc.getSafeDouble("hargaJual"),
+                                hargaJual = doc.getSafeDouble("retailPrice").takeIf { it > 0.0 } ?: doc.getSafeDouble("hargaJual"),
                                 hargaModal = doc.getSafeDouble("hargaModal"),
                                 stok = doc.getLong("stok")?.toInt() ?: 0,
                                 stokMinimum = doc.getLong("stokMinimum")?.toInt() ?: 0,
@@ -2514,7 +2553,11 @@ data class GoogleLoginResult(
                                 varianRaw = doc.getString("varianRaw") ?: "",
                                 satuan = doc.getString("satuan") ?: "Pcs",
                                 isActive = doc.getBoolean("isActive") ?: true,
-                                createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
+                                createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis(),
+                                wholesalePrice = doc.getSafeDouble("wholesalePrice"),
+                                wholesaleMinQty = doc.getLong("wholesaleMinQty")?.toInt() ?: 0,
+                                expiryDate = expVal,
+                                expiryReminderDays = doc.getLong("expiryReminderDays")?.toInt() ?: 7
                             )
                             dao.insertProduct(p)
                             android.util.Log.d("SYNC", "Synced Product: ${p.nama} (Stock: ${p.stok})")
