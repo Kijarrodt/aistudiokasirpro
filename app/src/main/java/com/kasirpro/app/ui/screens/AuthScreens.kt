@@ -211,9 +211,9 @@ fun LoginScreen(viewModel: KasirViewModel) {
                             val credentialManager = CredentialManager.create(context)
                             
                             // Load the real Google Web Client ID from BuildConfig
-                            val webClientId = try {
+                            val webClientId = if (com.kasirpro.app.BuildConfig.GOOGLE_WEB_CLIENT_ID.isNotBlank()) {
                                 com.kasirpro.app.BuildConfig.GOOGLE_WEB_CLIENT_ID
-                            } catch (e: Exception) {
+                            } else {
                                 "357452625370-c0c7mqnmhodoebtq4e3323ocfsp3ituo.apps.googleusercontent.com"
                             }
                             
