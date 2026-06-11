@@ -845,6 +845,46 @@ class KasirRepository(val context: Context) {
         }
     }
 
+    suspend fun loginOfflineBypass(email: String, pass: String, customNama: String = "Owner Toko (Lokal/USB)"): Boolean {
+        val cleanInput = email.trim().lowercase()
+        val finalUid = "offline_" + Math.abs(cleanInput.hashCode())
+        
+        withContext(Dispatchers.IO) {
+            try {
+                database.clearAllTables()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        val localUser = UserEntity(
+            uid = finalUid,
+            nama = customNama,
+            email = cleanInput,
+            role = "owner",
+            ownerId = null,
+            assignedBranchId = null,
+            subscriptionStatus = "profesional",
+            subscriptionStartDate = System.currentTimeMillis(),
+            subscriptionEndDate = System.currentTimeMillis() + (365L * 24 * 60 * 60 * 1000L) // 1 year
+        )
+        
+        dao.clearUsers()
+        dao.insertUser(localUser)
+        setLoggedInDeviceUser(finalUid)
+        
+        withContext(Dispatchers.Main) {
+            try {
+                android.widget.Toast.makeText(
+                    context,
+                    "Sukses masuk via Mode Offline (USB Debug)!",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            } catch (t: Exception) {}
+        }
+        return true
+    }
+
 data class GoogleLoginResult(
     val success: Boolean,
     val isNewUser: Boolean,

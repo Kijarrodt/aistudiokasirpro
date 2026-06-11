@@ -280,6 +280,45 @@ fun LoginScreen(viewModel: KasirViewModel) {
                 Text("Masuk menggunakan Google", color = OrangePrimary, fontWeight = FontWeight.Bold)
             }
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Offline Mode (USB Debug) Bypass Button
+            OutlinedButton(
+                onClick = {
+                    val finalEmail = if (email.isNotBlank()) email else "owner_debug@kasirpro.id"
+                    val finalPass = if (password.isNotBlank()) password else "123456"
+                    isLoading = true
+                    errorMessage = null
+                    scope.launch {
+                        try {
+                            val success = viewModel.repository.loginOfflineBypass(finalEmail, finalPass)
+                            isLoading = false
+                            if (success) {
+                                viewModel.activeScreen.value = "home"
+                            }
+                        } catch (e: Exception) {
+                            isLoading = false
+                            errorMessage = e.message ?: "Gagal masuk offline."
+                        }
+                    }
+                },
+                enabled = !isLoading,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .testTag("offline_bypass_login_button")
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Build,
+                    contentDescription = null,
+                    tint = OrangePrimary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Masuk via Mode Offline (USB Debug)", color = OrangePrimary, fontWeight = FontWeight.Bold)
+            }
+
             Spacer(modifier = Modifier.height(32.dp))
 
             Row(horizontalArrangement = Arrangement.Center) {
@@ -431,6 +470,46 @@ fun RegisterScreen(viewModel: KasirViewModel) {
                 } else {
                     Text("Daftar Sekarang", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Offline Mode (USB Debug) Bypass Button
+            OutlinedButton(
+                onClick = {
+                    val finalNama = if (nama.isNotBlank()) nama else "Owner Toko (Lokal/USB)"
+                    val finalEmail = if (email.isNotBlank()) email else "owner_debug@kasirpro.id"
+                    val finalPass = if (password.isNotBlank()) password else "123456"
+                    isLoading = true
+                    errorMessage = null
+                    scope.launch {
+                        try {
+                            val success = viewModel.repository.loginOfflineBypass(finalEmail, finalPass, finalNama)
+                            isLoading = false
+                            if (success) {
+                                viewModel.activeScreen.value = "home"
+                            }
+                        } catch (e: Exception) {
+                            isLoading = false
+                            errorMessage = e.message ?: "Gagal registrasi offline."
+                        }
+                    }
+                },
+                enabled = !isLoading,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .testTag("offline_bypass_register_button")
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Build,
+                    contentDescription = null,
+                    tint = OrangePrimary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Daftar & Masuk via Mode Offline (USB Debug)", color = OrangePrimary, fontWeight = FontWeight.Bold)
             }
 
             Spacer(modifier = Modifier.height(32.dp))
