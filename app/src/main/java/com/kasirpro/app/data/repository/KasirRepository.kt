@@ -196,7 +196,7 @@ fun com.google.firebase.firestore.DocumentSnapshot.getSafeDouble(field: String):
 
 class KasirRepository(val context: Context) {
     private val database = KasirDatabase.getDatabase(context)
-    private val dao = database.kasirDao()
+    val dao = database.kasirDao()
 
     init {
         try {
@@ -315,6 +315,24 @@ class KasirRepository(val context: Context) {
     fun setLoggedInDeviceUser(uid: String?) {
         prefs.edit().putString("logged_in_uid", uid).apply()
         _loggedInUid.value = uid
+    }
+
+    fun saveUserSessionMetadata(user: UserEntity?) {
+        val editor = prefs.edit()
+        if (user != null) {
+            editor.putString("saved_user_email", user.email)
+            editor.putString("saved_user_name", user.nama)
+            editor.putBoolean("is_kasir_saved", user.role == "kasir" || user.role == "kasir_invited")
+            editor.putString("saved_owner_id", user.ownerId)
+            editor.putBoolean("is_at_least_profesional", user.isAtLeastProfesional)
+        } else {
+            editor.remove("saved_user_email")
+            editor.remove("saved_user_name")
+            editor.remove("is_kasir_saved")
+            editor.remove("saved_owner_id")
+            editor.remove("is_at_least_profesional")
+        }
+        editor.apply()
     }
 
     fun getOwnerVerificationCode(): String {
@@ -551,6 +569,7 @@ class KasirRepository(val context: Context) {
         // Save to local Room (MUST succeed to keep the app working locally)
         dao.clearUsers()
         dao.insertUser(localUser)
+        saveUserSessionMetadata(localUser)
 
         setLoggedInDeviceUser(firebaseUid)
         
@@ -645,6 +664,7 @@ class KasirRepository(val context: Context) {
                 }
                 dao.clearUsers()
                 dao.insertUser(cashierUser)
+                saveUserSessionMetadata(cashierUser)
 
                 // Update activity in Firestore cashier doc
                 try {
@@ -739,6 +759,9 @@ class KasirRepository(val context: Context) {
                 }
                 dao.clearUsers()
                 dao.insertUser(defaultUser)
+                saveUserSessionMetadata(defaultUser)
+            } else {
+                saveUserSessionMetadata(userInDb)
             }
             return true
         } catch (e: Exception) {
@@ -958,6 +981,7 @@ data class GoogleLoginResult(
 
             dao.clearUsers()
             dao.insertUser(user)
+            saveUserSessionMetadata(user)
 
             try {
                 syncFromFirestore(resultUid)
@@ -985,6 +1009,7 @@ data class GoogleLoginResult(
             auth.signOut()
         } catch (e: Exception) { e.printStackTrace() }
         setLoggedInDeviceUser(null)
+        saveUserSessionMetadata(null)
         withContext(Dispatchers.IO) {
             database.clearAllTables()
         }
@@ -2389,6 +2414,7 @@ data class GoogleLoginResult(
                                 lastActiveAt = userDoc.getLong("lastActiveAt")
                             )
                             dao.insertUser(user)
+                            saveUserSessionMetadata(user)
                             android.util.Log.d("SYNC", "Successfully synced user: ${user.nama} with status: ${user.subscriptionStatus}")
                             
                             if ((user.role == "kasir" || user.role == "kasir_invited") && !user.ownerId.isNullOrEmpty()) {
@@ -2428,6 +2454,7 @@ data class GoogleLoginResult(
                                     lastActiveAt = cashierDoc.getLong("lastActiveAt") ?: System.currentTimeMillis()
                                 )
                                 dao.insertUser(c)
+                                saveUserSessionMetadata(c)
                                 targetOwnerId = ownerId
                             } else {
                                 android.util.Log.w("SYNC", "User/Cashier document $uid not found in Firestore.")

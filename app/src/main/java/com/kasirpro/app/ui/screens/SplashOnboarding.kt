@@ -46,10 +46,77 @@ fun SplashScreen(viewModel: KasirViewModel) {
     LaunchedEffect(key1 = true) {
         startAnimation = true
         delay(2000)
-        // Check active user login status
-        val current = viewModel.currentUser.value
+        
+        // 1. Fetch user directly on IO dispatchers to avoid stateflow race timing
+        var current = viewModel.repository.getCurrentUserRaw()
+        val savedUid = viewModel.repository.auth.currentUser?.uid 
+            ?: viewModel.repository.prefs.getString("logged_in_uid", null)
+            
+        if (current == null && savedUid != null) {
+            // User is authenticated but local DB has not finished loading. Let's retry!
+            var retries = 0
+            while (current == null && retries < 15) {
+                delay(150)
+                current = viewModel.repository.getCurrentUserRaw()
+                retries++
+            }
+        }
+
+        // 2. If it is still null but savedUid is definitely not null (authenticated owner/kasir),
+        // try to fetch/restore user profile from remote Firestore or fallback
+        if (current == null && savedUid != null) {
+            try {
+                viewModel.repository.syncFromFirestore(savedUid)
+                current = viewModel.repository.getCurrentUserRaw()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            
+            // 3. Fallback just in case user is offline and we failed to sync, recreate the local UserEntity
+            // so we don't force the logged-in user to login again!
+            if (current == null) {
+                val isKasirSaved = viewModel.repository.prefs.getBoolean("is_kasir_saved", false)
+                val savedEmail = viewModel.repository.prefs.getString("saved_user_email", "") ?: ""
+                val savedName = viewModel.repository.prefs.getString("saved_user_name", "Pemilik Toko") ?: "Pemilik Toko"
+                val savedOwnerId = viewModel.repository.prefs.getString("saved_owner_id", null)
+                val isAtLeastProfesional = viewModel.repository.prefs.getBoolean("is_at_least_profesional", false)
+                
+                val fallbackUser = com.kasirpro.app.data.local.UserEntity(
+                    uid = savedUid,
+                    nama = savedName,
+                    email = savedEmail,
+                    role = if (isKasirSaved) "kasir" else "owner",
+                    ownerId = savedOwnerId,
+                    assignedBranchId = null,
+                    subscriptionStatus = if (isAtLeastProfesional) "profesional" else "free",
+                    subscriptionType = null,
+                    subscriptionStartDate = null,
+                    subscriptionEndDate = null,
+                    createdAt = System.currentTimeMillis(),
+                    lastActiveAt = System.currentTimeMillis()
+                )
+                try {
+                    viewModel.repository.dao.insertUser(fallbackUser)
+                    current = fallbackUser
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+
         if (current != null) {
-            val biz = viewModel.repository.getCurrentBusinessRaw()
+            var biz = viewModel.repository.getCurrentBusinessRaw()
+            
+            // Retry business load a short while if it started blank
+            if (biz == null && current.role == "owner") {
+                var bizRetries = 0
+                while (biz == null && bizRetries < 5) {
+                    delay(100)
+                    biz = viewModel.repository.getCurrentBusinessRaw()
+                    bizRetries++
+                }
+            }
+
             if (biz == null && current.role == "owner") {
                 // Check if a business already exists in Firestore for this owner
                 var onlineBizExists = false
