@@ -106,6 +106,7 @@ jobs:
       - name: Build APKs (Debug and Signed Release)
         run: gradle assembleDebug assembleRelease
         env:
+          KEYSTORE_PATH: ${{ github.workspace }}/my-upload-key.jks
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD || 'kasirpropass' }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'kasirpropass' }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'upload' }}
