@@ -29,7 +29,8 @@ android {
       val storePass = System.getenv("STORE_PASSWORD")
       storePassword = if (!storePass.isNullOrBlank()) storePass else "kasirpropass"
       
-      keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
+      val alias = System.getenv("KEY_ALIAS")
+      keyAlias = if (!alias.isNullOrBlank()) alias else "upload"
       
       val keyPass = System.getenv("KEY_PASSWORD")
       keyPassword = if (!keyPass.isNullOrBlank()) keyPass else "kasirpropass"
