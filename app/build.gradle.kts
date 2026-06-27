@@ -7,9 +7,6 @@ plugins {
   alias(libs.plugins.google.services)
 }
 
-import java.security.KeyStore
-import java.io.InputStream
-
 android {
   namespace = "com.kasirpro.app"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
@@ -26,66 +23,24 @@ android {
 
   signingConfigs {
     create("release") {
-      val keystorePath = "${rootDir}/my-upload-key.jks"
-      val keystoreFile = file(keystorePath)
-      storeFile = keystoreFile
-      
-      val storePass = System.getenv("STORE_PASSWORD")
-      val storePasswordValue = if (!storePass.isNullOrBlank()) storePass else "kasirpropass"
-      storePassword = storePasswordValue
-      
-      val alias = System.getenv("KEY_ALIAS")
-      val keyAliasValue = if (!alias.isNullOrBlank()) alias else "upload"
-      keyAlias = keyAliasValue
-      
-      val keyPass = System.getenv("KEY_PASSWORD")
-      val keyPasswordValue = if (!keyPass.isNullOrBlank()) keyPass else "kasirpropass"
-      
-      // Smart fallback: If the keystore file exists, check if the key is accessible with keyPassword.
-      // If it fails (e.g. PKCS12 keystore where key password must equal store password), fall back to storePassword.
-      // Also detects correct key alias automatically if the specified one does not exist.
-      var finalKeyPassword = keyPasswordValue
-      var finalAlias = keyAliasValue
+      val keystoreFile = file("${rootDir}/my-upload-key.jks")
+      val storePass = System.getenv("STORE_PASSWORD") 
+        ?: "kasirpropass"
+      val keyAliasValue = System.getenv("KEY_ALIAS") 
+        ?: "upload"
+      val keyPass = System.getenv("KEY_PASSWORD") 
+        ?: "kasirpropass"
+
       if (keystoreFile.exists()) {
-        try {
-          val keystore = KeyStore.getInstance(KeyStore.getDefaultType())
-          val stream: InputStream = keystoreFile.inputStream()
-          stream.use {
-            keystore.load(it, storePasswordValue.toCharArray())
-          }
-          
-          // Check if the specified alias exists
-          var aliasToUse = keyAliasValue
-          if (!keystore.containsAlias(keyAliasValue)) {
-            val aliases = keystore.aliases()
-            if (aliases.hasMoreElements()) {
-              aliasToUse = aliases.nextElement()
-              println("Keystore Alias Warning: Specified alias '$keyAliasValue' not found. Falling back to first available alias: '$aliasToUse'")
-              finalAlias = aliasToUse
-            }
-          }
-          
-          // Try to retrieve the key using the provided keyPasswordValue
-          try {
-            keystore.getKey(aliasToUse, keyPasswordValue.toCharArray())
-            finalKeyPassword = keyPasswordValue
-          } catch (e: Exception) {
-            // If it fails, try with storePasswordValue
-            try {
-              keystore.getKey(aliasToUse, storePasswordValue.toCharArray())
-              finalKeyPassword = storePasswordValue
-              println("Keystore Key Password fallback: Successfully verified key using Store Password.")
-            } catch (e2: Exception) {
-              finalKeyPassword = keyPasswordValue
-            }
-          }
-        } catch (e: Exception) {
-          finalKeyPassword = keyPasswordValue
-        }
+        storeFile = keystoreFile
+        storePassword = storePass
+        keyAlias = keyAliasValue
+        keyPassword = keyPass
+      } else {
+        // Keystore not found, skip release signing
+        // Release build will be unsigned
+        println("WARNING: Release keystore not found at ${keystoreFile.absolutePath}")
       }
-      
-      keyAlias = finalAlias
-      keyPassword = finalKeyPassword
     }
     create("debugConfig") {
       storeFile = file("${rootDir}/debug.keystore")
