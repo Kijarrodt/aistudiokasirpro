@@ -7,6 +7,9 @@ plugins {
   alias(libs.plugins.google.services)
 }
 
+import java.security.KeyStore
+import java.io.InputStream
+
 android {
   namespace = "com.kasirpro.app"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
@@ -34,8 +37,55 @@ android {
       if (keystoreFile.exists()) {
         storeFile = keystoreFile
         storePassword = storePass
-        keyAlias = keyAliasValue
-        keyPassword = keyPass
+        
+        var finalAlias = keyAliasValue
+        var finalKeyPassword = keyPass
+        
+        try {
+          val keystore = KeyStore.getInstance(KeyStore.getDefaultType())
+          val stream: InputStream = keystoreFile.inputStream()
+          stream.use {
+            keystore.load(it, storePass.toCharArray())
+          }
+          
+          // Check if specified alias exists. If not, fallback to first available alias
+          if (!keystore.containsAlias(keyAliasValue)) {
+            val aliases = keystore.aliases()
+            if (aliases.hasMoreElements()) {
+              finalAlias = aliases.nextElement()
+              println("Keystore Warning: Alias '$keyAliasValue' not found. Falling back to '$finalAlias'.")
+            }
+          }
+          
+          // Verify key password
+          try {
+            val key = keystore.getKey(finalAlias, keyPass.toCharArray())
+            if (key == null) {
+              // If key is null, try with store password as fallback
+              val fallbackKey = keystore.getKey(finalAlias, storePass.toCharArray())
+              if (fallbackKey != null) {
+                finalKeyPassword = storePass
+                println("Keystore Warning: Key password incorrect. Successfully fell back to store password.")
+              }
+            }
+          } catch (e: Exception) {
+            // Try store password fallback on exception
+            try {
+              val fallbackKey = keystore.getKey(finalAlias, storePass.toCharArray())
+              if (fallbackKey != null) {
+                finalKeyPassword = storePass
+                println("Keystore Warning: Key password exception. Successfully fell back to store password.")
+              }
+            } catch (e2: Exception) {
+              // keep original keyPass
+            }
+          }
+        } catch (e: Exception) {
+          // ignore keystore read failure, let gradle handle it or report it
+        }
+        
+        keyAlias = finalAlias
+        keyPassword = finalKeyPassword
       } else {
         // Keystore not found, skip release signing
         // Release build will be unsigned
