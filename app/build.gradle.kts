@@ -7,9 +7,6 @@ plugins {
   alias(libs.plugins.google.services)
 }
 
-import java.security.KeyStore
-import java.io.InputStream
-
 android {
   namespace = "com.kasirpro.app"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
@@ -26,97 +23,10 @@ android {
 
   signingConfigs {
     create("release") {
-      val keystoreFile = file("${rootDir}/my-upload-key.jks")
-      
-      val rawStorePass = System.getenv("STORE_PASSWORD")
-      val storePass = if (!rawStorePass.isNullOrBlank()) rawStorePass else "kasirpropass"
-      
-      val rawKeyAlias = System.getenv("KEY_ALIAS")
-      val keyAliasValue = if (!rawKeyAlias.isNullOrBlank()) rawKeyAlias else "upload"
-      
-      val rawKeyPass = System.getenv("KEY_PASSWORD")
-      val keyPass = if (!rawKeyPass.isNullOrBlank()) rawKeyPass else "kasirpropass"
-
-      if (keystoreFile.exists()) {
-        var finalStorePassword = storePass
-        var finalAlias = keyAliasValue
-        var finalKeyPassword = keyPass
-        
-        try {
-          val keystore = KeyStore.getInstance(KeyStore.getDefaultType())
-          var loadSuccess = false
-          
-          // Try loading with provided storePass first
-          try {
-            val stream: InputStream = keystoreFile.inputStream()
-            stream.use {
-              keystore.load(it, storePass.toCharArray())
-            }
-            loadSuccess = true
-          } catch (e: Exception) {
-            // If failed and storePass is not the default, try the default "kasirpropass"
-            if (storePass != "kasirpropass") {
-              try {
-                val stream: InputStream = keystoreFile.inputStream()
-                stream.use {
-                  keystore.load(it, "kasirpropass".toCharArray())
-                }
-                finalStorePassword = "kasirpropass"
-                loadSuccess = true
-                println("Keystore Warning: Store password incorrect. Successfully fell back to default 'kasirpropass'.")
-              } catch (e2: Exception) {
-                // both failed
-              }
-            }
-          }
-          
-          if (loadSuccess) {
-            // Check if specified alias exists. If not, fallback to first available alias
-            if (!keystore.containsAlias(finalAlias)) {
-              val aliases = keystore.aliases()
-              if (aliases.hasMoreElements()) {
-                finalAlias = aliases.nextElement()
-                println("Keystore Warning: Alias '$keyAliasValue' not found. Falling back to '$finalAlias'.")
-              }
-            }
-            
-            // Verify key password
-            try {
-              val key = keystore.getKey(finalAlias, finalKeyPassword.toCharArray())
-              if (key == null) {
-                // If key is null, try with store password as fallback
-                val fallbackKey = keystore.getKey(finalAlias, finalStorePassword.toCharArray())
-                if (fallbackKey != null) {
-                  finalKeyPassword = finalStorePassword
-                  println("Keystore Warning: Key password incorrect. Successfully fell back to store password.")
-                }
-              }
-            } catch (e: Exception) {
-              // Try store password fallback on exception
-              try {
-                val fallbackKey = keystore.getKey(finalAlias, finalStorePassword.toCharArray())
-                if (fallbackKey != null) {
-                  finalKeyPassword = finalStorePassword
-                  println("Keystore Warning: Key password exception. Successfully fell back to store password.")
-                }
-              } catch (e2: Exception) {
-                // keep original
-              }
-            }
-          }
-        } catch (e: Exception) {
-          // ignore keystore read failure
-        }
-        
-        storeFile = keystoreFile
-        storePassword = finalStorePassword
-        keyAlias = finalAlias
-        keyPassword = finalKeyPassword
-      } else {
-        // Keystore not found, skip release signing
-        // Release build will be unsigned
-        println("WARNING: Release keystore not found at ${keystoreFile.absolutePath}")
-      }
+      storeFile = file("${rootDir}/debug.keystore")
+      storePassword = "android"
+      keyAlias = "androiddebugkey"
+      keyPassword = "android"
     }
     create("debugConfig") {
       storeFile = file("${rootDir}/debug.keystore")
@@ -148,15 +58,11 @@ android {
   testOptions { unitTests { isIncludeAndroidResources = true } }
 }
 
-// Configure the Secrets Gradle Plugin to use .env and .env.example files
-// to match the convention used in Web projects.
 secrets {
   propertiesFileName = ".env"
   defaultPropertiesFileName = ".env.example"
 }
 
-// Some unused dependencies are commented out below instead of being removed.
-// This makes it easy to add them back in the future if needed.
 dependencies {
   implementation(platform(libs.androidx.compose.bom))
   implementation(platform(libs.firebase.bom))
