@@ -27,63 +27,89 @@ android {
   signingConfigs {
     create("release") {
       val keystoreFile = file("${rootDir}/my-upload-key.jks")
-      val storePass = System.getenv("STORE_PASSWORD") 
-        ?: "kasirpropass"
-      val keyAliasValue = System.getenv("KEY_ALIAS") 
-        ?: "upload"
-      val keyPass = System.getenv("KEY_PASSWORD") 
-        ?: "kasirpropass"
+      
+      val rawStorePass = System.getenv("STORE_PASSWORD")
+      val storePass = if (!rawStorePass.isNullOrBlank()) rawStorePass else "kasirpropass"
+      
+      val rawKeyAlias = System.getenv("KEY_ALIAS")
+      val keyAliasValue = if (!rawKeyAlias.isNullOrBlank()) rawKeyAlias else "upload"
+      
+      val rawKeyPass = System.getenv("KEY_PASSWORD")
+      val keyPass = if (!rawKeyPass.isNullOrBlank()) rawKeyPass else "kasirpropass"
 
       if (keystoreFile.exists()) {
-        storeFile = keystoreFile
-        storePassword = storePass
-        
+        var finalStorePassword = storePass
         var finalAlias = keyAliasValue
         var finalKeyPassword = keyPass
         
         try {
           val keystore = KeyStore.getInstance(KeyStore.getDefaultType())
-          val stream: InputStream = keystoreFile.inputStream()
-          stream.use {
-            keystore.load(it, storePass.toCharArray())
-          }
+          var loadSuccess = false
           
-          // Check if specified alias exists. If not, fallback to first available alias
-          if (!keystore.containsAlias(keyAliasValue)) {
-            val aliases = keystore.aliases()
-            if (aliases.hasMoreElements()) {
-              finalAlias = aliases.nextElement()
-              println("Keystore Warning: Alias '$keyAliasValue' not found. Falling back to '$finalAlias'.")
-            }
-          }
-          
-          // Verify key password
+          // Try loading with provided storePass first
           try {
-            val key = keystore.getKey(finalAlias, keyPass.toCharArray())
-            if (key == null) {
-              // If key is null, try with store password as fallback
-              val fallbackKey = keystore.getKey(finalAlias, storePass.toCharArray())
-              if (fallbackKey != null) {
-                finalKeyPassword = storePass
-                println("Keystore Warning: Key password incorrect. Successfully fell back to store password.")
+            val stream: InputStream = keystoreFile.inputStream()
+            stream.use {
+              keystore.load(it, storePass.toCharArray())
+            }
+            loadSuccess = true
+          } catch (e: Exception) {
+            // If failed and storePass is not the default, try the default "kasirpropass"
+            if (storePass != "kasirpropass") {
+              try {
+                val stream: InputStream = keystoreFile.inputStream()
+                stream.use {
+                  keystore.load(it, "kasirpropass".toCharArray())
+                }
+                finalStorePassword = "kasirpropass"
+                loadSuccess = true
+                println("Keystore Warning: Store password incorrect. Successfully fell back to default 'kasirpropass'.")
+              } catch (e2: Exception) {
+                // both failed
               }
             }
-          } catch (e: Exception) {
-            // Try store password fallback on exception
-            try {
-              val fallbackKey = keystore.getKey(finalAlias, storePass.toCharArray())
-              if (fallbackKey != null) {
-                finalKeyPassword = storePass
-                println("Keystore Warning: Key password exception. Successfully fell back to store password.")
+          }
+          
+          if (loadSuccess) {
+            // Check if specified alias exists. If not, fallback to first available alias
+            if (!keystore.containsAlias(finalAlias)) {
+              val aliases = keystore.aliases()
+              if (aliases.hasMoreElements()) {
+                finalAlias = aliases.nextElement()
+                println("Keystore Warning: Alias '$keyAliasValue' not found. Falling back to '$finalAlias'.")
               }
-            } catch (e2: Exception) {
-              // keep original keyPass
+            }
+            
+            // Verify key password
+            try {
+              val key = keystore.getKey(finalAlias, finalKeyPassword.toCharArray())
+              if (key == null) {
+                // If key is null, try with store password as fallback
+                val fallbackKey = keystore.getKey(finalAlias, finalStorePassword.toCharArray())
+                if (fallbackKey != null) {
+                  finalKeyPassword = finalStorePassword
+                  println("Keystore Warning: Key password incorrect. Successfully fell back to store password.")
+                }
+              }
+            } catch (e: Exception) {
+              // Try store password fallback on exception
+              try {
+                val fallbackKey = keystore.getKey(finalAlias, finalStorePassword.toCharArray())
+                if (fallbackKey != null) {
+                  finalKeyPassword = finalStorePassword
+                  println("Keystore Warning: Key password exception. Successfully fell back to store password.")
+                }
+              } catch (e2: Exception) {
+                // keep original
+              }
             }
           }
         } catch (e: Exception) {
-          // ignore keystore read failure, let gradle handle it or report it
+          // ignore keystore read failure
         }
         
+        storeFile = keystoreFile
+        storePassword = finalStorePassword
         keyAlias = finalAlias
         keyPassword = finalKeyPassword
       } else {
