@@ -209,8 +209,10 @@ fun LoginScreen(viewModel: KasirViewModel) {
                     isLoading = true
                     errorMessage = null
                     scope.launch {
+                        val activity = context as? android.app.Activity 
+                            ?: return@launch
                         try {
-                            val credentialManager = CredentialManager.create(context)
+                            val credentialManager = CredentialManager.create(activity)
                             
                             // Load the real Google Web Client ID from BuildConfig
                             val webClientId = if (com.kasirpro.app.BuildConfig.GOOGLE_WEB_CLIENT_ID.isNotBlank()) {
@@ -231,7 +233,7 @@ fun LoginScreen(viewModel: KasirViewModel) {
                                 
                             val result = try {
                                 credentialManager.getCredential(
-                                    context = context,
+                                    context = activity,
                                     request = credentialRequest
                                 )
                             } catch (e: NoCredentialException) {
@@ -241,7 +243,7 @@ fun LoginScreen(viewModel: KasirViewModel) {
                                     .addCredentialOption(signInOption)
                                     .build()
                                 credentialManager.getCredential(
-                                    context = context,
+                                    context = activity,
                                     request = fallbackRequest
                                 )
                             }
