@@ -48,13 +48,12 @@ jobs:
             -keyalg RSA \
             -keysize 2048 \
             -validity 10000
-          echo "===== SHA-1 FINGERPRINT ====="
+          echo "===== DEBUG SHA-1 FINGERPRINT ====="
           keytool -list -v \
             -alias androiddebugkey \
             -keystore debug.keystore \
-            -storepass android \
-            | grep -A3 "Certificate fingerprints"
-          echo "============================="
+            -storepass android
+          echo "==================================="
 
       - name: Setup Release Keystore
         run: |
@@ -70,8 +69,8 @@ jobs:
           if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
             echo "Loading keystore from GitHub Secrets KEYSTORE_BASE64..."
             echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > my-upload-key.jks
-            echo "===== KEYSTORE SHA-1 FINGERPRINT ====="
-            keytool -list -v -keystore my-upload-key.jks -storepass "$STORE_PASS" | grep -A3 "Certificate fingerprints" || true
+            echo "===== RELEASE KEYSTORE FULL INFO ====="
+            keytool -list -v -keystore my-upload-key.jks -storepass "$STORE_PASS" || true
             echo "======================================"
           else
             echo "KEYSTORE_BASE64 is empty. Generating a persistent release keystore..."
@@ -91,8 +90,8 @@ jobs:
             echo "KEY_ALIAS: $ALIAS"
             echo "KEY_PASSWORD: $KEY_PASS"
             echo "STORE_PASSWORD: $STORE_PASS"
-            echo "===== CERTIFICATE FINGERPRINTS ====="
-            keytool -list -v -keystore my-upload-key.jks -storepass "$STORE_PASS" -alias "$ALIAS" | grep -E "SHA1:|SHA256:" || true
+            echo "===== RELEASE KEYSTORE FULL INFO ====="
+            keytool -list -v -keystore my-upload-key.jks -storepass "$STORE_PASS" -alias "$ALIAS" || true
             echo "===== BASE64 KEYSTORE ====="
             base64 -w 0 my-upload-key.jks || base64 my-upload-key.jks
             echo ""
