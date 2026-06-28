@@ -29,7 +29,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 
 @Composable
@@ -227,10 +229,22 @@ fun LoginScreen(viewModel: KasirViewModel) {
                                 .addCredentialOption(googleIdOption)
                                 .build()
                                 
-                            val result = credentialManager.getCredential(
-                                context = context,
-                                request = credentialRequest
-                            )
+                            val result = try {
+                                credentialManager.getCredential(
+                                    context = context,
+                                    request = credentialRequest
+                                )
+                            } catch (e: NoCredentialException) {
+                                val signInOption = GetSignInWithGoogleOption.Builder(webClientId)
+                                    .build()
+                                val fallbackRequest = GetCredentialRequest.Builder()
+                                    .addCredentialOption(signInOption)
+                                    .build()
+                                credentialManager.getCredential(
+                                    context = context,
+                                    request = fallbackRequest
+                                )
+                            }
                             
                             val credential = result.credential
                             if (credential is androidx.credentials.CustomCredential && 
