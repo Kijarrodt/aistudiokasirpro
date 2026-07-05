@@ -313,7 +313,7 @@ class KasirRepository(val context: Context) {
     }
 
     fun setLoggedInDeviceUser(uid: String?) {
-        prefs.edit().putString("logged_in_uid", uid).apply()
+        prefs.edit().putString("logged_in_uid", uid).commit()
         _loggedInUid.value = uid
     }
 
@@ -332,7 +332,7 @@ class KasirRepository(val context: Context) {
             editor.remove("saved_owner_id")
             editor.remove("is_at_least_profesional")
         }
-        editor.apply()
+        editor.commit()
     }
 
     fun getOwnerVerificationCode(): String {
