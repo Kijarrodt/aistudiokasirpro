@@ -80,6 +80,7 @@ dependencies {
   // implementation(libs.accompanist.permissions)
   implementation(libs.androidx.activity.compose)
   implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
+  implementation("com.google.android.gms:play-services-auth:21.2.0")
   // implementation(libs.androidx.camera.camera2)
   // implementation(libs.androidx.camera.core)
   // implementation(libs.androidx.camera.lifecycle)
