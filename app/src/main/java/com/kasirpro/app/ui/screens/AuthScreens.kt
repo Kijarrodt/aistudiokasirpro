@@ -33,6 +33,69 @@ import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+object GoogleSignInHelper {
+    fun getSignInIntent(context: android.content.Context, webClientId: String): Intent? {
+        return try {
+            val gsoClass = Class.forName("com.google.android.gms.auth.api.signin.GoogleSignInOptions")
+            val defaultSignInField = gsoClass.getField("DEFAULT_SIGN_IN")
+            val defaultSignIn = defaultSignInField.get(null)
+
+            val builderClass = Class.forName("com.google.android.gms.auth.api.signin.GoogleSignInOptions\$Builder")
+            val builderConstructor = builderClass.getConstructor(gsoClass)
+            val builderInstance = builderConstructor.newInstance(defaultSignIn)
+
+            val requestIdTokenMethod = builderClass.getMethod("requestIdToken", String::class.java)
+            requestIdTokenMethod.invoke(builderInstance, webClientId)
+
+            val requestEmailMethod = builderClass.getMethod("requestEmail")
+            requestEmailMethod.invoke(builderInstance)
+
+            val buildMethod = builderClass.getMethod("build")
+            val gsoInstance = buildMethod.invoke(builderInstance)
+
+            val googleSignInClass = Class.forName("com.google.android.gms.auth.api.signin.GoogleSignIn")
+            val getClientMethod = googleSignInClass.getMethod("getClient", android.content.Context::class.java, gsoClass)
+            val googleSignInClientInstance = getClientMethod.invoke(null, context, gsoInstance)
+
+            try {
+                val googleSignInClientClass = Class.forName("com.google.android.gms.auth.api.signin.GoogleSignInClient")
+                val signOutMethod = googleSignInClientClass.getMethod("signOut")
+                signOutMethod.invoke(googleSignInClientInstance)
+            } catch (e: Exception) {
+                // Ignore signOut error
+            }
+
+            val googleSignInClientClass = Class.forName("com.google.android.gms.auth.api.signin.GoogleSignInClient")
+            val getSignInIntentMethod = googleSignInClientClass.getMethod("getSignInIntent")
+            getSignInIntentMethod.invoke(googleSignInClientInstance) as Intent
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    fun getIdTokenFromIntent(data: Intent?): String? {
+        if (data == null) return null
+        return try {
+            val googleSignInClass = Class.forName("com.google.android.gms.auth.api.signin.GoogleSignIn")
+            val getSignedInAccountFromIntentMethod = googleSignInClass.getMethod("getSignedInAccountFromIntent", Intent::class.java)
+            val taskInstance = getSignedInAccountFromIntentMethod.invoke(null, data)
+
+            val getResultMethod = taskInstance.javaClass.getMethod("getResult")
+            val accountInstance = getResultMethod.invoke(taskInstance)
+            
+            val getIdTokenMethod = accountInstance.javaClass.getMethod("getIdToken")
+            getIdTokenMethod.invoke(accountInstance) as? String
+        } catch (e: Exception) {
+            val cause = e.cause ?: e
+            cause.printStackTrace()
+            null
+        }
+    }
+}
 
 @Composable
 fun LoginScreen(viewModel: KasirViewModel) {
@@ -44,6 +107,38 @@ fun LoginScreen(viewModel: KasirViewModel) {
     val scope = rememberCoroutineScope()
 
     val context = LocalContext.current
+
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val idToken = GoogleSignInHelper.getIdTokenFromIntent(result.data)
+        if (idToken != null) {
+            isLoading = true
+            scope.launch {
+                try {
+                    val loginResult = viewModel.repository.loginWithGoogle(idToken)
+                    if (loginResult.success) {
+                        if (loginResult.role == "kasir") {
+                            viewModel.activeScreen.value = "cashier"
+                        } else if (loginResult.isNewUser) {
+                            viewModel.activeScreen.value = "setup_toko"
+                        } else {
+                            viewModel.activeScreen.value = "home"
+                        }
+                    } else {
+                        errorMessage = "Google login gagal."
+                    }
+                } catch (e: Exception) {
+                    errorMessage = "Terjadi kesalahan: ${e.localizedMessage}"
+                } finally {
+                    isLoading = false
+                }
+            }
+        } else {
+            errorMessage = "Gagal mendapatkan token Google atau login dibatalkan."
+            isLoading = false
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -206,77 +301,16 @@ fun LoginScreen(viewModel: KasirViewModel) {
             // Google Sign-In Accent Button
             OutlinedButton(
                 onClick = {
-                    isLoading = true
-                    errorMessage = null
-                    scope.launch {
-                        val activity = context as? android.app.Activity 
-                            ?: return@launch
-                        try {
-                            val credentialManager = CredentialManager.create(activity)
-                            
-                            // Load the real Google Web Client ID from BuildConfig
-                            val webClientId = if (com.kasirpro.app.BuildConfig.GOOGLE_WEB_CLIENT_ID.isNotBlank()) {
-                                com.kasirpro.app.BuildConfig.GOOGLE_WEB_CLIENT_ID
-                            } else {
-                                "357452625370-c0c7mqnmhodoebtq4e3323ocfsp3ituo.apps.googleusercontent.com"
-                            }
-                            
-                            val googleIdOption = GetGoogleIdOption.Builder()
-                                .setFilterByAuthorizedAccounts(false)
-                                .setServerClientId(webClientId)
-                                .setAutoSelectEnabled(false)
-                                .build()
-                                
-                            val credentialRequest = GetCredentialRequest.Builder()
-                                .addCredentialOption(googleIdOption)
-                                .build()
-                                
-                            val result = try {
-                                credentialManager.getCredential(
-                                    context = activity,
-                                    request = credentialRequest
-                                )
-                            } catch (e: NoCredentialException) {
-                                val signInOption = GetSignInWithGoogleOption.Builder(webClientId)
-                                    .build()
-                                val fallbackRequest = GetCredentialRequest.Builder()
-                                    .addCredentialOption(signInOption)
-                                    .build()
-                                credentialManager.getCredential(
-                                    context = activity,
-                                    request = fallbackRequest
-                                )
-                            }
-                            
-                            val credential = result.credential
-                            if (credential is androidx.credentials.CustomCredential && 
-                                credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
-                                
-                                val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
-                                val idToken = googleIdTokenCredential.idToken
-                                
-                                val loginResult = viewModel.repository.loginWithGoogle(idToken)
-                                if (loginResult.success) {
-                                    if (loginResult.role == "kasir") {
-                                        viewModel.activeScreen.value = "cashier"
-                                    } else if (loginResult.isNewUser) {
-                                        viewModel.activeScreen.value = "setup_toko"
-                                    } else {
-                                        viewModel.activeScreen.value = "home"
-                                    }
-                                } else {
-                                    errorMessage = "Google login gagal menghubungkan ke Firebase Auth."
-                                }
-                            } else {
-                                errorMessage = "Tipe kredensial tidak valid."
-                            }
-                        } catch (e: GetCredentialException) {
-                            errorMessage = "Pemilihan akun Google dibatalkan atau gagal: ${e.localizedMessage}"
-                        } catch (e: Exception) {
-                            errorMessage = "Terjadi kesalahan: ${e.localizedMessage}"
-                        } finally {
-                            isLoading = false
-                        }
+                    val webClientId = if (com.kasirpro.app.BuildConfig.GOOGLE_WEB_CLIENT_ID.isNotBlank()) {
+                        com.kasirpro.app.BuildConfig.GOOGLE_WEB_CLIENT_ID
+                    } else {
+                        "357452625370-c0c7mqnmhodoebtq4e3323ocfsp3ituo.apps.googleusercontent.com"
+                    }
+                    val intent = GoogleSignInHelper.getSignInIntent(context, webClientId)
+                    if (intent != null) {
+                        googleSignInLauncher.launch(intent)
+                    } else {
+                        errorMessage = "Inisialisasi Google Sign-In gagal."
                     }
                 },
                 enabled = !isLoading,
