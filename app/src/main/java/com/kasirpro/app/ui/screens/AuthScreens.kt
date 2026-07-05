@@ -304,7 +304,7 @@ fun LoginScreen(viewModel: KasirViewModel) {
                     val webClientId = if (com.kasirpro.app.BuildConfig.GOOGLE_WEB_CLIENT_ID.isNotBlank()) {
                         com.kasirpro.app.BuildConfig.GOOGLE_WEB_CLIENT_ID
                     } else {
-                        "357452625370-c0c7mqnmhodoebtq4e3323ocfsp3ituo.apps.googleusercontent.com"
+                        "322348564535-2h16aaih8kh70u3v5gsbp558u073a2ke.apps.googleusercontent.com"
                     }
                     val intent = GoogleSignInHelper.getSignInIntent(context, webClientId)
                     if (intent != null) {
