@@ -15,7 +15,7 @@ jobs:
         run: |
           if [ -z "${{ secrets.GOOGLE_SERVICES_JSON }}" ]; then
             echo "Secret GOOGLE_SERVICES_JSON is empty. Writing valid dummy configuration for compilation fallback..."
-            echo '{"project_info":{"project_number":"1234567890","project_id":"dummy-project","storage_bucket":"dummy-project.appspot.com"},"client":[{"client_info":{"mobilesdk_app_id":"1:1234567890:android:abcdef0123456789","android_client_info":{"package_name":"com.kasirpro.app"}},"oauth_client":[],"api_key":[{"current_key":"dummy-api-key"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],"configuration_version":"1"}' > app/google-services.json
+            echo '{"project_info":{"project_number":"1234567890","project_id":"dummy-project","storage_bucket":"dummy-project.appspot.com"},"client":[{"client_info":{"mobilesdk_app_id":"1:1234567890:android:abcdef0123456789","android_client_info":{"package_name":"com.kasirpro.pospintar.app"}},"oauth_client":[],"api_key":[{"current_key":"dummy-api-key"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],"configuration_version":"1"}' > app/google-services.json
           else
             echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > app/google-services.json
           fi
@@ -48,57 +48,23 @@ jobs:
             -keyalg RSA \
             -keysize 2048 \
             -validity 10000
-          echo "===== DEBUG SHA-1 FINGERPRINT ====="
-          keytool -list -v \
-            -alias androiddebugkey \
-            -keystore debug.keystore \
-            -storepass android
-          echo "==================================="
 
       - name: Setup Release Keystore
         run: |
           ALIAS="${{ secrets.KEY_ALIAS }}"
           if [ -z "$ALIAS" ]; then ALIAS="upload"; fi
-          
           KEY_PASS="${{ secrets.KEY_PASSWORD }}"
           if [ -z "$KEY_PASS" ]; then KEY_PASS="kasirpropass"; fi
-          
           STORE_PASS="${{ secrets.STORE_PASSWORD }}"
           if [ -z "$STORE_PASS" ]; then STORE_PASS="kasirpropass"; fi
 
           if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            echo "Loading keystore from GitHub Secrets KEYSTORE_BASE64..."
             echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > my-upload-key.jks
-            echo "===== RELEASE KEYSTORE FULL INFO ====="
-            keytool -list -v -keystore my-upload-key.jks -storepass "$STORE_PASS" || true
-            echo "======================================"
           else
-            echo "KEYSTORE_BASE64 is empty. Generating a persistent release keystore..."
-            keytool -genkeypair \
-              -alias "$ALIAS" \
-              -keypass "$KEY_PASS" \
-              -keystore my-upload-key.jks \
-              -storepass "$STORE_PASS" \
-              -dname "CN=KasirPro,O=KasirPro,C=ID" \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 14600
-            echo ""
-            echo "========================================================================"
-            echo "   PERMANENT KEYSTORE GENERATED SUCCESSFULLY!"
-            echo "========================================================================"
-            echo "KEY_ALIAS: $ALIAS"
-            echo "KEY_PASSWORD: $KEY_PASS"
-            echo "STORE_PASSWORD: $STORE_PASS"
-            echo "===== RELEASE KEYSTORE FULL INFO ====="
-            keytool -list -v -keystore my-upload-key.jks -storepass "$STORE_PASS" -alias "$ALIAS" || true
-            echo "===== BASE64 KEYSTORE ====="
-            base64 -w 0 my-upload-key.jks || base64 my-upload-key.jks
-            echo ""
-            echo "========================================================================"
+            keytool -genkeypair -alias "$ALIAS" -keypass "$KEY_PASS" -keystore my-upload-key.jks -storepass "$STORE_PASS" -dname "CN=KasirPro,O=KasirPro,C=ID" -keyalg RSA -keysize 2048 -validity 14600
           fi
 
-      - name: Build APKs and AAB (Debug and Signed Release)
+      - name: Build APKs and AAB
         run: gradle assembleDebug assembleRelease bundleRelease -x copyBundleToArtifacts --no-configuration-cache
         env:
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD || 'kasirpropass' }}
@@ -108,15 +74,9 @@ jobs:
       - name: Organize Build Artifacts
         run: |
           mkdir -p build-outputs
-          if [ -f app/build/outputs/apk/debug/app-debug.apk ]; then
-            cp app/build/outputs/apk/debug/app-debug.apk build-outputs/kasir-pro-debug.apk
-          fi
-          if [ -f app/build/outputs/apk/release/app-release.apk ]; then
-            cp app/build/outputs/apk/release/app-release.apk build-outputs/kasir-pro-release.apk
-          fi
-          if [ -f app/build/outputs/bundle/release/app-release.aab ]; then
-            cp app/build/outputs/bundle/release/app-release.aab build-outputs/kasir-pro-release.aab
-          fi
+          if [ -f app/build/outputs/apk/debug/app-debug.apk ]; then cp app/build/outputs/apk/debug/app-debug.apk build-outputs/kasir-pro-debug.apk; fi
+          if [ -f app/build/outputs/apk/release/app-release.apk ]; then cp app/build/outputs/apk/release/app-release.apk build-outputs/kasir-pro-release.apk; fi
+          if [ -f app/build/outputs/bundle/release/app-release.aab ]; then cp app/build/outputs/bundle/release/app-release.aab build-outputs/kasir-pro-release.aab; fi
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
