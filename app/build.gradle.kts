@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-  namespace = "com.kasirpro.pospintar.app"
+  namespace = "com.kasirpro.app"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
@@ -139,3 +139,27 @@ dependencies {
   "ksp"(libs.moshi.kotlin.codegen)
   implementation("com.android.billingclient:billing-ktx:8.0.0")
 }
+
+tasks.register("copyBundleToArtifacts") {
+    doLast {
+        val buildDirFile = layout.buildDirectory.asFile.get()
+        val bundleFile = File(buildDirFile, "outputs/bundle/release/app-release.aab")
+        val destDir = File(rootDir, "build-outputs")
+        if (bundleFile.exists()) {
+            destDir.mkdirs()
+            bundleFile.copyTo(File(destDir, "kasir-pro-release.aab"), overwrite = true)
+            println("Successfully copied .aab to build-outputs/kasir-pro-release.aab")
+        } else {
+            println("Bundle file does not exist: ${bundleFile.absolutePath}")
+        }
+    }
+}
+
+tasks.whenTaskAdded {
+    if (name == "assembleRelease") {
+        dependsOn("bundleRelease")
+        finalizedBy("copyBundleToArtifacts")
+    }
+}
+
+
