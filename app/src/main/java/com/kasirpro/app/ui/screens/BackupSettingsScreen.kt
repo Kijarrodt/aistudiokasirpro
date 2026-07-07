@@ -1995,11 +1995,18 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
                         // Bulanan Button
                         Button(
                             onClick = {
-                                val productId = "kasirpro_$key"
+                                val productId = when (key) {
+                                    "dasar" -> "paket_dasar_bulanan_50k"
+                                    "profesional" -> "paket_profesional_100k"
+                                    "bisnis" -> "paket_bisnis_bulanan"
+                                    else -> "paket_dasar_bulanan_50k"
+                                }
                                 val basePlanId = "bulanan"
                                 val productDetails = productDetailsList.find { it.productId == productId }
                                 if (productDetails != null) {
-                                    val offerToken = productDetails.subscriptionOfferDetails?.find { it.basePlanId == basePlanId }?.offerToken ?: ""
+                                    val offerToken = productDetails.subscriptionOfferDetails?.find { it.basePlanId == basePlanId }?.offerToken 
+                                        ?: productDetails.subscriptionOfferDetails?.firstOrNull()?.offerToken 
+                                        ?: ""
                                     val activity = context as? Activity
                                     if (activity != null) {
                                         viewModel.billingManager.launchPurchaseFlow(activity, productDetails, offerToken, basePlanId)
@@ -2042,11 +2049,18 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
                         // Tahunan Button
                         Button(
                             onClick = {
-                                val productId = "kasirpro_$key"
+                                val productId = when (key) {
+                                    "dasar" -> "paket_dasar_tahunan"
+                                    "profesional" -> "paket_profesional_1tahun"
+                                    "bisnis" -> "paket_bisnis_tahunan"
+                                    else -> "paket_dasar_tahunan"
+                                }
                                 val basePlanId = "tahunan"
                                 val productDetails = productDetailsList.find { it.productId == productId }
                                 if (productDetails != null) {
-                                    val offerToken = productDetails.subscriptionOfferDetails?.find { it.basePlanId == basePlanId }?.offerToken ?: ""
+                                    val offerToken = productDetails.subscriptionOfferDetails?.find { it.basePlanId == basePlanId }?.offerToken 
+                                        ?: productDetails.subscriptionOfferDetails?.firstOrNull()?.offerToken 
+                                        ?: ""
                                     val activity = context as? Activity
                                     if (activity != null) {
                                         viewModel.billingManager.launchPurchaseFlow(activity, productDetails, offerToken, basePlanId)

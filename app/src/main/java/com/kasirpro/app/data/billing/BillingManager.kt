@@ -143,15 +143,27 @@ class BillingManager(
 
         val productList = listOf(
             QueryProductDetailsParams.Product.newBuilder()
-                .setProductId("kasirpro_dasar")
+                .setProductId("paket_dasar_bulanan_50k")
                 .setProductType(BillingClient.ProductType.SUBS)
                 .build(),
             QueryProductDetailsParams.Product.newBuilder()
-                .setProductId("kasirpro_profesional")
+                .setProductId("paket_dasar_tahunan")
                 .setProductType(BillingClient.ProductType.SUBS)
                 .build(),
             QueryProductDetailsParams.Product.newBuilder()
-                .setProductId("kasirpro_bisnis")
+                .setProductId("paket_profesional_100k")
+                .setProductType(BillingClient.ProductType.SUBS)
+                .build(),
+            QueryProductDetailsParams.Product.newBuilder()
+                .setProductId("paket_profesional_1tahun")
+                .setProductType(BillingClient.ProductType.SUBS)
+                .build(),
+            QueryProductDetailsParams.Product.newBuilder()
+                .setProductId("paket_bisnis_bulanan")
+                .setProductType(BillingClient.ProductType.SUBS)
+                .build(),
+            QueryProductDetailsParams.Product.newBuilder()
+                .setProductId("paket_bisnis_tahunan")
                 .setProductType(BillingClient.ProductType.SUBS)
                 .build()
         )

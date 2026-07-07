@@ -1844,18 +1844,31 @@ data class GoogleLoginResult(
             val user = getUserById(uid) ?: return false
             
             // 1. Tentukan subscriptionStatus dari productId
-            val status = when {
-                productId.contains("dasar") -> "dasar"
-                productId.contains("profesional") -> "profesional"
-                productId.contains("bisnis") -> "bisnis"
-                else -> "free"
+            val status = when (productId) {
+                "paket_dasar_bulanan_50k", "paket_dasar_tahunan" -> "dasar"
+                "paket_profesional_100k", "paket_profesional_1tahun" -> "profesional"
+                "paket_bisnis_bulanan", "paket_bisnis_tahunan" -> "bisnis"
+                else -> {
+                    when {
+                        productId.contains("dasar") -> "dasar"
+                        productId.contains("profesional") -> "profesional"
+                        productId.contains("bisnis") -> "bisnis"
+                        else -> "free"
+                    }
+                }
             }
             
-            // 2. Tentukan subscriptionType dari basePlanId
-            val type = when {
-                basePlanId.contains("tahunan") -> "tahunan"
-                basePlanId.contains("bulanan") -> "bulanan"
-                else -> "bulanan"
+            // 2. Tentukan subscriptionType dari basePlanId atau productId
+            val type = when (productId) {
+                "paket_dasar_tahunan", "paket_profesional_1tahun", "paket_bisnis_tahunan" -> "tahunan"
+                "paket_dasar_bulanan_50k", "paket_profesional_100k", "paket_bisnis_bulanan" -> "bulanan"
+                else -> {
+                    when {
+                        basePlanId.contains("tahunan") || basePlanId.contains("1tahun") || productId.contains("tahunan") || productId.contains("1tahun") -> "tahunan"
+                        basePlanId.contains("bulanan") || productId.contains("bulanan") -> "bulanan"
+                        else -> "bulanan"
+                    }
+                }
             }
             
             // 3. Hitung subscriptionEndDate
