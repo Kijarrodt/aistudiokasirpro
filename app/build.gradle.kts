@@ -12,20 +12,29 @@ android {
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
-    applicationId = "com.aistudio.kasirpro.lhgkwq"
+    applicationId = "com.kasirpro.app"
     minSdk = 24
     targetSdk = 36
-    versionCode = 11
-    versionName = "11.0"
+    versionCode = 1
+    versionName = "1.0"
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
   signingConfigs {
     create("release") {
-      storeFile = file("${rootDir}/my-upload-key.jks")
-      storePassword = System.getenv("STORE_PASSWORD") ?: "kasirpropass"
-      keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
-      keyPassword = System.getenv("KEY_PASSWORD") ?: "kasirpropass"
+      val keystoreFile = file("${rootDir}/my-upload-key.jks")
+      if (keystoreFile.exists()) {
+        storeFile = keystoreFile
+        storePassword = System.getenv("STORE_PASSWORD") ?: "kasirpropass"
+        keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
+        keyPassword = System.getenv("KEY_PASSWORD") ?: "kasirpropass"
+      } else {
+        // Fallback to debug keystore for local building
+        storeFile = file("${rootDir}/debug.keystore")
+        storePassword = "android"
+        keyAlias = "androiddebugkey"
+        keyPassword = "android"
+      }
     }
     create("debugConfig") {
       storeFile = file("${rootDir}/debug.keystore")

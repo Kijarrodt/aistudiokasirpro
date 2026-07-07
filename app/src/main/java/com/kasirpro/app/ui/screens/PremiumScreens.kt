@@ -983,7 +983,7 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                         try {
                             val uri = FileProvider.getUriForFile(
                                 context,
-                                "com.aistudio.kasirpro.lhgkwq.fileprovider",
+                                "com.kasirpro.app.fileprovider",
                                 pdfFile
                             )
                             val shareIntent = Intent(Intent.ACTION_SEND).apply {
