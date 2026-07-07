@@ -1,4 +1,4 @@
-name: ame: Build Kasir Pro APK
+name: Build Kasir Pro APK
 
 on:
   push:
