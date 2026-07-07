@@ -21,6 +21,18 @@ class BillingManager(
     var availableProducts: List<ProductDetails> = emptyList()
         private set
 
+    private val purchasesUpdatedListener = PurchasesUpdatedListener { billingResult, purchases ->
+        if (billingResult.responseCode == BillingClient.BillingResponseCode.OK && purchases != null) {
+            for (purchase in purchases) {
+                handlePurchase(purchase)
+            }
+        } else if (billingResult.responseCode == BillingClient.BillingResponseCode.USER_CANCELED) {
+            Log.d("BillingManager", "Purchase canceled by user")
+        } else {
+            Log.e("BillingManager", "Purchase failed with response code: ${billingResult.responseCode}, message: ${billingResult.debugMessage}")
+        }
+    }
+
     init {
         initializeBillingClient()
     }
@@ -56,18 +68,6 @@ class BillingManager(
                 // In production, we should implement custom retry logic with exponential backoff.
             }
         })
-    }
-
-    private val purchasesUpdatedListener = PurchasesUpdatedListener { billingResult, purchases ->
-        if (billingResult.responseCode == BillingClient.BillingResponseCode.OK && purchases != null) {
-            for (purchase in purchases) {
-                handlePurchase(purchase)
-            }
-        } else if (billingResult.responseCode == BillingClient.BillingResponseCode.USER_CANCELED) {
-            Log.d("BillingManager", "Purchase canceled by user")
-        } else {
-            Log.e("BillingManager", "Purchase failed with response code: ${billingResult.responseCode}, message: ${billingResult.debugMessage}")
-        }
     }
 
     private fun handlePurchase(purchase: Purchase) {
