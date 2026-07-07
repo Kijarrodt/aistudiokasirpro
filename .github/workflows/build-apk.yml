@@ -99,7 +99,7 @@ jobs:
           fi
 
       - name: Build APKs and AAB (Debug and Signed Release)
-        run: gradle assembleDebug assembleRelease bundleRelease
+        run: gradle assembleDebug assembleRelease bundleRelease -x copyBundleToArtifacts --no-configuration-cache
         env:
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD || 'kasirpropass' }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'kasirpropass' }}
