@@ -1833,6 +1833,64 @@ data class GoogleLoginResult(
         return true
     }
 
+    // PLAY BILLING SUBSCRIPTION
+    suspend fun activatePlayBillingSubscription(
+        uid: String,
+        productId: String,
+        basePlanId: String,
+        purchaseToken: String
+    ): Boolean {
+        return try {
+            val user = getUserById(uid) ?: return false
+            
+            // 1. Tentukan subscriptionStatus dari productId
+            val status = when {
+                productId.contains("dasar") -> "dasar"
+                productId.contains("profesional") -> "profesional"
+                productId.contains("bisnis") -> "bisnis"
+                else -> "free"
+            }
+            
+            // 2. Tentukan subscriptionType dari basePlanId
+            val type = when {
+                basePlanId.contains("tahunan") -> "tahunan"
+                basePlanId.contains("bulanan") -> "bulanan"
+                else -> "bulanan"
+            }
+            
+            // 3. Hitung subscriptionEndDate
+            val durationDays = if (type == "tahunan") 365L else 30L
+            val startDate = System.currentTimeMillis()
+            val endDate = startDate + (durationDays * 24 * 60 * 60 * 1000)
+            
+            val updated = user.copy(
+                subscriptionStatus = status,
+                subscriptionType = type,
+                subscriptionStartDate = startDate,
+                subscriptionEndDate = endDate
+            )
+            
+            // 4. Simpan purchaseToken ke field baru "playBillingPurchaseToken" di dokumen user Firestore
+            val firestoreMap = updated.toMap().toMutableMap().apply {
+                put("playBillingPurchaseToken", purchaseToken)
+            }
+            
+            // 5. Update dokumen user seperti fungsi upgradeUserSubscription yang sudah ada
+            withTimeoutOrNull(8500L) {
+                firestore.collection("users").document(uid).set(firestoreMap).await()
+            }
+            
+            // Save to local Room
+            dao.insertUser(updated)
+            android.util.Log.d("PLAY_BILLING", "Subscription activated: status=$status, type=$type, end=$endDate")
+            
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
     // SUBSCRIPTION & ACTIVATION CODES FLOW
     suspend fun upgradeUserSubscription(uid: String, status: String, isYearly: Boolean = false): Boolean {
         return try {

@@ -11,6 +11,7 @@ import java.util.UUID
 
 class KasirViewModel(application: Application) : AndroidViewModel(application) {
     val repository = KasirRepository(application)
+    val billingManager = com.kasirpro.app.data.billing.BillingManager(application, repository)
     private val prefs = application.getSharedPreferences("kasir_prefs", android.content.Context.MODE_PRIVATE)
 
     fun getPointEarnRate(): Double {

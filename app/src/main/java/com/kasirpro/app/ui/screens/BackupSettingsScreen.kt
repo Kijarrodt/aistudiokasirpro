@@ -1,5 +1,6 @@
 package com.kasirpro.app.ui.screens
 
+import android.app.Activity
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -1756,17 +1757,28 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
 fun PremiumPricingView(viewModel: KasirViewModel) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+    val user by viewModel.currentUser.collectAsState()
+    val uid = user?.uid ?: ""
 
-    var selectedIsYearly by remember { mutableStateOf(false) }
-    var showActivationDialog by remember { mutableStateOf(false) }
-    var selectedPackageName by remember { mutableStateOf("") }
-    var selectedPackageKey by remember { mutableStateOf("") }
-    var activationCodeInput by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf("") }
-    var showSuccessDialog by remember { mutableStateOf(false) }
-    var successEndDateFormatted by remember { mutableStateOf("") }
-    val isRedeemingCode by viewModel.isRedeemingCode.collectAsState()
+    var productDetailsList by remember { mutableStateOf<List<com.android.billingclient.api.ProductDetails>>(emptyList()) }
+    var isLoadingSubscriptions by remember { mutableStateOf(true) }
+    var billingErrorMessage by remember { mutableStateOf("") }
+
+    // Query Available Subscriptions on Launch
+    LaunchedEffect(Unit) {
+        isLoadingSubscriptions = true
+        try {
+            val list = viewModel.billingManager.queryAvailableSubscriptions()
+            productDetailsList = list
+            isLoadingSubscriptions = false
+            if (list.isEmpty()) {
+                billingErrorMessage = "Play Store Billing tidak aktif atau produk belum termuat."
+            }
+        } catch (e: Exception) {
+            isLoadingSubscriptions = false
+            billingErrorMessage = "Gagal memuat billing: ${e.message}"
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -1792,7 +1804,7 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold, color = Color.White)
         )
         Text(
-            "Pilih paket terbaik untuk kelola usahamu secara profesional",
+            "Langganan langsung via Google Play untuk membuka seluruh fitur premium.",
             color = Color.LightGray,
             textAlign = TextAlign.Center,
             fontSize = 12.sp,
@@ -1801,51 +1813,67 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Toggle Bulanan / Tahunan
-        Row(
-            modifier = Modifier
-                .clip(RoundedCornerShape(24.dp))
-                .background(Slate800)
-                .padding(4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(if (!selectedIsYearly) OrangePrimary else Color.Transparent)
-                    .clickable { selectedIsYearly = false }
-                    .padding(horizontal = 20.dp, vertical = 8.dp)
+        if (isLoadingSubscriptions) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.padding(24.dp)
             ) {
-                Text(
-                    "Bulanan",
-                    color = if (!selectedIsYearly) Color.White else Color.Gray,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp
-                )
+                CircularProgressIndicator(color = OrangePrimary)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Menghubungkan ke Google Play...", color = Color.Gray, fontSize = 12.sp)
             }
-            Box(
+        } else if (billingErrorMessage.isNotEmpty()) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Slate800),
                 modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(if (selectedIsYearly) OrangePrimary else Color.Transparent)
-                    .clickable { selectedIsYearly = true }
-                    .padding(horizontal = 20.dp, vertical = 8.dp)
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
             ) {
-                Text(
-                    "Tahunan",
-                    color = if (selectedIsYearly) Color.White else Color.Gray,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp
-                )
+                Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(imageVector = Icons.Default.Warning, contentDescription = null, tint = OrangePrimary)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Google Play Billing Belum Siap / Emulator",
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        fontSize = 13.sp
+                    )
+                    Text(
+                        text = "Aplikasi berjalan di lingkungan non-Play Store. Anda dapat menggunakan mode simulasi di bawah untuk menguji integrasi.",
+                        fontSize = 11.sp,
+                        color = Color.LightGray,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                isLoadingSubscriptions = true
+                                billingErrorMessage = ""
+                                val list = viewModel.billingManager.queryAvailableSubscriptions()
+                                productDetailsList = list
+                                isLoadingSubscriptions = false
+                                if (list.isEmpty()) {
+                                    billingErrorMessage = "Play Store Billing tidak aktif atau produk belum termuat."
+                                }
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+                    ) {
+                        Text("Hubungkan Ulang", fontSize = 11.sp)
+                    }
+                }
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         // Cards list
         listOf(
-            Triple("dasar", "PAKET DASAR", if (selectedIsYearly) "Rp 500.000 / thn" else "Rp 50.000 / bln"),
-            Triple("profesional", "PAKET PROFESIONAL", if (selectedIsYearly) "Rp 1.000.000 / thn" else "Rp 100.000 / bln"),
-            Triple("bisnis", "PAKET BISNIS", if (selectedIsYearly) "Rp 1.500.000 / thn" else "Rp 150.000 / bln")
+            Triple("dasar", "PAKET DASAR", "Rp 50.000 / bln • Rp 500.000 / thn"),
+            Triple("profesional", "PAKET PROFESIONAL", "Rp 100.000 / bln • Rp 1.000.000 / thn"),
+            Triple("bisnis", "PAKET BISNIS", "Rp 150.000 / bln • Rp 1.500.000 / thn")
         ).forEach { (key, name, priceLabel) ->
             val isPro = key == "profesional"
             Spacer(modifier = Modifier.height(12.dp))
@@ -1890,24 +1918,8 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
                                 text = priceLabel,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
-                                fontSize = 18.sp
+                                fontSize = 14.sp
                             )
-                        }
-
-                        if (selectedIsYearly) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(Color(0xFFDCFCE7))
-                                    .padding(horizontal = 6.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    "Hemat 2 Bulan",
-                                    color = Color(0xFF15803D),
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
                         }
                     }
 
@@ -1975,27 +1987,103 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Button(
-                        onClick = {
-                            selectedPackageName = name
-                            selectedPackageKey = key
-                            showActivationDialog = true
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isPro) OrangePrimary else Slate800
-                        ),
-                        border = if (!isPro) androidx.compose.foundation.BorderStroke(1.dp, Color.Gray) else null,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                            .testTag("choose_pack_$key")
+                    // Buttons for Bulanan and Tahunan Subscription
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(
-                            "PILIH PAKET",
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
+                        // Bulanan Button
+                        Button(
+                            onClick = {
+                                val productId = "kasirpro_$key"
+                                val basePlanId = "bulanan"
+                                val productDetails = productDetailsList.find { it.productId == productId }
+                                if (productDetails != null) {
+                                    val offerToken = productDetails.subscriptionOfferDetails?.find { it.basePlanId == basePlanId }?.offerToken ?: ""
+                                    val activity = context as? Activity
+                                    if (activity != null) {
+                                        viewModel.billingManager.launchPurchaseFlow(activity, productDetails, offerToken, basePlanId)
+                                    } else {
+                                        Toast.makeText(context, "Context activity tidak valid", Toast.LENGTH_SHORT).show()
+                                    }
+                                } else {
+                                    // Fallback / simulation for emulator/dev testing environment
+                                    scope.launch {
+                                        if (uid.isNotEmpty()) {
+                                            val success = viewModel.repository.activatePlayBillingSubscription(uid, productId, basePlanId, "simulated_bulanan_token_${System.currentTimeMillis()}")
+                                            if (success) {
+                                                Toast.makeText(context, "Simulasi: Berhasil mengaktifkan $name Bulanan!", Toast.LENGTH_SHORT).show()
+                                                viewModel.activeScreen.value = "home"
+                                            } else {
+                                                Toast.makeText(context, "Simulasi gagal", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Slate800
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color.Gray),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(44.dp)
+                                .testTag("purchase_monthly_$key")
+                        ) {
+                            Text(
+                                "Bulanan",
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                fontSize = 12.sp
+                            )
+                        }
+
+                        // Tahunan Button
+                        Button(
+                            onClick = {
+                                val productId = "kasirpro_$key"
+                                val basePlanId = "tahunan"
+                                val productDetails = productDetailsList.find { it.productId == productId }
+                                if (productDetails != null) {
+                                    val offerToken = productDetails.subscriptionOfferDetails?.find { it.basePlanId == basePlanId }?.offerToken ?: ""
+                                    val activity = context as? Activity
+                                    if (activity != null) {
+                                        viewModel.billingManager.launchPurchaseFlow(activity, productDetails, offerToken, basePlanId)
+                                    } else {
+                                        Toast.makeText(context, "Context activity tidak valid", Toast.LENGTH_SHORT).show()
+                                    }
+                                } else {
+                                    // Fallback / simulation for emulator/dev testing environment
+                                    scope.launch {
+                                        if (uid.isNotEmpty()) {
+                                            val success = viewModel.repository.activatePlayBillingSubscription(uid, productId, basePlanId, "simulated_tahunan_token_${System.currentTimeMillis()}")
+                                            if (success) {
+                                                Toast.makeText(context, "Simulasi: Berhasil mengaktifkan $name Tahunan!", Toast.LENGTH_SHORT).show()
+                                                viewModel.activeScreen.value = "home"
+                                            } else {
+                                                Toast.makeText(context, "Simulasi gagal", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = OrangePrimary
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(44.dp)
+                                .testTag("purchase_yearly_$key")
+                        ) {
+                            Text(
+                                "Tahunan",
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                fontSize = 12.sp
+                            )
+                        }
                     }
                 }
             }
@@ -2003,328 +2091,7 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
 
         Spacer(modifier = Modifier.height(32.dp))
     }
-
-    if (showActivationDialog) {
-        AlertDialog(
-            onDismissRequest = { if (!isRedeemingCode) showActivationDialog = false },
-            title = {
-                Text(
-                    text = "Aktifkan Paket $selectedPackageName",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = Color.White
-                )
-            },
-            containerColor = Slate800,
-            titleContentColor = Color.White,
-            textContentColor = Color.LightGray,
-            text = {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Text(
-                        text = "Masukkan kode aktivasi Anda di bawah untuk mengaktifkan status $selectedPackageName.",
-                        fontSize = 12.sp,
-                        color = Color.LightGray
-                    )
-
-                    val cycleStr = if (selectedIsYearly) "TAHUNAN" else "BULANAN"
-                    val formatExample = when (selectedPackageKey) {
-                        "dasar" -> if (selectedIsYearly) "KASIRPRO-DASARTAHUNAN-XXXXXX" else "KASIRPRO-DASAR-XXXXXX"
-                        "profesional" -> if (selectedIsYearly) "KASIRPRO-PROTAHUNAN-XXXXXX" else "KASIRPRO-PRO-XXXXXX"
-                        else -> if (selectedIsYearly) "KASIRPRO-BISNISTAHUNAN-XXXXXX" else "KASIRPRO-BISNIS-XXXXXX"
-                    }
-
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = Slate900),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(10.dp)) {
-                            Text(
-                                "Informasi format kode:",
-                                fontSize = 10.sp,
-                                color = Color.Gray,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = formatExample,
-                                fontSize = 11.sp,
-                                color = OrangePrimary,
-                                fontWeight = FontWeight.SemiBold,
-                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
-                            if (currentUserId.isNotEmpty()) {
-                                Text(
-                                    "UID Anda (Kirim ke Admin):",
-                                    fontSize = 10.sp,
-                                    color = Color.Gray,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = currentUserId,
-                                        fontSize = 10.sp,
-                                        color = Color.Green,
-                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                                        maxLines = 1,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    IconButton(
-                                        onClick = {
-                                            clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(currentUserId))
-                                            viewModel.showToast("Sukses: ID Pengguna berhasil disalin!")
-                                        },
-                                        modifier = Modifier.size(24.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.ContentCopy,
-                                            contentDescription = "Salin ID",
-                                            tint = OrangePrimary,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Button(
-                        onClick = {
-                            val cycleStr = if (selectedIsYearly) "TAHUNAN" else "BULANAN"
-                            val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
-                            val msg = "Halo Admin Kasir Pro,\n\nSaya ingin memesan/mengaktifkan:\nPackage: *$selectedPackageName ($cycleStr)*\nUID Pengguna: `$currentUserId`"
-                            val encodedMsg = java.net.URLEncoder.encode(msg, "UTF-8")
-                            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                                data = android.net.Uri.parse("https://api.whatsapp.com/send?phone=6289655751681&text=$encodedMsg")
-                            }
-                            context.startActivity(intent)
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Send,
-                            contentDescription = "WhatsApp",
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Kirim UID & Paket via WhatsApp", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 12.sp)
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        HorizontalDivider(modifier = Modifier.weight(1f), color = Color.Gray.copy(alpha = 0.2f))
-                        Text(
-                            " ATAU MASUKKAN KODE ",
-                            fontSize = 9.sp,
-                            color = Color.Gray,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 8.dp)
-                        )
-                        HorizontalDivider(modifier = Modifier.weight(1f), color = Color.Gray.copy(alpha = 0.2f))
-                    }
-
-                    OutlinedTextField(
-                        value = activationCodeInput,
-                        onValueChange = {
-                            activationCodeInput = it.uppercase()
-                            errorMessage = ""
-                        },
-                        placeholder = { Text("KASIRPRO-XXXXXX", color = Color.Gray, fontSize = 13.sp) },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(
-                            capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Characters,
-                            autoCorrectEnabled = false
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("activation_code_input_field"),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedBorderColor = OrangePrimary,
-                            unfocusedBorderColor = Color.Gray,
-                            focusedContainerColor = Slate900,
-                            unfocusedContainerColor = Slate900
-                        )
-                    )
-
-                    if (errorMessage.isNotEmpty()) {
-                        Text(
-                            text = errorMessage,
-                            color = Color.Red,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    if (isRedeemingCode) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            CircularProgressIndicator(
-                                color = OrangePrimary,
-                                modifier = Modifier.size(20.dp),
-                                strokeWidth = 2.dp
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Memverifikasi...", fontSize = 11.sp, color = Color.Gray)
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    enabled = activationCodeInput.isNotBlank() && !isRedeemingCode,
-                    onClick = {
-                        val expectedCycle = if (selectedIsYearly) "tahunan" else "bulanan"
-                        viewModel.redeemCode(activationCodeInput, selectedPackageKey, expectedCycle) { result ->
-                            when (result) {
-                                is com.kasirpro.app.data.repository.RedeemResult.Success -> {
-                                    showActivationDialog = false
-                                    activationCodeInput = ""
-                                    errorMessage = ""
-                                    val sdf = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale("id", "ID"))
-                                    successEndDateFormatted = sdf.format(java.util.Date(result.endDate))
-                                    showSuccessDialog = true
-                                    viewModel.showToast("Sukses: Status $selectedPackageName berhasil diaktifkan!")
-                                }
-                                is com.kasirpro.app.data.repository.RedeemResult.Error -> {
-                                    errorMessage = result.message
-                                    viewModel.showToast("Gagal: ${result.message}")
-                                }
-                            }
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
-                ) {
-                    Text("Aktifkan", fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    enabled = !isRedeemingCode,
-                    onClick = {
-                        showActivationDialog = false
-                        activationCodeInput = ""
-                        errorMessage = ""
-                    }
-                ) {
-                    Text("Batal", color = Color.Gray)
-                }
-            }
-        )
-    }
-
-        if (showSuccessDialog) {
-            AlertDialog(
-                onDismissRequest = { 
-                    showSuccessDialog = false
-                    viewModel.activeScreen.value = "home"
-                },
-                containerColor = Slate900,
-                title = null,
-                text = {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        // Animasi bintang/konfeti representasi modern
-                        Box(contentAlignment = Alignment.Center) {
-                            // Decorative glowing concentric elements
-                            Box(
-                                modifier = Modifier
-                                    .size(90.dp)
-                                    .background(OrangePrimary.copy(alpha = 0.15f), CircleShape)
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .size(70.dp)
-                                    .background(OrangePrimary.copy(alpha = 0.25f), CircleShape)
-                            )
-                            Icon(
-                                imageVector = Icons.Default.Stars,
-                                contentDescription = "Success",
-                                tint = OrangePrimary,
-                                modifier = Modifier.size(52.dp)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        Text(
-                            text = "Selamat! Akun Anda berhasil diaktifkan sebagai Premium",
-                            fontWeight = FontWeight.ExtraBold,
-                            fontSize = 16.sp,
-                            color = Color.White,
-                            textAlign = TextAlign.Center
-                        )
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Text(
-                            text = "Aktif hingga $successEndDateFormatted",
-                            fontSize = 13.sp,
-                            color = Color.Green,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        Text(
-                            text = "Semua fitur Premium Pro seperti Outlet Multi-Cabang, Manajemen Promo, database CRM Pelanggan, dan Backup Cloud Google Drive sekarang telah terbuka sepenuhnya untuk Anda.",
-                            fontSize = 11.sp,
-                            color = Color.LightGray,
-                            textAlign = TextAlign.Center,
-                            lineHeight = 16.sp
-                        )
-                    }
-                },
-                confirmButton = {
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Button(
-                            onClick = {
-                                showSuccessDialog = false
-                                Toast.makeText(context, "Premium Pro Aktif! Terima kasih atas dukungan Anda.", Toast.LENGTH_LONG).show()
-                                viewModel.activeScreen.value = "home"
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier
-                                .fillMaxWidth(0.85f)
-                                .height(46.dp)
-                                .testTag("success_sub_dismiss_trigger")
-                        ) {
-                            Text("Mulai Gunakan", fontWeight = FontWeight.Bold, color = Color.White)
-                        }
-                    }
-                }
-            )
-        }
-    }
+}
 data class LocalExpenseItem(
     val id: String,
     val amount: Double,
