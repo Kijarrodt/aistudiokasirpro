@@ -98,8 +98,8 @@ jobs:
             echo "========================================================================"
           fi
 
-      - name: Build APKs and AAB (Debug and Signed Release)
-        run: gradle assembleDebug assembleRelease bundleRelease
+      - name: Build APKs (Debug and Signed Release)
+        run: gradle assembleDebug assembleRelease
         env:
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD || 'kasirpropass' }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'kasirpropass' }}
@@ -113,9 +113,6 @@ jobs:
           fi
           if [ -f app/build/outputs/apk/release/app-release.apk ]; then
             cp app/build/outputs/apk/release/app-release.apk build-outputs/kasir-pro-release.apk
-          fi
-          if [ -f app/build/outputs/bundle/release/app-release.aab ]; then
-            cp app/build/outputs/bundle/release/app-release.aab build-outputs/kasir-pro-release.aab
           fi
 
       - name: Upload Build Artifacts

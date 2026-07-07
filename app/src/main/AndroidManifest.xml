@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.kasirpro.app">
+    package="com.kasirpro.pospintar.app">
 
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.CAMERA"/>
@@ -36,7 +36,7 @@
 
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.kasirpro.app.fileprovider"
+            android:authorities="com.kasirpro.pospintar.app.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
