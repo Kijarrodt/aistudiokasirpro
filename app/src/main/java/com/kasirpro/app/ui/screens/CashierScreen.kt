@@ -85,6 +85,15 @@ private fun triggerVibe(context: android.content.Context) {
     }
 }
 
+@android.annotation.SuppressLint("MissingPermission")
+private fun getSafeDeviceName(device: android.bluetooth.BluetoothDevice): String {
+    return try {
+        device.name ?: "Printer Tanpa Nama"
+    } catch (e: SecurityException) {
+        "Printer Bluetooth"
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CashierScreen(viewModel: KasirViewModel) {
@@ -1561,7 +1570,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                                 )
                                                 isPrinting = false
                                                 if (success) {
-                                                    Toast.makeText(context, "Berhasil mencetak ke printer: ${device.name ?: "Unknown"}", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(context, "Berhasil mencetak ke printer: ${getSafeDeviceName(device)}", Toast.LENGTH_SHORT).show()
                                                     showBluetoothSimulation = false
                                                     viewModel.activeReceipt.value = null
                                                 } else {
@@ -1578,7 +1587,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Column {
-                                                Text(device.name ?: "Printer Tanpa Nama", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                                Text(getSafeDeviceName(device), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                                 Text(device.address ?: "00:00:00:00:00:00", fontSize = 10.sp, color = Color.Gray)
                                             }
                                             Icon(Icons.Default.Bluetooth, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(18.dp))

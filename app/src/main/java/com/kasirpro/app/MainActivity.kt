@@ -76,6 +76,11 @@ class MainActivity : ComponentActivity() {
             
             LaunchedEffect(Unit) {
                 try {
+                    viewModel.billingManager.queryAndValidateActivePurchases()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+                try {
                     val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
                     firestore.collection("app_config")
                         .document("version")

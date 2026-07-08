@@ -1768,6 +1768,7 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
     LaunchedEffect(Unit) {
         isLoadingSubscriptions = true
         try {
+            viewModel.billingManager.queryAndValidateActivePurchases()
             val list = viewModel.billingManager.queryAvailableSubscriptions()
             productDetailsList = list
             isLoadingSubscriptions = false

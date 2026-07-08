@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.tasks.await
 
 class BillingManager(
     private val context: Context,
@@ -57,6 +58,7 @@ class BillingManager(
                     // Pre-query products on connection success
                     coroutineScope.launch {
                         queryAvailableSubscriptions()
+                        queryAndValidateActivePurchases()
                     }
                 } else {
                     Log.e("BillingManager", "BillingClient setup failed: ${billingResult.debugMessage}")
@@ -121,6 +123,63 @@ class BillingManager(
             } else {
                 Log.e("BillingManager", "Failed to upgrade subscription in repository for uid: $uid")
             }
+        }
+    }
+
+    fun queryAndValidateActivePurchases() {
+        val client = billingClient ?: return
+        if (!client.isReady) {
+            Log.d("BillingManager", "Cannot query purchases, BillingClient is not ready")
+            return
+        }
+
+        val params = QueryPurchasesParams.newBuilder()
+            .setProductType(BillingClient.ProductType.SUBS)
+            .build()
+
+        client.queryPurchasesAsync(params) { billingResult, purchasesList ->
+            if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
+                coroutineScope.launch {
+                    validatePurchases(purchasesList ?: emptyList())
+                }
+            } else {
+                Log.e("BillingManager", "queryPurchasesAsync failed with code ${billingResult.responseCode}: ${billingResult.debugMessage}")
+            }
+        }
+    }
+
+    private suspend fun validatePurchases(purchasesList: List<Purchase>) {
+        val uid = kasirRepository.auth.currentUser?.uid ?: return
+        try {
+            // Fetch the user document from Firestore directly to see if they activated via Play Billing
+            val userDocRef = kasirRepository.firestore.collection("users").document(uid)
+            val doc = userDocRef.get().await()
+            if (doc != null && doc.exists()) {
+                val purchaseToken = doc.getString("playBillingPurchaseToken") ?: ""
+                val currentStatus = doc.getString("subscriptionStatus") ?: "free"
+
+                if (purchaseToken.isNotBlank() && currentStatus != "free") {
+                    // Check if it's a simulated token. We do not demote simulated/mock packages to prevent developer testing breaking.
+                    if (purchaseToken.startsWith("simulated_")) {
+                        Log.d("BillingManager", "Subscription is simulated ($purchaseToken), skipping verification.")
+                        return
+                    }
+
+                    // For real Play Store Billing, the active purchase token must be in the list of currently active purchases
+                    val isActive = purchasesList.any { purchase ->
+                        purchase.purchaseToken == purchaseToken && purchase.purchaseState == Purchase.PurchaseState.PURCHASED
+                    }
+
+                    if (!isActive) {
+                        Log.w("BillingManager", "Subscription with token $purchaseToken is no longer active (cancelled/refunded). Downgrading to free.")
+                        kasirRepository.demoteUserToFree(uid)
+                    } else {
+                        Log.d("BillingManager", "Subscription is verified and active.")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("BillingManager", "Error validating active purchases", e)
         }
     }
 

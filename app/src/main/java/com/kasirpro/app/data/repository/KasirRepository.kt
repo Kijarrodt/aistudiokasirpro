@@ -1904,6 +1904,29 @@ data class GoogleLoginResult(
         }
     }
 
+    suspend fun demoteUserToFree(uid: String): Boolean {
+        return try {
+            val user = getUserById(uid) ?: return false
+            val updated = user.copy(
+                subscriptionStatus = "free",
+                subscriptionStartDate = null,
+                subscriptionEndDate = null,
+                subscriptionType = "bulanan"
+            )
+            // Save to Firestore (replaces document completely, removing playBillingPurchaseToken field)
+            withTimeoutOrNull(8500L) {
+                firestore.collection("users").document(uid).set(updated.toMap()).await()
+            }
+            // Save to local Room database
+            dao.insertUser(updated)
+            android.util.Log.d("PLAY_BILLING", "User $uid successfully demoted to free")
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
     // SUBSCRIPTION & ACTIVATION CODES FLOW
     suspend fun upgradeUserSubscription(uid: String, status: String, isYearly: Boolean = false): Boolean {
         return try {
