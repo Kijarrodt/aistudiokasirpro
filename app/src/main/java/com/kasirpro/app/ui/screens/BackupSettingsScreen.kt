@@ -36,6 +36,7 @@ import com.kasirpro.app.ui.viewmodel.KasirViewModel
 import com.kasirpro.app.ui.theme.*
 import com.kasirpro.app.util.ImageHelper
 import com.kasirpro.app.util.ShopLogoImage
+import com.kasirpro.app.util.t
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 
@@ -1602,7 +1603,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(imageVector = Icons.Default.DarkMode, contentDescription = null, tint = OrangePrimary)
                                 Spacer(modifier = Modifier.width(12.dp))
-                                Text("Mode Gelap (Dark Theme)")
+                                Text(t("Mode Gelap (Dark Theme)"))
                             }
                             Switch(
                                 checked = isDarkState,
@@ -1624,7 +1625,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(imageVector = Icons.Default.Language, contentDescription = null, tint = OrangePrimary)
                                 Spacer(modifier = Modifier.width(12.dp))
-                                Text("Bahasa (Language)")
+                                Text(t("Bahasa (Language)"))
                             }
                             Text(
                                 text = if (langState == "id") "Bahasa Indonesia" else "English",
@@ -3407,4 +3408,45 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
             }
         }
     }
+}
+
+@Composable
+private fun Text(
+    text: String,
+    modifier: androidx.compose.ui.Modifier = androidx.compose.ui.Modifier,
+    color: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Unspecified,
+    fontSize: androidx.compose.ui.unit.TextUnit = androidx.compose.ui.unit.TextUnit.Unspecified,
+    fontStyle: androidx.compose.ui.text.font.FontStyle? = null,
+    fontWeight: androidx.compose.ui.text.font.FontWeight? = null,
+    fontFamily: androidx.compose.ui.text.font.FontFamily? = null,
+    letterSpacing: androidx.compose.ui.unit.TextUnit = androidx.compose.ui.unit.TextUnit.Unspecified,
+    textDecoration: androidx.compose.ui.text.style.TextDecoration? = null,
+    textAlign: androidx.compose.ui.text.style.TextAlign? = null,
+    lineHeight: androidx.compose.ui.unit.TextUnit = androidx.compose.ui.unit.TextUnit.Unspecified,
+    overflow: androidx.compose.ui.text.style.TextOverflow = androidx.compose.ui.text.style.TextOverflow.Clip,
+    softWrap: Boolean = true,
+    maxLines: Int = Int.MAX_VALUE,
+    minLines: Int = 1,
+    onTextLayout: ((androidx.compose.ui.text.TextLayoutResult) -> Unit)? = null,
+    style: androidx.compose.ui.text.TextStyle = androidx.compose.material3.LocalTextStyle.current
+) {
+    androidx.compose.material3.Text(
+        text = com.kasirpro.app.util.t(text),
+        modifier = modifier,
+        color = color,
+        fontSize = fontSize,
+        fontStyle = fontStyle,
+        fontWeight = fontWeight,
+        fontFamily = fontFamily,
+        letterSpacing = letterSpacing,
+        textDecoration = textDecoration,
+        textAlign = textAlign,
+        lineHeight = lineHeight,
+        overflow = overflow,
+        softWrap = softWrap,
+        maxLines = maxLines,
+        minLines = minLines,
+        onTextLayout = onTextLayout,
+        style = style
+    )
 }

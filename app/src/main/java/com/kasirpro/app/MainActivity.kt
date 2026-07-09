@@ -22,6 +22,7 @@ import com.kasirpro.app.ui.theme.MyApplicationTheme
 import com.kasirpro.app.ui.theme.OrangePrimary
 import com.kasirpro.app.ui.viewmodel.KasirViewModel
 import com.kasirpro.app.ui.screens.*
+import com.kasirpro.app.util.t
 
 class MainActivity : ComponentActivity() {
     private val viewModel: KasirViewModel by viewModels()
@@ -160,8 +161,8 @@ class MainActivity : ComponentActivity() {
                                         NavigationBarItem(
                                             selected = activeScreenState == "home",
                                             onClick = { viewModel.activeScreen.value = "home" },
-                                            icon = { Icon(Icons.Default.Home, contentDescription = "Beranda") },
-                                            label = { Text("Beranda") },
+                                            icon = { Icon(Icons.Default.Home, contentDescription = t("Beranda")) },
+                                            label = { Text(t("Beranda")) },
                                             colors = NavigationBarItemDefaults.colors(
                                                 selectedIconColor = OrangePrimary,
                                                 selectedTextColor = OrangePrimary,
@@ -169,19 +170,19 @@ class MainActivity : ComponentActivity() {
                                             )
                                         )
                                     }
-
+                                    
                                     NavigationBarItem(
                                         selected = activeScreenState == "cashier",
                                         onClick = { viewModel.activeScreen.value = "cashier" },
-                                        icon = { Icon(Icons.Default.PointOfSale, contentDescription = "Kasir") },
-                                        label = { Text("Kasir") },
+                                        icon = { Icon(Icons.Default.PointOfSale, contentDescription = t("Kasir")) },
+                                        label = { Text(t("Kasir")) },
                                         colors = NavigationBarItemDefaults.colors(
                                             selectedIconColor = OrangePrimary,
                                             selectedTextColor = OrangePrimary,
                                             indicatorColor = MaterialTheme.colorScheme.primaryContainer
                                         )
                                     )
-
+                                    
                                     NavigationBarItem(
                                         selected = activeScreenState == "manage",
                                         onClick = { viewModel.activeScreen.value = "manage" },
@@ -199,23 +200,23 @@ class MainActivity : ComponentActivity() {
                                                     }
                                                 }
                                             ) {
-                                                Icon(Icons.Default.Inventory, contentDescription = "Produk")
+                                                Icon(Icons.Default.Inventory, contentDescription = t("Stok"))
                                             }
                                         },
-                                        label = { Text("Stok") },
+                                        label = { Text(t("Stok")) },
                                         colors = NavigationBarItemDefaults.colors(
                                             selectedIconColor = OrangePrimary,
                                             selectedTextColor = OrangePrimary,
                                             indicatorColor = MaterialTheme.colorScheme.primaryContainer
                                         )
                                     )
-
+                                    
                                     if (!isKasir) {
                                         NavigationBarItem(
                                             selected = activeScreenState == "premium",
                                             onClick = { viewModel.activeScreen.value = "premium" },
-                                            icon = { Icon(Icons.Default.Stars, contentDescription = "Premium") },
-                                            label = { Text("Premium") },
+                                            icon = { Icon(Icons.Default.Stars, contentDescription = t("Premium")) },
+                                            label = { Text(t("Premium")) },
                                             colors = NavigationBarItemDefaults.colors(
                                                 selectedIconColor = OrangePrimary,
                                                 selectedTextColor = OrangePrimary,
@@ -223,12 +224,12 @@ class MainActivity : ComponentActivity() {
                                             )
                                         )
                                     }
-
+                                    
                                     NavigationBarItem(
                                         selected = activeScreenState == "settings",
                                         onClick = { viewModel.activeScreen.value = "settings" },
-                                        icon = { Icon(Icons.Default.Settings, contentDescription = "Pengaturan") },
-                                        label = { Text("Pengaturan") },
+                                        icon = { Icon(Icons.Default.Settings, contentDescription = t("Pengaturan")) },
+                                        label = { Text(t("Pengaturan")) },
                                         colors = NavigationBarItemDefaults.colors(
                                             selectedIconColor = OrangePrimary,
                                             selectedTextColor = OrangePrimary,

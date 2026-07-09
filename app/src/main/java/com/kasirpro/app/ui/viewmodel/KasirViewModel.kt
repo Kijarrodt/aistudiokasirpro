@@ -63,6 +63,11 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
                         userNotifications.value = list
                         unreadNotificationsCount.value = list.count { !(it["isRead"] as? Boolean ?: true) }
                     }
+                    try {
+                        billingManager.queryAndValidateActivePurchases()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
                 } else {
                     userNotifications.value = emptyList()
                     unreadNotificationsCount.value = 0

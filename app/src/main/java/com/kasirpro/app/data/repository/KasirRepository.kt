@@ -206,6 +206,12 @@ class KasirRepository(val context: Context) {
         } catch (e: Exception) {
             e.printStackTrace()
         }
+        try {
+            val savedLang = context.getSharedPreferences("kasir_prefs", Context.MODE_PRIVATE).getString("app_language", "id") ?: "id"
+            com.kasirpro.app.util.Translator.currentLanguage.value = savedLang
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     val auth by lazy { FirebaseAuth.getInstance() }
@@ -379,10 +385,10 @@ class KasirRepository(val context: Context) {
     private val _isOnline = MutableStateFlow(true)
     val isOnline: StateFlow<Boolean> = _isOnline.asStateFlow()
 
-    private val _isDarkMode = MutableStateFlow(false)
+    private val _isDarkMode = MutableStateFlow(context.getSharedPreferences("kasir_prefs", Context.MODE_PRIVATE).getBoolean("is_dark_mode", false))
     val isDarkMode: StateFlow<Boolean> = _isDarkMode.asStateFlow()
 
-    private val _language = MutableStateFlow("id") // "id" or "en"
+    private val _language = MutableStateFlow(context.getSharedPreferences("kasir_prefs", Context.MODE_PRIVATE).getString("app_language", "id") ?: "id") // "id" or "en"
     val language: StateFlow<String> = _language.asStateFlow()
 
     private val _lastBackupDate = MutableStateFlow<String?>("Belum pernah")
@@ -509,10 +515,13 @@ class KasirRepository(val context: Context) {
 
     fun setDarkMode(enabled: Boolean) {
         _isDarkMode.value = enabled
+        prefs.edit().putBoolean("is_dark_mode", enabled).apply()
     }
 
     fun setLanguage(lang: String) {
         _language.value = lang
+        prefs.edit().putString("app_language", lang).apply()
+        com.kasirpro.app.util.Translator.currentLanguage.value = lang
     }
 
     // AUTH ACTIONS (Real Firebase Auth + Sync)
