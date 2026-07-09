@@ -2,7 +2,7 @@ package com.kasirpro.app.ui.screens
 
 import android.content.Intent
 import android.net.Uri
-import android.widget.Toast
+import com.kasirpro.app.util.Toast
 import androidx.compose.foundation.border
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.foundation.background

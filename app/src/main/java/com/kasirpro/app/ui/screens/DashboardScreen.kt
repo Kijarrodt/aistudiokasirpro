@@ -26,7 +26,7 @@ import com.kasirpro.app.data.local.*
 import com.kasirpro.app.ui.theme.*
 import java.text.NumberFormat
 import java.util.Locale
-import android.widget.Toast
+import com.kasirpro.app.util.Toast
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Spring

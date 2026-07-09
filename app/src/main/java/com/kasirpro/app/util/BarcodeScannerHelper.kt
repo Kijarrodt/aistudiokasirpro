@@ -1,7 +1,6 @@
 package com.kasirpro.app.util
 
 import android.content.Context
-import android.widget.Toast
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning

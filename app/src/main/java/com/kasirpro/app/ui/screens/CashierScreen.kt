@@ -1,7 +1,7 @@
 package com.kasirpro.app.ui.screens
 
 import android.content.Intent
-import android.widget.Toast
+import com.kasirpro.app.util.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable

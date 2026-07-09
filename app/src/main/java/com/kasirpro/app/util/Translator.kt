@@ -373,7 +373,98 @@ object Translator {
         "Detail Notifikasi" to "Notification Details",
         "Unduh APK Baru" to "Download New APK",
         "Kembali ke Daftar Notifikasi" to "Back to Notification List",
-        "Notifikasi Broadcast" to "Broadcast Notification"
+        "Notifikasi Broadcast" to "Broadcast Notification",
+
+        // === ADDITIONAL TRANSLATIONS ===
+        "Batas Limit Akun Gratis" to "Free Account Limit",
+        "Upgrade Sekarang" to "Upgrade Now",
+        "Nanti Saja" to "Maybe Later",
+        "Fitur Terkunci" to "Feature Locked",
+        "Lihat Paket" to "View Packages",
+        "Nanti" to "Later",
+        "Pembaruan Tersedia" to "Update Available",
+        "Versi terbaru aplikasi sudah tersedia. Update sekarang untuk mendapatkan fitur terbaru dan perbaikan bug." to "The latest version of the app is available. Update now to get the latest features and bug fixes.",
+        "Tidak dapat membuka link download" to "Cannot open download link",
+        "SUKSES" to "SUCCESS",
+        "GAGAL" to "FAILED",
+        "PERINGATAN" to "WARNING",
+        "DISALIN" to "COPIED",
+        "INFO" to "INFO",
+        "Kembali ke Login" to "Back to Login",
+        "Upload Massal" to "Mass Upload",
+        "Batas min:" to "Min limit:",
+        "Batas min" to "Min limit",
+        "bungkus" to "pack",
+        "porsi" to "portion",
+        "buah" to "pieces",
+        "botol" to "bottle",
+        "lembar" to "sheet",
+        "kotak" to "box",
+        "grup" to "group",
+        "pasang" to "pair",
+        "lusin" to "dozen",
+        "kodi" to "kodi",
+        "Email pemulihan password berhasil dikirim ke" to "Password recovery email has been sent to",
+        "Pelanggan" to "Customer",
+        "berhasil disimpan!" to "successfully saved!",
+        "ditambahkan ke keranjang (Banyaknya:" to "added to cart (Qty:",
+        "sukses ditambahkan!" to "successfully added!",
+        "Berhasil melampirkan" to "Successfully attached",
+        "foto produk!" to "product photos!",
+        "Gagal menyimpan pengeluaran:" to "Failed to save expense:",
+        "Berhasil mencetak ke printer:" to "Successfully printed to:",
+        "Dashboard Pengguna Aktif & Sesi" to "Active Users & Sessions Dashboard",
+        "Total Pengguna" to "Total Users",
+        "Aktif Hari Ini" to "Active Today",
+        "Subs Premium" to "Premium Subs",
+        "Free Tier" to "Free Tier",
+        "Daftar Pengguna & Status Subscription" to "User List & Subscription Status",
+        "Tidak ada data pengguna ditemukan." to "No user data found.",
+        "Memantau Kinerja & Status Sistem (APM)" to "Monitor System Performance & Status (APM)",
+        "SQLite Latency Ping" to "SQLite Latency Ping",
+        "Optimal" to "Optimal",
+        "Firestore Sync Engine" to "Firestore Sync Engine",
+        "Terhubung & Sehat" to "Connected & Healthy",
+        "Penggunaan Heap Memory JVM" to "JVM Heap Memory Usage",
+        "Disk & Image Coil Cache size" to "Disk & Image Coil Cache Size",
+        "System Console & Terminal Event Logs" to "System Console & Terminal Event Logs",
+        "Aktif (Belum Dipakai)" to "Active (Unused)",
+        "Terpakai (Sudah Aktif)" to "Used (Active)",
+        "ID Pengguna / UID (Wajib)" to "User ID / UID (Required)",
+        "Masukkan atau tempel UID pengguna..." to "Enter or paste user UID...",
+        "Judul Notifikasi" to "Notification Title",
+        "Isi Pesan Notifikasi" to "Notification Message Content",
+        "Nomor Versi (Contoh: 1.1.0)" to "Version Number (e.g., 1.1.0)",
+        "Link Download APK" to "APK Download Link",
+        "Kirim ke Semua Pengguna" to "Send to All Users",
+        "Belum ada broadcast yang dikirim" to "No broadcast sent yet",
+        "Hubungkan Ulang" to "Reconnect",
+        "Panel Admin KasirPro" to "KasirPro Admin Panel",
+        "Pantauan (Dashboard)" to "Monitoring (Dashboard)",
+        "Kode Aktivasi" to "Activation Code",
+        "Broadcast Notifikasi" to "Broadcast Notification",
+        "Foto terlalu besar. Pilih foto yang lebih kecil." to "Photo is too large. Choose a smaller photo.",
+        "Gagal memproses foto" to "Failed to process photo",
+        "Silakan isi semua data wajib!" to "Please fill in all required data!",
+        "Menyimpan Produk" to "Saving Product",
+        "Silakan lengkapi semua parameter wajib!" to "Please complete all required parameters!",
+        "File kosong atau tidak dapat di-parse" to "Empty or unparseable file",
+        "Gagal mengimpor spreadsheet:" to "Failed to import spreadsheet:",
+        "Silakan pilih cabang tujuan!" to "Please select target branch!",
+        "Barcode tidak terdaftar!" to "Barcode not registered!",
+        "Barcode kosong atau tidak terbaca." to "Barcode is empty or unreadable.",
+        "Scan dibatalkan:" to "Scan cancelled:",
+        "GMS Code Scanner tidak tersedia. Pastikan Google Play Services terpasang." to "GMS Code Scanner is unavailable. Make sure Google Play Services is installed.",
+        "Izin Bluetooth ditolak. Gagal menyambungkan ke printer." to "Bluetooth permission denied. Failed to connect to printer.",
+        "Gagal mencetak. Harap sambungkan kembali printer Bluetooth Anda." to "Failed to print. Please reconnect your Bluetooth printer.",
+        "Simulasi Cetak Struk ke printer RPP02N - Selesai!" to "Receipt Print Simulation to RPP02N - Finished!",
+        "Kode Otoritas salah! Akses Ditolak." to "Incorrect Authority Code! Access Denied.",
+        "Nominal bayar kurang dari total untuk status lunas!" to "Payment amount is less than total for fully paid status!",
+        "Struk tidak boleh kosong!" to "Receipt cannot be empty!",
+        "Berhasil simpan koreksi transaksi!" to "Successfully saved transaction correction!",
+        "Nominal & keterangan wajib diisi!" to "Amount & description are required!",
+        "Pengeluaran kas berhasil dicatatkan!" to "Cash expense successfully recorded!",
+        "Gagal menyimpan pengeluaran:" to "Failed to save expense:"
     )
 
     private val sortedEnEntries = enMap.entries.sortedByDescending { it.key.length }
@@ -390,125 +481,110 @@ object Translator {
             return exactMatch
         }
         
-        // 2. Handle pattern matches cleanly
-        if (trimmed.startsWith("Terakhir Backup:", ignoreCase = true)) {
-            val suffix = trimmed.substringAfter("Terakhir Backup:")
+        // 2. Handle pattern matches cleanly by translating substrings step by step
+        var result = trimmed
+        if (result.startsWith("Terakhir Backup:", ignoreCase = true)) {
+            val suffix = result.substringAfter("Terakhir Backup:")
             val fallbackSuffix = if (suffix.contains("Belum pernah", ignoreCase = true)) "Never" else suffix
-            return "Last Backup: $fallbackSuffix"
-        }
-        if (trimmed.startsWith("Tanggal:", ignoreCase = true)) {
-            return "Date: " + trimmed.substringAfter("Tanggal:")
-        }
-        if (trimmed.startsWith("Kembalian:", ignoreCase = true)) {
-            return "Change: " + trimmed.substringAfter("Kembalian:")
-        }
-        if (trimmed.startsWith("Stok:", ignoreCase = true)) {
-            return "Stock: " + trimmed.substringAfter("Stok:")
-        }
-        if (trimmed.startsWith("Diskon:", ignoreCase = true)) {
-            return "Discount: " + trimmed.substringAfter("Diskon:")
-        }
-        if (trimmed.startsWith("Persediaan system terhitung:", ignoreCase = true)) {
-            return "System stock counted: " + trimmed.substringAfter("Persediaan system terhitung:")
-        }
-        if (trimmed.startsWith("Preview & Validasi Data", ignoreCase = true)) {
-            return "Preview & Data Validation " + trimmed.substringAfter("Preview & Validasi Data").replace("Baris", "Rows", ignoreCase = true)
-        }
-        if (trimmed.startsWith("Valid:", ignoreCase = true)) {
-            return "Valid:" + trimmed.substringAfter("Valid:")
-        }
-        if (trimmed.startsWith("Error:", ignoreCase = true)) {
-            return "Error:" + trimmed.substringAfter("Error:")
-        }
-        if (trimmed.startsWith("Nama:", ignoreCase = true) && trimmed.contains("| Kategori:", ignoreCase = true)) {
-            val parts = trimmed.split("|")
+            result = "Last Backup: $fallbackSuffix"
+        } else if (result.startsWith("Tanggal:", ignoreCase = true)) {
+            result = "Date: " + result.substringAfter("Tanggal:")
+        } else if (result.startsWith("Kembalian:", ignoreCase = true)) {
+            result = "Change: " + result.substringAfter("Kembalian:")
+        } else if (result.startsWith("Stok:", ignoreCase = true)) {
+            result = "Stock: " + result.substringAfter("Stok:")
+        } else if (result.startsWith("Diskon:", ignoreCase = true)) {
+            result = "Discount: " + result.substringAfter("Diskon:")
+        } else if (result.startsWith("Persediaan system terhitung:", ignoreCase = true)) {
+            result = "System stock counted: " + result.substringAfter("Persediaan system terhitung:")
+        } else if (result.startsWith("Preview & Validasi Data", ignoreCase = true)) {
+            result = "Preview & Data Validation " + result.substringAfter("Preview & Validasi Data").replace("Baris", "Rows", ignoreCase = true)
+        } else if (result.startsWith("Valid:", ignoreCase = true)) {
+            result = "Valid:" + result.substringAfter("Valid:")
+        } else if (result.startsWith("Error:", ignoreCase = true)) {
+            result = "Error:" + result.substringAfter("Error:")
+        } else if (result.startsWith("Nama:", ignoreCase = true) && result.contains("| Kategori:", ignoreCase = true)) {
+            val parts = result.split("|")
             val namaPart = "Name:" + parts[0].substringAfter("Nama:")
             val katPart = " Category:" + parts[1].substringAfter("Kategori:")
-            return "$namaPart|$katPart"
-        }
-        if (trimmed.startsWith("Jual:", ignoreCase = true) && trimmed.contains("| Stok:", ignoreCase = true)) {
-            val parts = trimmed.split("|")
+            result = "$namaPart|$katPart"
+        } else if (result.startsWith("Jual:", ignoreCase = true) && result.contains("| Stok:", ignoreCase = true)) {
+            val parts = result.split("|")
             val jualPart = "Sell:" + parts[0].substringAfter("Jual:")
             val stokPart = " Stock:" + parts[1].substringAfter("Stok:")
-            return "$jualPart|$stokPart"
-        }
-        if (trimmed.startsWith("Detail Error:", ignoreCase = true)) {
-            return "Error Details: " + trimmed.substringAfter("Detail Error:")
-        }
-        if (trimmed.startsWith("Jumlah total melebihi batas", ignoreCase = true)) {
-            return trimmed.replace("Jumlah total melebihi batas", "Total amount exceeds the limit of", ignoreCase = true)
+            result = "$jualPart|$stokPart"
+        } else if (result.startsWith("Detail Error:", ignoreCase = true)) {
+            result = "Error Details: " + result.substringAfter("Detail Error:")
+        } else if (result.startsWith("Jumlah total melebihi batas", ignoreCase = true)) {
+            result = result.replace("Jumlah total melebihi batas", "Total amount exceeds the limit of", ignoreCase = true)
                           .replace("produk untuk paket Anda. Memerlukan minimal", "products for your plan. Requires at least", ignoreCase = true)
-        }
-        if (trimmed.startsWith("Sukses mengupload", ignoreCase = true)) {
-            return trimmed.replace("Sukses mengupload", "Successfully uploaded", ignoreCase = true)
+        } else if (result.startsWith("Sukses mengupload", ignoreCase = true)) {
+            result = result.replace("Sukses mengupload", "Successfully uploaded", ignoreCase = true)
                           .replace("produk ke Cabang", "products to Branch", ignoreCase = true)
-        }
-        if (trimmed.endsWith("Item Terpilih", ignoreCase = true)) {
-            val count = trimmed.substringBefore("Item Terpilih")
-            return "$count Items Selected"
-        }
-        if (trimmed.startsWith("Pelanggan:", ignoreCase = true)) {
-            return trimmed.replace("Pelanggan:", "Customer:", ignoreCase = true)
+        } else if (result.endsWith("Item Terpilih", ignoreCase = true)) {
+            val count = result.substringBefore("Item Terpilih")
+            result = "$count Items Selected"
+        } else if (result.startsWith("Pelanggan:", ignoreCase = true)) {
+            result = result.replace("Pelanggan:", "Customer:", ignoreCase = true)
                           .replace("Stok:", "Stock:", ignoreCase = true)
                           .replace("Poin", "Points", ignoreCase = true)
-        }
-        if (trimmed.startsWith("Kupon:", ignoreCase = true)) {
-            return "Coupon:" + trimmed.substringAfter("Kupon:")
-        }
-        if (trimmed.startsWith("Bayar Pas:", ignoreCase = true)) {
-            return "Exact Change:" + trimmed.substringAfter("Bayar Pas:")
-        }
-        if (trimmed.startsWith("Telp:", ignoreCase = true)) {
-            return "Phone:" + trimmed.substringAfter("Telp:")
-        }
-        if (trimmed.startsWith("Alamat:", ignoreCase = true)) {
-            return "Address:" + trimmed.substringAfter("Alamat:")
-        }
-        if (trimmed.startsWith("Kode:", ignoreCase = true)) {
-            return trimmed.replace("Kode:", "Code:", ignoreCase = true)
-        }
-        if (trimmed.startsWith("Tel:", ignoreCase = true)) {
-            return "Phone:" + trimmed.substringAfter("Tel:")
-        }
-        if (trimmed.startsWith("No TRX:", ignoreCase = true)) {
-            return "TX No:" + trimmed.substringAfter("No TRX:")
-        }
-        if (trimmed.startsWith("Kasir:", ignoreCase = true)) {
-            return "Cashier:" + trimmed.substringAfter("Kasir:")
-        }
-        if (trimmed.startsWith("ID Kasir:", ignoreCase = true)) {
-            return "Cashier ID:" + trimmed.substringAfter("ID Kasir:")
-        }
-        if (trimmed.startsWith("Uang Fisik di Laci", ignoreCase = true)) {
-            return "Physical Cash in Drawer" + trimmed.substringAfter("Uang Fisik di Laci")
-        }
-        if (trimmed.startsWith("Selisih Uang Laci:", ignoreCase = true)) {
-            return "Drawer Cash Difference:" + trimmed.substringAfter("Selisih Uang Laci:")
-        }
-        if (trimmed.startsWith("Yth. Kasir", ignoreCase = true)) {
-            return trimmed.replace("Yth. Kasir", "Dear Cashier", ignoreCase = true)
+        } else if (result.startsWith("Kupon:", ignoreCase = true)) {
+            result = "Coupon:" + result.substringAfter("Kupon:")
+        } else if (result.startsWith("Bayar Pas:", ignoreCase = true)) {
+            result = "Exact Change:" + result.substringAfter("Bayar Pas:")
+        } else if (result.startsWith("Telp:", ignoreCase = true)) {
+            result = "Phone:" + result.substringAfter("Telp:")
+        } else if (result.startsWith("Alamat:", ignoreCase = true)) {
+            result = "Address:" + result.substringAfter("Alamat:")
+        } else if (result.startsWith("Kode:", ignoreCase = true)) {
+            result = result.replace("Kode:", "Code:", ignoreCase = true)
+        } else if (result.startsWith("Tel:", ignoreCase = true)) {
+            result = "Phone:" + result.substringAfter("Tel:")
+        } else if (result.startsWith("No TRX:", ignoreCase = true)) {
+            result = "TX No:" + result.substringAfter("No TRX:")
+        } else if (result.startsWith("Kasir:", ignoreCase = true)) {
+            result = "Cashier:" + result.substringAfter("Kasir:")
+        } else if (result.startsWith("ID Kasir:", ignoreCase = true)) {
+            result = "Cashier ID:" + result.substringAfter("ID Kasir:")
+        } else if (result.startsWith("Uang Fisik di Laci", ignoreCase = true)) {
+            result = "Physical Cash in Drawer" + result.substringAfter("Uang Fisik di Laci")
+        } else if (result.startsWith("Selisih Uang Laci:", ignoreCase = true)) {
+            result = "Drawer Cash Difference:" + result.substringAfter("Selisih Uang Laci:")
+        } else if (result.startsWith("Yth. Kasir", ignoreCase = true)) {
+            result = result.replace("Yth. Kasir", "Dear Cashier", ignoreCase = true)
                           .replace("shift Anda telah berhasil diakhiri.", "your shift has been successfully ended.", ignoreCase = true)
-        }
-        if (trimmed.startsWith("Mulai Shift:", ignoreCase = true)) {
-            return "Start Shift:" + trimmed.substringAfter("Mulai Shift:")
-        }
-        if (trimmed.startsWith("Selesai Shift:", ignoreCase = true)) {
-            return "End Shift:" + trimmed.substringAfter("Selesai Shift:")
-        }
-        if (trimmed.startsWith("Jumlah Transaksi:", ignoreCase = true)) {
-            return "Transaction Count:" + trimmed.substringAfter("Jumlah Transaksi:")
-        }
-        if (trimmed.startsWith("Expired:", ignoreCase = true)) {
-            return "Expired:" + trimmed.substringAfter("Expired:")
-        }
-        if (trimmed.startsWith("Butuh ", ignoreCase = true) && trimmed.contains(" Poin", ignoreCase = true)) {
-            return trimmed.replace("Butuh", "Requires", ignoreCase = true)
+        } else if (result.startsWith("Mulai Shift:", ignoreCase = true)) {
+            result = "Start Shift:" + result.substringAfter("Mulai Shift:")
+        } else if (result.startsWith("Selesai Shift:", ignoreCase = true)) {
+            result = "End Shift:" + result.substringAfter("Selesai Shift:")
+        } else if (result.startsWith("Jumlah Transaksi:", ignoreCase = true)) {
+            result = "Transaction Count:" + result.substringAfter("Jumlah Transaksi:")
+        } else if (result.startsWith("Expired:", ignoreCase = true)) {
+            result = "Expired:" + result.substringAfter("Expired:")
+        } else if (result.startsWith("Butuh ", ignoreCase = true) && result.contains(" Poin", ignoreCase = true)) {
+            result = result.replace("Butuh", "Requires", ignoreCase = true)
                           .replace("Poin", "Points", ignoreCase = true)
                           .replace("Biaya Toko", "Store Cost", ignoreCase = true)
+        } else if (result.startsWith("ID Transaksi:", ignoreCase = true)) {
+            result = "Transaction ID: " + result.substringAfter("ID Transaksi:")
+        } else if (result.startsWith("Email pemulihan password berhasil dikirim ke", ignoreCase = true)) {
+            result = "Password recovery email has been sent to " + result.substringAfter("Email pemulihan password berhasil dikirim ke")
+        } else if (result.startsWith("Pelanggan", ignoreCase = true) && result.contains("berhasil disimpan!", ignoreCase = true)) {
+            result = "Customer " + result.substringAfter("Pelanggan").replace("berhasil disimpan!", "successfully saved!", ignoreCase = true)
+        } else if (result.contains("ditambahkan ke keranjang (Banyaknya:", ignoreCase = true)) {
+            result = result.replace("ditambahkan ke keranjang (Banyaknya:", "added to cart (Qty:", ignoreCase = true)
+        } else if (result.contains("sukses ditambahkan!", ignoreCase = true)) {
+            result = result.replace("sukses ditambahkan!", "successfully added!", ignoreCase = true)
+        } else if (result.startsWith("Berhasil melampirkan", ignoreCase = true)) {
+            result = result.replace("Berhasil melampirkan", "Successfully attached", ignoreCase = true)
+                           .replace("foto produk!", "product photos!", ignoreCase = true)
+        } else if (result.startsWith("Gagal menyimpan pengeluaran:", ignoreCase = true)) {
+            result = "Failed to save expense: " + result.substringAfter("Gagal menyimpan pengeluaran:")
+        } else if (result.startsWith("Berhasil mencetak ke printer:", ignoreCase = true)) {
+            result = "Successfully printed to: " + result.substringAfter("Berhasil mencetak ke printer:")
         }
 
         // 3. Sentence-level replacement using word boundaries to prevent substring corruption
-        var result = trimmed
         sortedEnEntries.forEach { (indo, eng) ->
             if (indo.length > 3) {
                 val prefixPattern = "(?<=^|[^a-zA-Z0-9_])"

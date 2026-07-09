@@ -438,7 +438,7 @@ class MainActivity : ComponentActivity() {
                                             val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(updateDownloadUrl))
                                             context.startActivity(intent)
                                         } catch (e: Exception) {
-                                            android.widget.Toast.makeText(context, "Tidak dapat membuka link download", android.widget.Toast.LENGTH_SHORT).show()
+                                            android.widget.Toast.makeText(context, com.kasirpro.app.util.tNon("Tidak dapat membuka link download"), android.widget.Toast.LENGTH_SHORT).show()
                                         }
                                         showUpdateDialog = false
                                     },
@@ -458,4 +458,45 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+}
+
+@Composable
+private fun Text(
+    text: String,
+    modifier: androidx.compose.ui.Modifier = androidx.compose.ui.Modifier,
+    color: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Unspecified,
+    fontSize: androidx.compose.ui.unit.TextUnit = androidx.compose.ui.unit.TextUnit.Unspecified,
+    fontStyle: androidx.compose.ui.text.font.FontStyle? = null,
+    fontWeight: androidx.compose.ui.text.font.FontWeight? = null,
+    fontFamily: androidx.compose.ui.text.font.FontFamily? = null,
+    letterSpacing: androidx.compose.ui.unit.TextUnit = androidx.compose.ui.unit.TextUnit.Unspecified,
+    textDecoration: androidx.compose.ui.text.style.TextDecoration? = null,
+    textAlign: androidx.compose.ui.text.style.TextAlign? = null,
+    lineHeight: androidx.compose.ui.unit.TextUnit = androidx.compose.ui.unit.TextUnit.Unspecified,
+    overflow: androidx.compose.ui.text.style.TextOverflow = androidx.compose.ui.text.style.TextOverflow.Clip,
+    softWrap: Boolean = true,
+    maxLines: Int = Int.MAX_VALUE,
+    minLines: Int = 1,
+    onTextLayout: ((androidx.compose.ui.text.TextLayoutResult) -> Unit)? = null,
+    style: androidx.compose.ui.text.TextStyle = androidx.compose.material3.LocalTextStyle.current
+) {
+    androidx.compose.material3.Text(
+        text = com.kasirpro.app.util.t(text),
+        modifier = modifier,
+        color = color,
+        fontSize = fontSize,
+        fontStyle = fontStyle,
+        fontWeight = fontWeight,
+        fontFamily = fontFamily,
+        letterSpacing = letterSpacing,
+        textDecoration = textDecoration,
+        textAlign = textAlign,
+        lineHeight = lineHeight,
+        overflow = overflow,
+        softWrap = softWrap,
+        maxLines = maxLines,
+        minLines = minLines,
+        onTextLayout = onTextLayout,
+        style = style
+    )
 }

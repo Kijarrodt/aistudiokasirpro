@@ -2,7 +2,7 @@ package com.kasirpro.app.ui.screens
 
 import android.app.Activity
 import android.net.Uri
-import android.widget.Toast
+import com.kasirpro.app.util.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background

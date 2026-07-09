@@ -7,3 +7,8 @@ fun t(text: String): String {
     val lang = Translator.currentLanguage.value
     return Translator.translate(text, lang)
 }
+
+fun tNon(text: String): String {
+    val lang = Translator.currentLanguage.value
+    return Translator.translate(text, lang)
+}
