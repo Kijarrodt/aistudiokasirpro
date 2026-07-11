@@ -956,8 +956,20 @@ object Translator {
     private val sortedEnEntries = enMap.entries.sortedByDescending { it.key.length }
     private val enMapNormalized = enMap.mapKeys { it.key.replace(Regex("\\s+"), " ").trim().lowercase() }
 
+    private val translationCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    private val compiledPatterns: List<Pair<Regex, String>> by lazy {
+        sortedEnEntries.filter { it.key.length > 3 }.map { (indo, eng) ->
+            val prefixPattern = "(?<=^|[^a-zA-Z0-9_])"
+            val suffixPattern = "(?=$|[^a-zA-Z0-9_])"
+            Regex(prefixPattern + Regex.escape(indo) + suffixPattern, RegexOption.IGNORE_CASE) to eng
+        }
+    }
+
     fun translate(text: String, lang: String): String {
         if (lang != "en") return text
+        val cacheKey = "$lang::$text"
+        translationCache[cacheKey]?.let { return it }
         
         val trimmed = text.trim()
         val normalized = trimmed.replace(Regex("\\s+"), " ").lowercase()
@@ -965,6 +977,7 @@ object Translator {
         // 1. Exact match lookup using whitespace-normalized lowercase
         val exactMatch = enMapNormalized[normalized]
         if (exactMatch != null) {
+            translationCache[cacheKey] = exactMatch
             return exactMatch
         }
         
@@ -1176,14 +1189,10 @@ object Translator {
         }
 
         // 3. Sentence-level replacement using word boundaries to prevent substring corruption
-        sortedEnEntries.forEach { (indo, eng) ->
-            if (indo.length > 3) {
-                val prefixPattern = "(?<=^|[^a-zA-Z0-9_])"
-                val suffixPattern = "(?=$|[^a-zA-Z0-9_])"
-                val regex = Regex(prefixPattern + Regex.escape(indo) + suffixPattern, RegexOption.IGNORE_CASE)
-                result = result.replace(regex, eng)
-            }
+        compiledPatterns.forEach { (regex, eng) ->
+            result = result.replace(regex, eng)
         }
+        translationCache[cacheKey] = result
         return result
     }
 }
