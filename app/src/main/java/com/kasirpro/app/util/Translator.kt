@@ -464,19 +464,208 @@ object Translator {
         "Berhasil simpan koreksi transaksi!" to "Successfully saved transaction correction!",
         "Nominal & keterangan wajib diisi!" to "Amount & description are required!",
         "Pengeluaran kas berhasil dicatatkan!" to "Cash expense successfully recorded!",
-        "Gagal menyimpan pengeluaran:" to "Failed to save expense:"
+        "Gagal menyimpan pengeluaran:" to "Failed to save expense:",
+        "Mulai Transaksi Pertama Anda" to "Start Your First Transaction",
+        "Setup Toko Baru Anda" to "Set Up Your New Store",
+        "Tambahkan info detail operasional toko utama Anda" to "Add operational details of your main store",
+        "Logo berhasil diupload ke Storage!" to "Logo successfully uploaded to Storage!",
+        "Silakan isi nama toko dan alamat!" to "Please fill in store name and address!",
+        "Daftar Toko Kasir Pro" to "Register Kasir Pro Store",
+        "Mulailah melayani transaksi bisnis dalam beberapa klik" to "Start serving business transactions in a few clicks",
+        "Harap lengkapi semua data formulir!" to "Please complete all form data!",
+        "Password minimal terdiri dari 6 karakter!" to "Password must be at least 6 characters!",
+        "Belum memiliki akun? " to "Don't have an account? ",
+        "Sudah memiliki akun? " to "Already have an account? ",
+        "Masuk Kasir Pro" to "Log In to Kasir Pro",
+        "Kelola finansial toko Anda dengan mudah" to "Manage your store's financials easily",
+        "Google login gagal." to "Google login failed.",
+        "Gagal mendapatkan token Google atau login dibatalkan." to "Failed to get Google token or login cancelled.",
+        "Mohon lengkapi email dan password!" to "Please complete email and password!",
+        "Email atau password salah!" to "Incorrect email or password!",
+        "Inisialisasi Google Sign-In gagal." to "Google Sign-In initialization failed.",
+        "Registrasi gagal, silakan coba lagi." to "Registration failed, please try again.",
+        "Lupa Password" to "Forgot Password",
+        "Masukkan email terdaftar Anda dan kami akan mengirimkan link reset password." to "Enter your registered email and we will send you a password reset link.",
+        "Kembali ke Login" to "Back to Login",
+        "Toko Kasir Pro" to "Kasir Pro Store",
+        "Tekan & geser untuk detail interaktif" to "Press & drag for interactive details",
+        "Tambah Produk ke Struk" to "Add Product to Receipt",
+        "Tambah Akun Kasir" to "Add Cashier Account",
+        "Tambah Hadiah" to "Add Reward",
+        "Tambah Kasir" to "Add Cashier",
+        "Tambah Outlet Cabang Baru" to "Add New Outlet Branch",
+        "Tambah Pengeluaran" to "Add Expense",
+        "Tambah akun kasir pertama Anda melalui tombol di atas untuk mendelegasikan transaksi kasir." to "Add your first cashier account using the button above to delegate cashier transactions.",
+        "Teoritis Seharusnya (Sistem):" to "Theoretical (System):",
+        "Uang Fisik Dilaporkan:" to "Physical Cash Reported:",
+        "Uang kasir Tunai secara sistem yang harus ada di laci saat ini:" to "System cashier cash that should be in the drawer currently:",
+        "Upgrade Premium (Mulai Rp 29rb)" to "Upgrade Premium (Starting at Rp 29k)",
+        "Upgrade ke Paket Lebih Tinggi" to "Upgrade to a Higher Package",
+        "Username / ID Login (Unik)" to "Username / Login ID (Unique)",
+        "Username tersedia & siap digunakan!" to "Username is available & ready to use!",
+        "Username tersedia!" to "Username is available!",
+        "Username tidak tersedia atau sedang divalidasi. Silakan periksa kembali!" to "Username is unavailable or being validated. Please check again!",
+        "Tugaskan Kasir ke Cabang" to "Assign Cashier to Branch",
+        "Tugaskan ke Cabang:" to "Assign to Branch:",
+        "TOTAL PENDAPATAN" to "TOTAL REVENUE",
+        "TOTAL PIUTANG HAMPIR JATUH TEMPO" to "TOTAL RECEIVABLES NEARING DUE DATE",
+        "TOTAL TRANSAKSI" to "TOTAL TRANSACTIONS",
+        "Total Beban / Pengeluaran Toko" to "Total Store Expenses / Fees",
+        "Total Harga Pokok Modal (HPP):" to "Total Cost of Goods Sold (COGS):",
+        "Total Harga Pokok Penjualan (HPP)" to "Total Cost of Goods Sold (COGS)",
+        "Total Omset Penjualan" to "Total Sales Turnover",
+        "Total Pengeluaran (Beban):" to "Total Expense (Cost):",
+        "Toko Utama" to "Main Store",
+        "Tidak ada notifikasi untuk Anda" to "No notifications for you",
+        "Scan Barcode Simulator" to "Scan Barcode Simulator",
+        "Apply Code" to "Apply Code",
+        "Restock baru dari supplier" to "New restock from supplier",
+        "Tambah Manual Stok" to "Add Stock Manually",
+        "Jumlah unit masuk" to "Quantity received",
+        "Catatan riwayat" to "History notes",
+        "Tambahkan" to "Add",
+        "Opname stok akhir bulan" to "End of month stock audit",
+        "Stok Opname Fisik" to "Physical Stock Audit",
+        "Stok fisik nyata di rak" to "Actual physical stock on shelf",
+        "Keterangan opname" to "Audit description",
+        "Simpan & Sesuaikan" to "Save & Adjust",
+        "Edit Detail Produk" to "Edit Product Details",
+        "Ganti atau Tambah Foto Produk" to "Change or Add Product Photo",
+        "Barcode (Optional)" to "Barcode (Optional)",
+        "Menyimpan perubahan dan foto..." to "Saving changes and photo...",
+        "Upload Produk Massal (.xlsx / .csv)" to "Bulk Upload Products (.xlsx / .csv)",
+        "1. Pilih Cabang Toko Tujuan" to "1. Select Target Store Branch",
+        "Pilih Cabang..." to "Select Branch...",
+        "2. Unduh Template Resmi" to "2. Download Official Template",
+        "Download Template" to "Download Template",
+        "3. Pilih Spreadsheet (.xlsx / .csv)" to "3. Select Spreadsheet (.xlsx / .csv)",
+        "Pilih File Excel / CSV" to "Select Excel / CSV File",
+        "4. Foto Produk Langsung Di Dalam Spreadsheet" to "4. Product Photos Directly In Spreadsheet",
+        "Foto produk wajib disatukan di dalam file Excel / CSV:" to "Product photos must be included in the Excel / CSV file:",
+        "Mengunggah Produk Massal" to "Uploading Bulk Products",
+        "Memulai bulk upload..." to "Starting bulk upload...",
+        "Nama produk wajib diisi." to "Product name is required.",
+        "Kategori wajib diisi." to "Category is required.",
+        "Harga jual harus angka valid > 0." to "Selling price must be a valid number > 0.",
+        "Stok awal harus angka." to "Initial stock must be a number.",
+        "Stok awal tidak boleh negatif." to "Initial stock cannot be negative.",
+        "Alat Tulis" to "Stationery",
+        "Printer Tanpa Nama" to "Unnamed Printer",
+        "Mulai Shift Kasir" to "Start Cashier Shift",
+        "Masukkan jumlah saldo uang modal awal (cash) yang tersedia di laci uang kasir untuk memulai pencatatan shift hari ini." to "Enter the initial capital cash amount available in the cashier drawer to start recording today's shift.",
+        "Modal Awal (Rp)" to "Initial Capital (Rp)",
+        "Contoh: 50000" to "Example: 50000",
+        "Mulai Shift POS" to "Start POS Shift",
+        "Kasir Pos Penjualan" to "POS Cashier Sales",
+        "Menu Kasir" to "Cashier Menu",
+        "Catat Pengeluaran" to "Record Expense",
+        "Bayar Sekarang" to "Pay Now",
+        "Cari produk atau barcode..." to "Search product or barcode...",
+        "Produk Kosong" to "No Products",
+        "Silakan tambahkan produk baru di menu Kelola Produk terlebih dahulu." to "Please add a new product in the Manage Products menu first.",
+        "Pilih Varian Produk" to "Select Product Variant",
+        "Pindai Barcode Produk" to "Scan Product Barcode",
+        "Masukkan manual kode barcode produk untuk memulai pencarian produk secara cepat." to "Manually enter product barcode to start quick product search.",
+        "contoh: 899123456001" to "e.g., 899123456001",
+        "Simpan & Scan" to "Save & Scan",
+        "Konfirmasi Pembayaran Kasir" to "Confirm Cashier Payment",
+        "Ringkasan Pesanan" to "Order Summary",
+        "Promo & Loyalty" to "Promo & Loyalty",
+        "Add Customer" to "Add Customer",
+        "Jumlah poin yang ditukar" to "Points to redeem",
+        "Masukkan poin, misal: 10" to "Enter points, e.g., 10",
+        "Metode Status Piutang" to "Receivable Status Method",
+        "DP / PIUTANG" to "DP / RECEIVABLE",
+        "Wajib memilih pelanggan jika status adalah Hutang (DP)" to "Selecting a customer is required if status is Debt (DP)",
+        "SCAN QRIS TOKO" to "SCAN STORE QRIS",
+        "Silakan pelanggan scan QRIS di atas untuk membayar sejumlah:" to "Please have the customer scan the QRIS above to pay:",
+        "Foto QRIS Belum Tersedia" to "QRIS Photo Not Available Yet",
+        "Pemilik toko harus meng-upload QRIS di menu Pengaturan terlebih dahulu." to "The store owner must upload a QRIS in the Settings menu first.",
+        "Nominal Pembayaran Tunai" to "Cash Payment Amount",
+        "Kembalian Anda:" to "Your Change:",
+        "Sisa Piutang (Kekurangan):" to "Remaining Receivable (Shortage):",
+        "Masukkan data pelanggan untuk dihubungkan ke program loyalty & bonus poin warung." to "Enter customer details to connect to the store's loyalty & bonus points program.",
+        "Nama Lengkap*" to "Full Name*",
+        "Contoh: Ahmad Budiman" to "Example: Ahmad Budiman",
+        "Nama wajib diisi" to "Name is required",
+        "No. WhatsApp/HP*" to "WhatsApp/HP Number*",
+        "Contoh: 08123456789" to "Example: 08123456789",
+        "Nomor WA wajib diisi" to "WA number is required",
+        "Alamat (Opsional)" to "Address (Optional)",
+        "Contoh: Jl. Merdeka No. 10" to "Example: 10 Merdeka St.",
+        "Gunakan Voucher Kupon Promo" to "Use Promo Voucher Coupon",
+        "Database voucher promo kosong." to "Promo voucher database is empty.",
+        "Transaksi Berhasil!" to "Transaction Successful!",
+        "Terima kasih atas kunjungan Anda!" to "Thank you for your visit!",
+        "Bagikan struk penjualan" to "Share sales receipt",
+        "Bagikan WA" to "Share via WA",
+        "Cetak Kasir" to "Print Cashier",
+        "Hubungkan Printer Thermal Bluetooth" to "Connect Bluetooth Thermal Printer",
+        "Pastikan printer Anda menyala dan telah dipasangkan (paired) di pengaturan Bluetooth HP." to "Make sure your printer is on and paired in your phone's Bluetooth settings.",
+        "Mencetak struk..." to "Printing receipt...",
+        "Tidak ada printer Bluetooth berpasangan ditemukan." to "No paired Bluetooth printer found.",
+        "Muat Ulang / Cari Printer" to "Reload / Search Printer",
+        "Pilih printer dari daftar di bawah ini:" to "Select a printer from the list below:",
+        "Simulasi Cetak (Bypass)" to "Simulate Printing (Bypass)",
+        "Gunakan jika tidak ada printer berpasangan" to "Use if there is no paired printer",
+        "Pilih transaksi untuk melihat detail struk atau melakukan perbaikan menggunakan authorization PIN pemilik toko." to "Select a transaction to view receipt details or make corrections using the shop owner's authorization PIN.",
+        "Masukkan kode otoritas/sandi pemilik warung untuk mengizinkan kasir mengedit data transaksi struk ini." to "Enter the store owner's authority code/password to allow the cashier to edit this transaction's receipt data.",
+        "Uang Modal Awal:" to "Initial Capital:",
+        "Pendapatan Tunai:" to "Cash Revenue:",
+        "Pendapatan Non-Tunai:" to "Non-Cash Revenue:",
+        "Total Omset:" to "Total Turnover:",
+        "Tunai Seharusnya di Laci:" to "Cash Should Be in Drawer:",
+        "Jumlah Uang Fisik Laci:" to "Physical Cash Amount in Drawer:",
+        "Log Transaksi Shift ini:" to "Transaction Log for This Shift:",
+        "Tidak ada transaksi selama shift ini." to "No transactions during this shift.",
+        "Konfirmasi & Keluar" to "Confirm & Exit",
+        "Layanan Aktif" to "Service Active",
+        "Tingkatkan durasi langganan sebelum berakhir" to "Extend subscription duration before expiration",
+        "Perpanjang" to "Extend",
+        "Fitur Bisnis & Loyalitas (Premium)" to "Business & Loyalty Features (Premium)",
+        "Loyalty Pelanggan & CRM" to "Customer Loyalty & CRM",
+        "Manajemen Promo & Kupon" to "Promo & Coupon Management",
+        "Outlet Multi-Cabang" to "Multi-Branch Outlets",
+        "Staf & Akun Kasir" to "Staff & Cashier Accounts",
+        "Pengaturan Aplikasi" to "App Settings",
+        "Kode Otoritas Koreksi" to "Correction Authority Code",
+        "Menghubungkan ke Google Play..." to "Connecting to Google Play...",
+        "Laporan Akhir Shift" to "End of Shift Report",
+        "Laporan PDF & Excel" to "PDF & Excel Reports",
+        "Daftar Cabang Usaha" to "List of Business Branches",
+        "Tambah Cabang" to "Add Branch",
+        "Cabang Utama (Default)" to "Main Branch (Default)",
+        "Template Excel berhasil didownload!" to "Excel template downloaded successfully!",
+        "Tidak ada rekaman hutang." to "No debt records.",
+        "Transaksi Terbaru & Koreksi" to "Recent Transactions & Corrections",
+        "TAHUNAN (365 h)" to "YEARLY (365 d)",
+        "BULANAN (30 h)" to "MONTHLY (30 d)",
+        "Belum Ada Sesi" to "No Sessions Yet",
+        "Jumlah Transaksi:" to "Transaction Count:",
+        "GRATIS" to "FREE",
+        "Profil" to "Profile",
+        "Pengaturan & Profil" to "Settings & Profile",
+        "Profil Kasir & Shift" to "Cashier Profile & Shift",
+        "Fitur Pro Terkunci" to "Pro Feature Locked",
+        "Menu Laporan Keuangan, dan Kelola Hutang hanya tersedia untuk pelanggan Premium Pro." to "Financial Reports and Debt Management menus are only available for Premium Pro Customers.",
+        "Kembali ke Beranda" to "Back to Home",
+        "Produk Belum Ada" to "No Products Yet",
+        "Klik tombol '+' di pojok kanan atas untuk menambahkan produk jualan utama Anda!" to "Click the '+' button in the top right corner to add your main sales products!",
+        "Search Products atau Barcode..." to "Search products or barcode...",
+        "Buka batasan laporan, outlet cabang, backup data, dan kelola kasir tanpa batas dengan paket premium." to "Unlock unlimited reports, outlet branches, backup data, and cashier management with premium package."
     )
 
     private val sortedEnEntries = enMap.entries.sortedByDescending { it.key.length }
-    private val enMapCaseInsensitive = enMap.mapKeys { it.key.trim().lowercase() }
+    private val enMapNormalized = enMap.mapKeys { it.key.replace(Regex("\\s+"), " ").trim().lowercase() }
 
     fun translate(text: String, lang: String): String {
         if (lang != "en") return text
         
         val trimmed = text.trim()
+        val normalized = trimmed.replace(Regex("\\s+"), " ").lowercase()
         
-        // 1. Exact match lookup
-        val exactMatch = enMapCaseInsensitive[trimmed.lowercase()]
+        // 1. Exact match lookup using whitespace-normalized lowercase
+        val exactMatch = enMapNormalized[normalized]
         if (exactMatch != null) {
             return exactMatch
         }
@@ -582,6 +771,30 @@ object Translator {
             result = "Failed to save expense: " + result.substringAfter("Gagal menyimpan pengeluaran:")
         } else if (result.startsWith("Berhasil mencetak ke printer:", ignoreCase = true)) {
             result = "Successfully printed to: " + result.substringAfter("Berhasil mencetak ke printer:")
+        } else if (result.startsWith("Defisit / Minus", ignoreCase = true)) {
+            result = "Deficit / Minus " + result.substringAfter("Defisit / Minus")
+        } else if (result.startsWith("Barcode '", ignoreCase = true) && result.contains("' tidak ditemukan!", ignoreCase = true)) {
+            result = result.replace("tidak ditemukan!", "not found!", ignoreCase = true)
+        } else if (result.startsWith("Tukar Loyalty Poin (Maks ", ignoreCase = true)) {
+            result = "Redeem Loyalty Points (Max " + result.substringAfter("Tukar Loyalty Poin (Maks ").replace("Poin)", "Points)")
+        } else if (result.startsWith("Nilai:", ignoreCase = true) && result.endsWith("/Poin", ignoreCase = true)) {
+            result = "Value:" + result.substringAfter("Nilai:").replace("/Poin", "/Point", ignoreCase = true)
+        } else if (result.startsWith("Potongan Harga:", ignoreCase = true)) {
+            result = "Discount Amount:" + result.substringAfter("Potongan Harga:")
+        } else if (result.startsWith("Terima kasih telah berbelanja di Kasir Pro! Total belanja Anda:", ignoreCase = true)) {
+            result = result.replace("Terima kasih telah berbelanja di Kasir Pro! Total belanja Anda:", "Thank you for shopping at Kasir Pro! Your total purchase:", ignoreCase = true)
+                           .replace("dengan status:", "with status:", ignoreCase = true)
+        } else if (result.startsWith("Sukses: Kode ", ignoreCase = true) && result.contains("berhasil dibuat!", ignoreCase = true)) {
+            result = result.replace("Sukses: Kode", "Success: Code", ignoreCase = true)
+                           .replace("berhasil dibuat!", "successfully created!", ignoreCase = true)
+        } else if (result.startsWith("Versi Terbaru Tersedia:", ignoreCase = true)) {
+            result = "Latest Version Available:" + result.substringAfter("Versi Terbaru Tersedia:")
+        } else if (result.startsWith("Total Transaksi:", ignoreCase = true)) {
+            result = "Total Transactions:" + result.substringAfter("Total Transaksi:").replace("kali", "times")
+        } else if (result.startsWith("Toko / Mitra Warung:", ignoreCase = true)) {
+            result = "Store / Shop Partner:" + result.substringAfter("Toko / Mitra Warung:")
+        } else if (result.startsWith("Waktu Cetak Dokumen:", ignoreCase = true)) {
+            result = "Document Print Time:" + result.substringAfter("Waktu Cetak Dokumen:")
         }
 
         // 3. Sentence-level replacement using word boundaries to prevent substring corruption
