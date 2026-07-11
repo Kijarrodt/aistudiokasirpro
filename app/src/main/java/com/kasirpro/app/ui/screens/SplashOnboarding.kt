@@ -1,5 +1,6 @@
 package com.kasirpro.app.ui.screens
 
+import com.kasirpro.app.util.Translator
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -85,7 +86,7 @@ fun SplashScreen(viewModel: KasirViewModel) {
                     uid = savedUid,
                     nama = savedName,
                     email = savedEmail,
-                    role = if (isKasirSaved) "kasir" else "owner",
+                    role = if (isKasirSaved) Translator.t("kasir") else "owner",
                     ownerId = savedOwnerId,
                     assignedBranchId = null,
                     subscriptionStatus = if (isAtLeastProfesional) "profesional" else "free",
@@ -163,7 +164,7 @@ fun SplashScreen(viewModel: KasirViewModel) {
         ) {
             Icon(
                 imageVector = Icons.Default.PointOfSale,
-                contentDescription = "Kasir Pro Logo",
+                contentDescription = Translator.t("Kasir Pro Logo"),
                 tint = Color.White,
                 modifier = Modifier
                     .size(100.dp)
@@ -171,7 +172,7 @@ fun SplashScreen(viewModel: KasirViewModel) {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Kasir Pro",
+                text = Translator.t("Kasir Pro"),
                 style = MaterialTheme.typography.displaySmall.copy(
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
@@ -179,7 +180,7 @@ fun SplashScreen(viewModel: KasirViewModel) {
                 )
             )
             Text(
-                text = "Aplikasi Kasir Modern Indonesia",
+                text = Translator.t("Aplikasi Kasir Modern Indonesia"),
                 style = MaterialTheme.typography.bodyMedium.copy(
                     color = Color.White.copy(alpha = 0.8f)
                 ),
@@ -197,18 +198,18 @@ fun OnboardingScreen(viewModel: KasirViewModel) {
 
     val pages = listOf(
         OnboardingPageData(
-            title = "Transaksi Instan & Barcode",
-            description = "Catat penjualan kasir secepat kilat dengan pencarian pintar dan camera scan barcode otomatis.",
+            title = Translator.t("Transaksi Instan & Barcode"),
+            description = Translator.t("Catat penjualan kasir secepat kilat dengan pencarian pintar dan camera scan barcode otomatis."),
             icon = Icons.Default.FlashOn
         ),
         OnboardingPageData(
-            title = "Manajemen Cabang & Stok",
-            description = "Pantau persediaan stok minimum dan kelola banyak cabang usaha secara realtime langsung dari genggaman Anda.",
+            title = Translator.t("Manajemen Cabang & Stok"),
+            description = Translator.t("Pantau persediaan stok minimum dan kelola banyak cabang usaha secara realtime langsung dari genggaman Anda."),
             icon = Icons.Default.PointOfSale
         ),
         OnboardingPageData(
             title = "Mode Offline & Cloud Sync",
-            description = "Internet mati? Transaksi tetap berjalan normal secara offline dan otomatis sync saat online kembali.",
+            description = Translator.t("Internet mati? Transaksi tetap berjalan normal secara offline dan otomatis sync saat online kembali."),
             icon = Icons.Default.CloudUpload
         )
     )
@@ -254,7 +255,7 @@ fun OnboardingScreen(viewModel: KasirViewModel) {
                         .testTag("onboarding_next_button")
                 ) {
                     Text(
-                        text = if (pagerState.currentPage == 2) "Mulai Sekarang" else "Lanjut",
+                        text = if (pagerState.currentPage == 2) Translator.t("Mulai Sekarang") else "Lanjut",
                         color = Color.White,
                         fontWeight = FontWeight.Bold
                     )

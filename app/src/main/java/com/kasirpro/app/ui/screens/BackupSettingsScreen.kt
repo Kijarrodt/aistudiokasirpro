@@ -1,5 +1,6 @@
 package com.kasirpro.app.ui.screens
 
+import com.kasirpro.app.util.Translator
 import android.app.Activity
 import android.net.Uri
 import com.kasirpro.app.util.Toast
@@ -85,18 +86,18 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                     finalLogoUrlState = base64
                     viewModel.updateBusinessProfile(shopName, shopAddress.takeIf { it.isNotBlank() }, shopPhone.takeIf { it.isNotBlank() }, base64) {
                         isUploadingLogo = false
-                        Toast.makeText(context, "Logo berhasil disimpan!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, Translator.t("Logo berhasil disimpan!"), Toast.LENGTH_SHORT).show()
                     }
                 } else {
                     isUploadingLogo = false
-                    Toast.makeText(context, "Foto terlalu besar. Pilih foto yang lebih kecil.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, Translator.t("Foto terlalu besar. Pilih foto yang lebih kecil."), Toast.LENGTH_LONG).show()
                 }
             }
         }
 
         AlertDialog(
             onDismissRequest = { if (!isUploadingLogo) showEditShopProfile = false },
-            title = { Text("Edit Profil Toko & Struk", fontWeight = FontWeight.Bold) },
+            title = { Text(Translator.t("Edit Profil Toko & Struk"), fontWeight = FontWeight.Bold) },
             text = {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -104,7 +105,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                         .fillMaxWidth()
                         .verticalScroll(rememberScrollState())
                 ) {
-                    Text("Detail toko di bawah ini akan ditampilkan secara otomatis pada Struk Belanja/Print cetak.", fontSize = 12.sp, color = Color.Gray)
+                    Text(Translator.t("Detail toko di bawah ini akan ditampilkan secara otomatis pada Struk Belanja/Print cetak."), fontSize = 12.sp, color = Color.Gray)
                     
                     // Logo Area
                     Box(
@@ -164,7 +165,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                            Text("Menyimpan logo toko...", fontSize = 11.sp, color = Color.Gray)
+                            Text(Translator.t("Menyimpan logo toko..."), fontSize = 11.sp, color = Color.Gray)
                         }
                     }
                 }
@@ -173,7 +174,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                 Button(
                     onClick = {
                         if (shopName.isBlank()) {
-                            Toast.makeText(context, "Nama toko tidak boleh kosong!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, Translator.t("Nama toko tidak boleh kosong!"), Toast.LENGTH_SHORT).show()
                             return@Button
                         }
                         isUploadingLogo = true
@@ -181,7 +182,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             viewModel.updateBusinessProfile(shopName, shopAddress.takeIf { it.isNotBlank() }, shopPhone.takeIf { it.isNotBlank() }, finalLogoUrlState) {
                                 isUploadingLogo = false
                                 showEditShopProfile = false
-                                Toast.makeText(context, "Profil Toko diperbarui!", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, Translator.t("Profil Toko diperbarui!"), Toast.LENGTH_SHORT).show()
                             }
                         }
                     },
@@ -216,18 +217,18 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                     finalQrisUrlState = base64
                     viewModel.updateBusinessQris(base64) {
                         isUploadingQris = false
-                        Toast.makeText(context, "Foto QRIS berhasil disimpan!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, Translator.t("Foto QRIS berhasil disimpan!"), Toast.LENGTH_SHORT).show()
                     }
                 } else {
                     isUploadingQris = false
-                    Toast.makeText(context, "Foto terlalu besar. Pilih foto yang lebih kecil.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, Translator.t("Foto terlalu besar. Pilih foto yang lebih kecil."), Toast.LENGTH_LONG).show()
                 }
             }
         }
 
         AlertDialog(
             onDismissRequest = { if (!isUploadingQris) showQrisSettings = false },
-            title = { Text("Pengaturan QRIS Pembayaran", fontWeight = FontWeight.Bold) },
+            title = { Text(Translator.t("Pengaturan QRIS Pembayaran"), fontWeight = FontWeight.Bold) },
             text = {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -235,7 +236,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        "Upload kode QR QRIS toko Anda. QRIS ini akan ditampilkan kepada kasir atau pelanggan saat melakukan transaksi dengan metode pembayaran QRIS.",
+                        Translator.t("Upload kode QR QRIS toko Anda. QRIS ini akan ditampilkan kepada kasir atau pelanggan saat melakukan transaksi dengan metode pembayaran QRIS."),
                         fontSize = 12.sp,
                         color = Color.Gray,
                         textAlign = TextAlign.Center
@@ -272,8 +273,8 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                     modifier = Modifier.size(48.dp)
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Text("Pilih Foto QRIS", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                Text("Klik untuk memilih gambar", fontSize = 10.sp, color = Color.Gray)
+                                Text(Translator.t("Pilih Foto QRIS"), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text(Translator.t("Klik untuk memilih gambar"), fontSize = 10.sp, color = Color.Gray)
                             }
                         }
                     }
@@ -286,7 +287,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = OrangePrimary)
-                            Text("Menyimpan foto QRIS...", fontSize = 11.sp, color = Color.Gray)
+                            Text(Translator.t("Menyimpan foto QRIS..."), fontSize = 11.sp, color = Color.Gray)
                         }
                     }
                 }
@@ -295,7 +296,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                 Button(
                     onClick = {
                         if (finalQrisUrlState == null) {
-                            Toast.makeText(context, "Silakan pilih foto QRIS terlebih dahulu", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, Translator.t("Silakan pilih foto QRIS terlebih dahulu"), Toast.LENGTH_SHORT).show()
                             return@Button
                         }
                         isUploadingQris = true
@@ -303,7 +304,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             viewModel.updateBusinessQris(finalQrisUrlState) {
                                 isUploadingQris = false
                                 showQrisSettings = false
-                                Toast.makeText(context, "Foto QRIS berhasil disimpan!", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, Translator.t("Foto QRIS berhasil disimpan!"), Toast.LENGTH_SHORT).show()
                             }
                         }
                     },
@@ -325,10 +326,10 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
         var code by remember { mutableStateOf(viewModel.getOwnerVerificationCode()) }
         AlertDialog(
             onDismissRequest = { showOwnerCodeDialog = false },
-            title = { Text("Kode Otoritas Pemilik", fontWeight = FontWeight.Bold) },
+            title = { Text(Translator.t("Kode Otoritas Pemilik"), fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Kode verifikasi ini digunakan untuk menyetujui koreksi / edit transaksi yang dilakukan oleh Staff Kasir.", fontSize = 12.sp, color = Color.Gray)
+                    Text(Translator.t("Kode verifikasi ini digunakan untuk menyetujui koreksi / edit transaksi yang dilakukan oleh Staff Kasir."), fontSize = 12.sp, color = Color.Gray)
                     OutlinedTextField(
                         value = code,
                         onValueChange = { if (it.length <= 8) code = it },
@@ -342,12 +343,12 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                 Button(
                     onClick = {
                         if (code.isBlank()) {
-                            Toast.makeText(context, "Kode tidak boleh kosong!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, Translator.t("Kode tidak boleh kosong!"), Toast.LENGTH_SHORT).show()
                             return@Button
                         }
                         viewModel.saveOwnerVerificationCode(code)
                         showOwnerCodeDialog = false
-                        Toast.makeText(context, "Kode Otoritas disimpan!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, Translator.t("Kode Otoritas disimpan!"), Toast.LENGTH_SHORT).show()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
                 ) {
@@ -368,10 +369,10 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
         AdminPanelScreen(viewModel, onBack = { showAdminPanel = false })
     } else if (activeSettingSubScreen != null) {
         val defaultTitle = when (activeSettingSubScreen) {
-            "PELANGGAN" -> "Loyalty Pelanggan & CRM"
-            "PROMO" -> "Manajemen Promo & Kupon"
-            "CABANG" -> "Outlet Multi-Cabang"
-            "KASIR" -> "Staf & Akun Kasir"
+            Translator.t("PELANGGAN") -> Translator.t("Loyalty Pelanggan & CRM")
+            "PROMO" -> Translator.t("Manajemen Promo & Kupon")
+            Translator.t("CABANG") -> Translator.t("Outlet Multi-Cabang")
+            Translator.t("KASIR") -> Translator.t("Staf & Akun Kasir")
             else -> "Fitur Premium"
         }
         Scaffold(
@@ -408,7 +409,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             Spacer(modifier = Modifier.width(8.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text("Fitur Premium Pro Terkunci", fontWeight = FontWeight.Bold, color = OrangeDark, fontSize = 12.sp)
-                                Text("Bagian ini hanya untuk pengguna Premium Pro. Silakan upgrade untuk membuka dan mengelola data secara real-time.", fontSize = 11.sp, color = OrangeDark)
+                                Text(Translator.t("Bagian ini hanya untuk pengguna Premium Pro. Silakan upgrade untuk membuka dan mengelola data secara real-time."), fontSize = 11.sp, color = OrangeDark)
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             Button(
@@ -425,10 +426,10 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
 
                 Box(modifier = Modifier.fillMaxSize().weight(1f)) {
                     when (activeSettingSubScreen) {
-                        "PELANGGAN" -> PremiumPelangganTab(viewModel)
+                        Translator.t("PELANGGAN") -> PremiumPelangganTab(viewModel)
                         "PROMO" -> PremiumPromoTab(viewModel)
-                        "CABANG" -> PremiumCabangTab(viewModel)
-                        "KASIR" -> PremiumKasirTab(viewModel)
+                        Translator.t("CABANG") -> PremiumCabangTab(viewModel)
+                        Translator.t("KASIR") -> PremiumKasirTab(viewModel)
                     }
                 }
             }
@@ -439,7 +440,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
             topBar = {
                 val isKasir = user?.role == "kasir" || user?.role == "kasir_invited"
                 TopAppBar(
-                    title = { Text(if (isKasir) "Profil Kasir & Shift" else "Pengaturan & Profil", fontWeight = FontWeight.Bold) },
+                    title = { Text(if (isKasir) Translator.t("Profil Kasir & Shift") else Translator.t("Pengaturan & Profil"), fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         if (!isKasir) {
                             IconButton(onClick = { viewModel.activeScreen.value = "home" }) {
@@ -468,10 +469,10 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                 }
 
                 val totalTunai = remember(activeShiftTxs) {
-                    activeShiftTxs.filter { it.metodeBayar.contains("Tunai", ignoreCase = true) }.sumOf { it.total }
+                    activeShiftTxs.filter { it.metodeBayar.contains(Translator.t("Tunai"), ignoreCase = true) }.sumOf { it.total }
                 }
                 val totalNonTunai = remember(activeShiftTxs) {
-                    activeShiftTxs.filter { !it.metodeBayar.contains("Tunai", ignoreCase = true) }.sumOf { it.total }
+                    activeShiftTxs.filter { !it.metodeBayar.contains(Translator.t("Tunai"), ignoreCase = true) }.sumOf { it.total }
                 }
                 val totalTransaksi = remember(activeShiftTxs) {
                     activeShiftTxs.sumOf { it.total }
@@ -486,7 +487,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
 
                 val branchesList by viewModel.branches.collectAsState()
                 val branchName = remember(branchesList, user) {
-                    branchesList.find { it.id == user?.assignedBranchId }?.namaCabang ?: "Cabang Utama"
+                    branchesList.find { it.id == user?.assignedBranchId }?.namaCabang ?: Translator.t("Cabang Utama")
                 }
 
                 // --- Live Cashier Shift Expenses Data & Dialog States ---
@@ -535,7 +536,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             if (error == null && snapshot != null) {
                                 val list = snapshot.documents.map { doc ->
                                     val amt = doc.getDouble("amount") 
-                                        ?: doc.getDouble("jumlah") 
+                                        ?: doc.getDouble(Translator.t("jumlah")) 
                                         ?: doc.getDouble("nominal") 
                                         ?: doc.getLong("amount")?.toDouble() 
                                         ?: doc.getLong("jumlah")?.toDouble() 
@@ -593,7 +594,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             }
                             Spacer(modifier = Modifier.width(16.dp))
                             Column {
-                                Text(user?.nama ?: "Kasir Aktif", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                Text(user?.nama ?: Translator.t("Kasir Aktif"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                                 Text("ID Kasir: ${user?.uid ?: ""}", fontSize = 12.sp, color = Color.Gray)
                                 Box(
                                     modifier = Modifier
@@ -623,7 +624,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(imageVector = Icons.Default.Schedule, contentDescription = null, tint = OrangePrimary)
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Informasi Shift Aktif", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                    Text(Translator.t("Informasi Shift Aktif"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                 }
 
                                 HorizontalDivider()
@@ -639,29 +640,29 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                 }
 
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text("Uang Modal Awal", fontSize = 12.sp, color = Color.Gray)
+                                    Text(Translator.t("Uang Modal Awal"), fontSize = 12.sp, color = Color.Gray)
                                     Text(idrFormatter.format(activeShiftState!!.modalAwal), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                 }
 
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text("Jumlah Transaksi", fontSize = 12.sp, color = Color.Gray)
+                                    Text(Translator.t("Jumlah Transaksi"), fontSize = 12.sp, color = Color.Gray)
                                     Text("${activeShiftTxs.size}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                 }
 
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text("Total Tunai", fontSize = 12.sp, color = Color.Gray)
+                                    Text(Translator.t("Total Tunai"), fontSize = 12.sp, color = Color.Gray)
                                     Text(idrFormatter.format(totalTunai), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                 }
 
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text("Total Non-Tunai", fontSize = 12.sp, color = Color.Gray)
+                                    Text(Translator.t("Total Non-Tunai"), fontSize = 12.sp, color = Color.Gray)
                                     Text(idrFormatter.format(totalNonTunai), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                 }
 
                                 HorizontalDivider()
 
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text("Uang Tunai di Laci", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = OrangePrimary)
+                                    Text(Translator.t("Uang Tunai di Laci"), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = OrangePrimary)
                                     Text(idrFormatter.format(activeShiftState!!.modalAwal + totalTunai), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = OrangePrimary)
                                 }
 
@@ -719,7 +720,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                         modifier = Modifier.fillMaxWidth().padding(16.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Text("Belum ada pengeluaran kas selama shift ini.", color = Color.Gray, fontSize = 11.sp)
+                                        Text(Translator.t("Belum ada pengeluaran kas selama shift ini."), color = Color.Gray, fontSize = 11.sp)
                                     }
                                 } else {
                                     activeShiftExpenses.forEach { exp ->
@@ -748,7 +749,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(imageVector = Icons.Default.History, contentDescription = null, tint = OrangePrimary)
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Riwayat Transaksi Shift Ini", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                    Text(Translator.t("Riwayat Transaksi Shift Ini"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                 }
 
                                 HorizontalDivider()
@@ -758,7 +759,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                         modifier = Modifier.fillMaxWidth().padding(16.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Text("Belum ada transaksi penjualan selama shift ini.", color = Color.Gray, fontSize = 11.sp)
+                                        Text(Translator.t("Belum ada transaksi penjualan selama shift ini."), color = Color.Gray, fontSize = 11.sp)
                                     }
                                 } else {
                                     val sortedTxs = remember(activeShiftTxs) {
@@ -778,7 +779,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                                 val sdf = java.text.SimpleDateFormat("HH:mm", java.util.Locale("id", "ID"))
                                                 Text("${sdf.format(java.util.Date(tx.createdAt))} • ${tx.metodeBayar}", fontSize = 10.sp, color = Color.Gray)
                                             }
-                                            Text(idrFormatter.format(tx.total), fontWeight = FontWeight.Bold, fontSize = 12.sp, color = if (tx.status == "lunas") Color(0xFF16A34A) else Color(0xFFEAB308))
+                                            Text(idrFormatter.format(tx.total), fontWeight = FontWeight.Bold, fontSize = 12.sp, color = if (tx.status == Translator.t("lunas")) Color(0xFF16A34A) else Color(0xFFEAB308))
                                         }
                                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                                     }
@@ -799,7 +800,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                 icon = { Icon(imageVector = Icons.Default.Payments, contentDescription = null, tint = OrangePrimary) },
                                 text = {
                                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                        Text("Catat uang keluar / operasional laci kasir selama shift saat ini.", fontSize = 11.sp, color = Color.Gray)
+                                        Text(Translator.t("Catat uang keluar / operasional laci kasir selama shift saat ini."), fontSize = 11.sp, color = Color.Gray)
                                         OutlinedTextField(
                                             value = localExpenseNominal,
                                             onValueChange = { localExpenseNominal = it.filter { c -> c.isDigit() } },
@@ -824,7 +825,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                         onClick = {
                                             val amt = localExpenseNominal.toDoubleOrNull() ?: 0.0
                                             if (amt <= 0 || localExpenseKet.isBlank()) {
-                                                Toast.makeText(context, "Semua kolom wajib diisi!", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, Translator.t("Semua kolom wajib diisi!"), Toast.LENGTH_SHORT).show()
                                                 return@Button
                                             }
                                             viewModel.recordExpense(amt, localExpenseKet) { success, error ->
@@ -832,7 +833,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                                     showAddExpenseDialogLocal = false
                                                     localExpenseNominal = ""
                                                     localExpenseKet = ""
-                                                    Toast.makeText(context, "Pengeluaran berhasil dicatat!", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(context, Translator.t("Pengeluaran berhasil dicatat!"), Toast.LENGTH_SHORT).show()
                                                 } else {
                                                     Toast.makeText(context, "Gagal mencatat pengeluaran: $error", Toast.LENGTH_LONG).show()
                                                 }
@@ -866,7 +867,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Icon(imageVector = Icons.Default.ReceiptLong, contentDescription = null, tint = OrangePrimary)
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Detail Struk Penjualan", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                        Text(Translator.t("Detail Struk Penjualan"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                                     }
                                 },
                                 text = {
@@ -878,7 +879,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                             .verticalScroll(rememberScrollState()),
                                         horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
-                                        Text(viewModel.currentBusiness.value?.namaBisnis ?: "KASIR PRO", fontWeight = FontWeight.Bold, color = Color.Black, fontSize = 13.sp, textAlign = TextAlign.Center)
+                                        Text(viewModel.currentBusiness.value?.namaBisnis ?: Translator.t("KASIR PRO"), fontWeight = FontWeight.Bold, color = Color.Black, fontSize = 13.sp, textAlign = TextAlign.Center)
                                         Text("---------------------------------", color = Color.Black)
                                         Text("No TRX: ${rx.id}", fontSize = 10.sp, color = Color.Black)
                                         Text("Tanggal: ${java.text.SimpleDateFormat("dd-MM-yyyy HH:mm", java.util.Locale("id", "ID")).format(java.util.Date(rx.createdAt))}", fontSize = 10.sp, color = Color.Black)
@@ -926,7 +927,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                             Text(idrFormatter.format(rx.bayarNominal), fontSize = 10.sp, color = Color.Black)
                                         }
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                            Text("KEMBALI", fontSize = 10.sp, color = Color.Black)
+                                            Text(Translator.t("KEMBALI"), fontSize = 10.sp, color = Color.Black)
                                             Text(idrFormatter.format(rx.kembalian), fontSize = 10.sp, color = Color.Black)
                                         }
                                         Text("---------------------------------", color = Color.Black)
@@ -939,7 +940,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                                 .padding(8.dp)
                                         ) {
                                             Text(
-                                                "Saran: Untuk mengoreksi transaksi ini, buka menu Kasir POS Penjualan lalu pilih ikon menu (titik tiga) di pojok kanan atas.",
+                                                Translator.t("Saran: Untuk mengoreksi transaksi ini, buka menu Kasir POS Penjualan lalu pilih ikon menu (titik tiga) di pojok kanan atas."),
                                                 fontSize = 11.sp,
                                                 color = OrangeDark,
                                                 textAlign = TextAlign.Center
@@ -962,7 +963,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                         ) {
                                             Icon(imageVector = Icons.Default.Print, contentDescription = null, modifier = Modifier.size(16.dp))
                                             Spacer(modifier = Modifier.width(4.dp))
-                                            Text("Cetak Ulang Struk", fontSize = 11.sp)
+                                            Text(Translator.t("Cetak Ulang Struk"), fontSize = 11.sp)
                                         }
                                         TextButton(onClick = { selectedTxForReceipt = null }) {
                                             Text("Tutup")
@@ -982,8 +983,8 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Icon(imageVector = Icons.Default.Warning, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(40.dp))
-                                Text("Tidak Ada Shift Aktif", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                Text("Silakan masuk ke halaman Kasir/POS untuk memulai shift baru Anda dan memasukkan modal awal.", fontSize = 11.sp, color = Color.Gray, textAlign = TextAlign.Center)
+                                Text(Translator.t("Tidak Ada Shift Aktif"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                Text(Translator.t("Silakan masuk ke halaman Kasir/POS untuk memulai shift baru Anda dan memasukkan modal awal."), fontSize = 11.sp, color = Color.Gray, textAlign = TextAlign.Center)
                             }
                         }
                     }
@@ -1009,7 +1010,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                         ) {
                             Icon(imageVector = Icons.Default.Logout, contentDescription = "Log out", tint = MaterialTheme.colorScheme.onErrorContainer)
                             Spacer(modifier = Modifier.width(12.dp))
-                            Text("Keluar dari Akun Kasir", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
+                            Text(Translator.t("Keluar dari Akun Kasir"), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
                         }
                     }
                 }
@@ -1024,11 +1025,11 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             showManualCashInputDialog = false
                             manualCashValue = ""
                         },
-                        title = { Text("Tutup Shift & Hitung Uang Laci", fontWeight = FontWeight.Bold) },
+                        title = { Text(Translator.t("Tutup Shift & Hitung Uang Laci"), fontWeight = FontWeight.Bold) },
                         text = {
                             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 Text(
-                                    "Uang kasir Tunai secara sistem yang harus ada di laci saat ini:",
+                                    Translator.t("Uang kasir Tunai secara sistem yang harus ada di laci saat ini:"),
                                     fontSize = 11.sp,
                                     color = Color.Gray
                                 )
@@ -1059,7 +1060,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text("Selisih Uang Laci:", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                    Text(Translator.t("Selisih Uang Laci:"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                                     val selisihText = if (selisih == 0.0) {
                                         "Sesuai (Rp 0)"
                                     } else if (selisih > 0.0) {
@@ -1118,7 +1119,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(imageVector = Icons.Default.Assessment, contentDescription = null, tint = OrangePrimary)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Laporan Akhir Shift", fontWeight = FontWeight.Bold)
+                                Text(Translator.t("Laporan Akhir Shift"), fontWeight = FontWeight.Bold)
                             }
                         },
                         text = {
@@ -1131,11 +1132,11 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                 
                                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("Kasir:", fontSize = 11.sp, color = Color.Gray)
+                                        Text(Translator.t("Kasir:"), fontSize = 11.sp, color = Color.Gray)
                                         Text(showShiftReportDialog.cashierName, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                     }
                                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("Cabang:", fontSize = 11.sp, color = Color.Gray)
+                                        Text(Translator.t("Cabang:"), fontSize = 11.sp, color = Color.Gray)
                                         Text(showShiftReportDialog.branchName, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                     }
                                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -1146,7 +1147,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                         }, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                     }
                                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("Selesai Shift:", fontSize = 11.sp, color = Color.Gray)
+                                        Text(Translator.t("Selesai Shift:"), fontSize = 11.sp, color = Color.Gray)
                                         Text(remember {
                                             val sdf = java.text.SimpleDateFormat("dd MMM, HH:mm", java.util.Locale("id", "ID"))
                                             sdf.format(java.util.Date(showShiftReportDialog.endTime ?: System.currentTimeMillis()))
@@ -1158,19 +1159,19 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
 
                                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("Jumlah Transaksi:", fontSize = 11.sp, color = Color.Gray)
+                                        Text(Translator.t("Jumlah Transaksi:"), fontSize = 11.sp, color = Color.Gray)
                                         Text("${shiftReportTransactions.size}", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                     }
                                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("Uang Modal Awal:", fontSize = 11.sp, color = Color.Gray)
+                                        Text(Translator.t("Uang Modal Awal:"), fontSize = 11.sp, color = Color.Gray)
                                         Text(idrFormatter.format(showShiftReportDialog.modalAwal), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                     }
                                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("Pendapatan Tunai:", fontSize = 11.sp, color = Color.Gray)
+                                        Text(Translator.t("Pendapatan Tunai:"), fontSize = 11.sp, color = Color.Gray)
                                         Text(idrFormatter.format(showShiftReportDialog.totalTunai), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                     }
                                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("Pendapatan Non-Tunai:", fontSize = 11.sp, color = Color.Gray)
+                                        Text(Translator.t("Pendapatan Non-Tunai:"), fontSize = 11.sp, color = Color.Gray)
                                         Text(idrFormatter.format(showShiftReportDialog.totalNonTunai), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                     }
                                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -1182,19 +1183,19 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                 HorizontalDivider()
 
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text("Tunai Seharusnya di Laci:", fontSize = 11.sp, color = Color.Gray)
+                                    Text(Translator.t("Tunai Seharusnya di Laci:"), fontSize = 11.sp, color = Color.Gray)
                                     Text(idrFormatter.format(showShiftReportDialog.modalAwal + showShiftReportDialog.totalTunai), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color.DarkGray)
                                 }
 
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text("Jumlah Uang Fisik Laci:", fontSize = 11.sp, color = Color.Gray)
+                                    Text(Translator.t("Jumlah Uang Fisik Laci:"), fontSize = 11.sp, color = Color.Gray)
                                     Text(idrFormatter.format(showShiftReportDialog.actualDrawerCash), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color.DarkGray)
                                 }
 
                                 val selisihVal = showShiftReportDialog.selisih
                                 val selisihColor = if (selisihVal == 0.0) Color.DarkGray else if (selisihVal > 0.0) Color(0xFF16A34A) else Color(0xFFDC2626)
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text("Selisih Uang Laci:", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    Text(Translator.t("Selisih Uang Laci:"), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                     val labelText = if (selisihVal == 0.0) {
                                         "Sesuai (Rp 0)"
                                     } else if (selisihVal > 0.0) {
@@ -1207,9 +1208,9 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
 
                                 HorizontalDivider()
 
-                                Text("Log Transaksi Shift ini:", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color.Black)
+                                Text(Translator.t("Log Transaksi Shift ini:"), fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color.Black)
                                 if (shiftReportTransactions.isEmpty()) {
-                                    Text("Tidak ada transaksi selama shift ini.", fontSize = 11.sp, color = Color.Gray)
+                                    Text(Translator.t("Tidak ada transaksi selama shift ini."), fontSize = 11.sp, color = Color.Gray)
                                 } else {
                                     Box(modifier = Modifier.heightIn(max = 120.dp).fillMaxWidth().verticalScroll(rememberScrollState())) {
                                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -1340,7 +1341,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             Icon(imageVector = Icons.Default.Cancel, contentDescription = null, tint = Color(0xFFDC2626))
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Langganan Anda telah berakhir. Perpanjang sekarang",
+                                text = Translator.t("Langganan Anda telah berakhir. Perpanjang sekarang"),
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF991B1B),
                                 fontSize = 13.sp
@@ -1367,7 +1368,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             }
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Buka batasan laporan, outlet cabang, backup data, dan kelola kasir tanpa batas dengan paket premium.",
+                                text = Translator.t("Buka batasan laporan, outlet cabang, backup data, dan kelola kasir tanpa batas dengan paket premium."),
                                 fontSize = 12.sp,
                                 color = OrangeDark
                             )
@@ -1400,7 +1401,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             Column(
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Text("Layanan Aktif", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
+                                Text(Translator.t("Layanan Aktif"), fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
                                 Text("Tingkatkan durasi langganan sebelum berakhir", fontSize = 11.sp, color = Color.LightGray)
                             }
                             Spacer(modifier = Modifier.width(12.dp))
@@ -1424,7 +1425,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                         // Pelanggan Row
                         Row(
                             modifier = Modifier
-                                .clickable { activeSettingSubScreen = "PELANGGAN" }
+                                .clickable { activeSettingSubScreen = Translator.t("PELANGGAN") }
                                 .padding(16.dp)
                                 .fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -1472,7 +1473,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                         // Cabang Row
                         Row(
                             modifier = Modifier
-                                .clickable { activeSettingSubScreen = "CABANG" }
+                                .clickable { activeSettingSubScreen = Translator.t("CABANG") }
                                 .padding(16.dp)
                                 .fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -1496,7 +1497,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                         // Kasir Row
                         Row(
                             modifier = Modifier
-                                .clickable { activeSettingSubScreen = "KASIR" }
+                                .clickable { activeSettingSubScreen = Translator.t("KASIR") }
                                 .padding(16.dp)
                                 .fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -1520,7 +1521,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Text("Pengaturan Aplikasi", fontWeight = FontWeight.Bold, color = OrangePrimary, fontSize = 14.sp)
+                Text(Translator.t("Pengaturan Aplikasi"), fontWeight = FontWeight.Bold, color = OrangePrimary, fontSize = 14.sp)
 
                 // Layout settings preferences
                 Card(modifier = Modifier.fillMaxWidth()) {
@@ -1568,7 +1569,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                     if (isPremium) {
                                         showOwnerCodeDialog = true
                                     } else {
-                                        viewModel.showLimitPopup.value = "Fitur Kode Unik Otoritas Koreksi hanya untuk pengguna Premium. Upgrade sekarang!"
+                                        viewModel.showLimitPopup.value = Translator.t("Fitur Kode Unik Otoritas Koreksi hanya untuk pengguna Premium. Upgrade sekarang!")
                                     }
                                 }
                                 .padding(16.dp)
@@ -1651,7 +1652,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(imageVector = Icons.Default.SupervisorAccount, contentDescription = null, tint = OrangePrimary)
                                     Spacer(modifier = Modifier.width(12.dp))
-                                    Text("Panel Admin (Kelola Kode)", fontWeight = FontWeight.Bold)
+                                    Text(Translator.t("Panel Admin (Kelola Kode)"), fontWeight = FontWeight.Bold)
                                 }
                                 Icon(imageVector = Icons.Default.ArrowForward, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
                             }
@@ -1659,7 +1660,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                     }
                 }
 
-                Text("Backup & Recovery Data", fontWeight = FontWeight.Bold, color = OrangePrimary, fontSize = 14.sp)
+                Text(Translator.t("Backup & Recovery Data"), fontWeight = FontWeight.Bold, color = OrangePrimary, fontSize = 14.sp)
 
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -1671,7 +1672,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                         viewModel.runBackup()
                                         Toast.makeText(context, "Backup cloud Google Drive sukses!", Toast.LENGTH_SHORT).show()
                                     } else {
-                                        viewModel.showLimitPopup.value = "Cloud Backup Google Drive otomatis/manual hanya didukung untuk tipe pelanggan premium!"
+                                        viewModel.showLimitPopup.value = Translator.t("Cloud Backup Google Drive otomatis/manual hanya didukung untuk tipe pelanggan premium!")
                                     }
                                 },
                                 modifier = Modifier.weight(1f),
@@ -1679,15 +1680,15 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             ) {
                                 Icon(imageVector = Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Backup Data", fontSize = 11.sp)
+                                Text(Translator.t("Backup Data"), fontSize = 11.sp)
                             }
 
                             Button(
                                 onClick = {
                                     if (isPremium) {
-                                        Toast.makeText(context, "Semua data lokal berhasil dipulihkan dari Server Cloud!", Toast.LENGTH_LONG).show()
+                                        Toast.makeText(context, Translator.t("Semua data lokal berhasil dipulihkan dari Server Cloud!"), Toast.LENGTH_LONG).show()
                                     } else {
-                                        viewModel.showLimitPopup.value = "Data RESTORE hanya didukung untuk akun premium!"
+                                        viewModel.showLimitPopup.value = Translator.t("Data RESTORE hanya didukung untuk akun premium!")
                                     }
                                 },
                                 modifier = Modifier.weight(1f),
@@ -1695,7 +1696,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             ) {
                                 Icon(imageVector = Icons.Default.History, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Restore Data", fontSize = 11.sp)
+                                Text(Translator.t("Restore Data"), fontSize = 11.sp)
                             }
                         }
                     }
@@ -1720,7 +1721,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                     ) {
                         Icon(imageVector = Icons.Default.Logout, contentDescription = "Log out", tint = MaterialTheme.colorScheme.onErrorContainer)
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text("Keluar dari Kasir Pro", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
+                        Text(Translator.t("Keluar dari Kasir Pro"), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
                     }
                 }
             }
@@ -1774,7 +1775,7 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
             productDetailsList = list
             isLoadingSubscriptions = false
             if (list.isEmpty()) {
-                billingErrorMessage = "Play Store Billing tidak aktif atau produk belum termuat."
+                billingErrorMessage = Translator.t("Play Store Billing tidak aktif atau produk belum termuat.")
             }
         } catch (e: Exception) {
             isLoadingSubscriptions = false
@@ -1802,7 +1803,7 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
         Icon(imageVector = Icons.Default.Stars, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(64.dp))
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            "Pilih Paket Langganan",
+            Translator.t("Pilih Paket Langganan"),
             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold, color = Color.White)
         )
         Text(
@@ -1836,7 +1837,7 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
                     Icon(imageVector = Icons.Default.Warning, contentDescription = null, tint = OrangePrimary)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "Google Play Billing Belum Siap / Emulator",
+                        Translator.t("Google Play Billing Belum Siap / Emulator"),
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
                         fontSize = 13.sp
@@ -1857,7 +1858,7 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
                                 productDetailsList = list
                                 isLoadingSubscriptions = false
                                 if (list.isEmpty()) {
-                                    billingErrorMessage = "Play Store Billing tidak aktif atau produk belum termuat."
+                                    billingErrorMessage = Translator.t("Play Store Billing tidak aktif atau produk belum termuat.")
                                 }
                             }
                         },
@@ -2003,7 +2004,7 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
                                     "bisnis" -> "paket_bisnis_bulanan"
                                     else -> "paket_dasar_bulanan_50k"
                                 }
-                                val basePlanId = "bulanan"
+                                val basePlanId = Translator.t("bulanan")
                                 val productDetails = productDetailsList.find { it.productId == productId }
                                 if (productDetails != null) {
                                     val offerToken = productDetails.subscriptionOfferDetails?.find { it.basePlanId == basePlanId }?.offerToken 
@@ -2013,7 +2014,7 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
                                     if (activity != null) {
                                         viewModel.billingManager.launchPurchaseFlow(activity, productDetails, offerToken, basePlanId)
                                     } else {
-                                        Toast.makeText(context, "Context activity tidak valid", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, Translator.t("Context activity tidak valid"), Toast.LENGTH_SHORT).show()
                                     }
                                 } else {
                                     // Fallback / simulation for emulator/dev testing environment
@@ -2024,7 +2025,7 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
                                                 Toast.makeText(context, "Simulasi: Berhasil mengaktifkan $name Bulanan!", Toast.LENGTH_SHORT).show()
                                                 viewModel.activeScreen.value = "home"
                                             } else {
-                                                Toast.makeText(context, "Simulasi gagal", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, Translator.t("Simulasi gagal"), Toast.LENGTH_SHORT).show()
                                             }
                                         }
                                     }
@@ -2041,7 +2042,7 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
                                 .testTag("purchase_monthly_$key")
                         ) {
                             Text(
-                                "Bulanan",
+                                Translator.t("Bulanan"),
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
                                 fontSize = 12.sp
@@ -2067,7 +2068,7 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
                                     if (activity != null) {
                                         viewModel.billingManager.launchPurchaseFlow(activity, productDetails, offerToken, basePlanId)
                                     } else {
-                                        Toast.makeText(context, "Context activity tidak valid", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, Translator.t("Context activity tidak valid"), Toast.LENGTH_SHORT).show()
                                     }
                                 } else {
                                     // Fallback / simulation for emulator/dev testing environment
@@ -2078,7 +2079,7 @@ fun PremiumPricingView(viewModel: KasirViewModel) {
                                                 Toast.makeText(context, "Simulasi: Berhasil mengaktifkan $name Tahunan!", Toast.LENGTH_SHORT).show()
                                                 viewModel.activeScreen.value = "home"
                                             } else {
-                                                Toast.makeText(context, "Simulasi gagal", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, Translator.t("Simulasi gagal"), Toast.LENGTH_SHORT).show()
                                             }
                                         }
                                     }
@@ -2140,7 +2141,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
     var isSyncingCodes by remember { mutableStateOf(false) }
     var isGenerationFormExpanded by remember { mutableStateOf(false) }
     var selectedPackage by remember { mutableStateOf("dasar") } // "dasar", "profesional", "bisnis"
-    var selectedBillingCycle by remember { mutableStateOf("bulanan") } // "bulanan", "tahunan"
+    var selectedBillingCycle by remember { mutableStateOf(Translator.t(Translator.t("bulanan"))) } // "bulanan", "tahunan"
 
     var broadcastTitle by remember { mutableStateOf("") }
     var broadcastMessage by remember { mutableStateOf("") }
@@ -2162,7 +2163,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Panel Admin KasirPro", fontWeight = FontWeight.Bold) },
+                title = { Text(Translator.t("Panel Admin KasirPro"), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
@@ -2202,12 +2203,12 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                 Tab(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    text = { Text("Kode Aktivasi", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (selectedTab == 1) OrangePrimary else Color.Gray) }
+                    text = { Text(Translator.t("Kode Aktivasi"), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (selectedTab == 1) OrangePrimary else Color.Gray) }
                 )
                 Tab(
                     selected = selectedTab == 2,
                     onClick = { selectedTab = 2 },
-                    text = { Text("Broadcast Notifikasi", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (selectedTab == 2) OrangePrimary else Color.Gray) }
+                    text = { Text(Translator.t("Broadcast Notifikasi"), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (selectedTab == 2) OrangePrimary else Color.Gray) }
                 )
             }
 
@@ -2222,7 +2223,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                 ) {
                     // 1. DASHBOARD RINGKASAN PENGGUNA AKTIF
                     item {
-                        Text("Dashboard Pengguna Aktif & Sesi", color = OrangePrimary, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
+                        Text(Translator.t("Dashboard Pengguna Aktif & Sesi"), color = OrangePrimary, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
                     }
 
                     item {
@@ -2260,7 +2261,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                         modifier = Modifier.padding(12.dp),
                                         horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
-                                        Text("Aktif Hari Ini", color = Color.Green, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                        Text(Translator.t("Aktif Hari Ini"), color = Color.Green, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                         Spacer(modifier = Modifier.height(2.dp))
                                         Text("$activeTodayCount User", color = Color.Green, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
                                     }
@@ -2309,7 +2310,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Daftar Pengguna & Status Subscription", color = OrangePrimary, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
+                            Text(Translator.t("Daftar Pengguna & Status Subscription"), color = OrangePrimary, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
                             IconButton(onClick = { viewModel.fetchFirestoreUsers() }) {
                                 Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = Color.White)
                             }
@@ -2329,7 +2330,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                 colors = CardDefaults.cardColors(containerColor = Slate800)
                             ) {
                                 Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                                    Text("Tidak ada data pengguna ditemukan.", color = Color.LightGray)
+                                    Text(Translator.t("Tidak ada data pengguna ditemukan."), color = Color.LightGray)
                                 }
                             }
                         }
@@ -2406,7 +2407,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                                      val formattedDate = if (uEndDate != null && uEndDate > 0L) {
                                                          java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault()).format(java.util.Date(uEndDate))
                                                      } else {
-                                                         "Tidak Terbatas"
+                                                         Translator.t("Tidak Terbatas")
                                                      }
                                                      val isExpired = uEndDate != null && uEndDate < System.currentTimeMillis()
                                                      val dLeft = if (uEndDate != null && uEndDate > System.currentTimeMillis()) {
@@ -2473,7 +2474,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                         Spacer(modifier = Modifier.width(6.dp))
                                         Text("Firestore Sync Engine", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                     }
-                                    Text("Terhubung & Sehat", fontSize = 11.sp, color = Color.Green, fontWeight = FontWeight.Bold)
+                                    Text(Translator.t("Terhubung & Sehat"), fontSize = 11.sp, color = Color.Green, fontWeight = FontWeight.Bold)
                                 }
 
                                 // Heap Memory Size
@@ -2529,12 +2530,12 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                 verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 val logs = listOf(
-                                    "[ONLINE] SECURITY: Authenticated kikijarrodt@gmail.com - GRANTED admin keys",
+                                    Translator.t("[ONLINE] SECURITY: Authenticated kikijarrodt@gmail.com - GRANTED admin keys"),
                                     "[ONLINE] FIRESTORE: Synchronized 14 local pending transaction payloads",
                                     "[LOG] SYNC: Automatic database check completed successfully",
                                     "[LOG] MONGO/ROOM: SQLite index verified for 'products' entity",
                                     "[LOG] CORES: CPU core thread pool optimized with scale 4 threads",
-                                    "[ONLINE] CRM: Loyalty points index triggered and broadcast engine ready"
+                                    Translator.t("[ONLINE] CRM: Loyalty points index triggered and broadcast engine ready")
                                 )
                                 logs.forEach { log ->
                                     Text(
@@ -2574,7 +2575,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                     modifier = Modifier.padding(10.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
-                                    Text("Aktif (Belum Dipakai)", color = Color.Green, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    Text(Translator.t("Aktif (Belum Dipakai)"), color = Color.Green, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text("$totalActive", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
                                 }
@@ -2588,7 +2589,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                     modifier = Modifier.padding(10.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
-                                    Text("Terpakai (Sudah Aktif)", color = Color.Red, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    Text(Translator.t("Terpakai (Sudah Aktif)"), color = Color.Red, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text("$totalUsed", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
                                 }
@@ -2621,7 +2622,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text(
-                                            text = "Buat Kode Aktivasi Baru",
+                                            text = Translator.t("Buat Kode Aktivasi Baru"),
                                             color = Color.White,
                                             fontSize = 13.sp,
                                             fontWeight = FontWeight.Bold
@@ -2658,7 +2659,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                     Spacer(modifier = Modifier.height(10.dp))
 
                                     Text(
-                                        text = "Pilih Paket Langganan:",
+                                        text = Translator.t("Pilih Paket Langganan:"),
                                         color = Color.LightGray,
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.SemiBold
@@ -2698,7 +2699,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                     Spacer(modifier = Modifier.height(10.dp))
 
                                     Text(
-                                        text = "Pilih Siklus Tagihan:",
+                                        text = Translator.t("Pilih Siklus Tagihan:"),
                                         color = Color.LightGray,
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.SemiBold
@@ -2710,7 +2711,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
-                                        listOf("bulanan", "tahunan").forEach { cycle ->
+                                        listOf(Translator.t("bulanan"), "tahunan").forEach { cycle ->
                                             val isSel = selectedBillingCycle == cycle
                                             Card(
                                                 onClick = { selectedBillingCycle = cycle },
@@ -2725,7 +2726,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                                     contentAlignment = Alignment.Center
                                                 ) {
                                                     Text(
-                                                        text = if (cycle == "bulanan") "BULANAN (30 h)" else "TAHUNAN (365 h)",
+                                                        text = if (cycle == Translator.t("bulanan")) Translator.t("BULANAN (30 h)") else "TAHUNAN (365 h)",
                                                         color = if (isSel) Slate900 else Color.White,
                                                         fontSize = 10.sp,
                                                         fontWeight = FontWeight.Bold
@@ -2764,7 +2765,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                         Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp), tint = Slate900)
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Text(
-                                            text = "Generate Kode Aktivasi",
+                                            text = Translator.t("Generate Kode Aktivasi"),
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.ExtraBold,
                                             color = Slate900
@@ -2802,7 +2803,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = if (isSyncingCodes) "Menyeimbangkan Database..." else "Sinkronkan Kode ke Akun User",
+                                text = if (isSyncingCodes) "Menyeimbangkan Database..." else Translator.t("Sinkronkan Kode ke Akun User"),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
@@ -2842,7 +2843,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                     )
                                     Spacer(modifier = Modifier.height(10.dp))
                                     Text(
-                                        text = "Belum ada kode dibuat.",
+                                        text = Translator.t("Belum ada kode dibuat."),
                                         color = Color.Gray,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Medium
@@ -2855,7 +2856,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                             val codeMap = codes[index]
                             val codeId = codeMap["id"] as? String ?: ""
                             val type = codeMap["type"] as? String ?: "profesional"
-                            val billingCycle = codeMap["billingCycle"] as? String ?: "bulanan"
+                            val billingCycle = codeMap["billingCycle"] as? String ?: Translator.t("bulanan")
                             val isUsed = codeMap["isUsed"] as? Boolean ?: false
                             val usedBy = codeMap["usedBy"] as? String
                             val usedAt = (codeMap["usedAt"] as? Number)?.toLong()
@@ -2946,7 +2947,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                                         .padding(horizontal = 6.dp, vertical = 2.dp)
                                                 ) {
                                                     Text(
-                                                        text = if (isUsed) "TERPAKAI" else "AKTIF",
+                                                        text = if (isUsed) "TERPAKAI" else Translator.t("AKTIF"),
                                                         color = if (isUsed) Color.Red else Color.Green,
                                                         fontSize = 9.sp,
                                                         fontWeight = FontWeight.Bold
@@ -2984,7 +2985,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                                     modifier = Modifier.size(36.dp),
                                                     onClick = {
                                                         viewModel.deleteCode(codeId)
-                                                        Toast.makeText(context, "Kode dihapus!", Toast.LENGTH_SHORT).show()
+                                                        Toast.makeText(context, Translator.t("Kode dihapus!"), Toast.LENGTH_SHORT).show()
                                                         viewModel.showToast("Hapus: Kode $codeId berhasil dihapus")
                                                     }
                                                 ) {
@@ -3013,7 +3014,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                                          val sdf = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault())
                                                          sdf.format(java.util.Date(endDateObj))
                                                      } else {
-                                                         "Tidak Terbatas"
+                                                         Translator.t("Tidak Terbatas")
                                                      }
                                                      val daysLeft = if (endDateObj != null && endDateObj > System.currentTimeMillis()) {
                                                          (endDateObj - System.currentTimeMillis()) / (24 * 60 * 60 * 1000)
@@ -3055,7 +3056,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                 ) {
                     item {
                         Text(
-                            text = "Kirim Broadcast Notifikasi ke Semua Pengguna",
+                            text = Translator.t("Kirim Broadcast Notifikasi ke Semua Pengguna"),
                             color = OrangePrimary,
                             fontWeight = FontWeight.ExtraBold,
                             fontSize = 14.sp
@@ -3080,7 +3081,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                         text = if (broadcastProgress != null && broadcastProgress!!.second > 0) {
                                             "Mengirim ke ${broadcastProgress!!.first} dari ${broadcastProgress!!.second} pengguna..."
                                         } else {
-                                            "Memproses pengiriman broadcast..."
+                                            Translator.t("Memproses pengiriman broadcast...")
                                         },
                                         color = Color.White,
                                         fontSize = 13.sp,
@@ -3100,14 +3101,14 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 Text(
-                                    text = "Form Broadcast Baru",
+                                    text = Translator.t("Form Broadcast Baru"),
                                     color = Color.White,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold
                                 )
 
                                 Text(
-                                    text = "Tipe Notifikasi:",
+                                    text = Translator.t("Tipe Notifikasi:"),
                                     color = Color.LightGray,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.SemiBold
@@ -3156,7 +3157,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                 OutlinedTextField(
                                     value = broadcastTitle,
                                     onValueChange = { broadcastTitle = it },
-                                    label = { Text("Judul Notifikasi", color = Color.Gray) },
+                                    label = { Text(Translator.t("Judul Notifikasi"), color = Color.Gray) },
                                     colors = OutlinedTextFieldDefaults.colors(
                                         focusedTextColor = Color.White,
                                         unfocusedTextColor = Color.White,
@@ -3169,7 +3170,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                 OutlinedTextField(
                                     value = broadcastMessage,
                                     onValueChange = { broadcastMessage = it },
-                                    label = { Text("Isi Pesan Notifikasi", color = Color.Gray) },
+                                    label = { Text(Translator.t("Isi Pesan Notifikasi"), color = Color.Gray) },
                                     colors = OutlinedTextFieldDefaults.colors(
                                         focusedTextColor = Color.White,
                                         unfocusedTextColor = Color.White,
@@ -3216,7 +3217,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text = "Status Aktif",
+                                        text = Translator.t("Status Aktif"),
                                         color = Color.LightGray,
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.SemiBold
@@ -3258,7 +3259,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                 ) {
                                     Icon(imageVector = Icons.Default.Send, contentDescription = null, tint = Slate900, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Kirim ke Semua Pengguna", fontWeight = FontWeight.ExtraBold, color = Slate900, fontSize = 12.sp)
+                                    Text(Translator.t("Kirim ke Semua Pengguna"), fontWeight = FontWeight.ExtraBold, color = Slate900, fontSize = 12.sp)
                                 }
                             }
                         }
@@ -3266,7 +3267,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
 
                     item {
                         Text(
-                            text = "Daftar Riwayat Notifikasi Broadcast",
+                            text = Translator.t("Daftar Riwayat Notifikasi Broadcast"),
                             color = Color.LightGray,
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp
@@ -3282,7 +3283,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                     modifier = Modifier.padding(24.dp).fillMaxWidth(),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text("Belum ada broadcast yang dikirim", color = Color.Gray, fontSize = 12.sp)
+                                    Text(Translator.t("Belum ada broadcast yang dikirim"), color = Color.Gray, fontSize = 12.sp)
                                 }
                             }
                         }
@@ -3339,7 +3340,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                                     .background(if (bActive) Color.Green else Color.Gray, androidx.compose.foundation.shape.CircleShape)
                                             )
                                             Text(
-                                                text = if (bActive) "Aktif" else "Nonaktif",
+                                                text = if (bActive) Translator.t("Aktif") else "Nonaktif",
                                                 color = if (bActive) Color.Green else Color.Gray,
                                                 fontSize = 10.sp
                                             )
@@ -3350,7 +3351,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                             ) {
                                                 Icon(
                                                     imageVector = Icons.Default.Delete,
-                                                    contentDescription = "Hapus Broadcast",
+                                                    contentDescription = Translator.t("Hapus Broadcast"),
                                                     tint = Color.Red,
                                                     modifier = Modifier.size(16.dp)
                                                 )
@@ -3390,7 +3391,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
                                         Text(
-                                            text = "Dikirim ke: Semua Pengguna",
+                                            text = Translator.t("Dikirim ke: Semua Pengguna"),
                                             color = Color.Gray,
                                             fontSize = 9.sp
                                         )

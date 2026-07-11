@@ -1,5 +1,6 @@
 package com.kasirpro.app.ui.screens
 
+import com.kasirpro.app.util.Translator
 import android.content.Intent
 import com.kasirpro.app.util.Toast
 import androidx.compose.foundation.background
@@ -88,7 +89,7 @@ private fun triggerVibe(context: android.content.Context) {
 @android.annotation.SuppressLint("MissingPermission")
 private fun getSafeDeviceName(device: android.bluetooth.BluetoothDevice): String {
     return try {
-        device.name ?: "Printer Tanpa Nama"
+        device.name ?: Translator.t("Printer Tanpa Nama")
     } catch (e: SecurityException) {
         "Printer Bluetooth"
     }
@@ -116,7 +117,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
     var modalInputVal by remember { mutableStateOf("") }
 
     var searchQuery by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf("Semua") }
+    var selectedCategory by remember { mutableStateOf(Translator.t("Semua")) }
     
     // Bottom Sheet Checkout States
     var showCheckoutDialog by remember { mutableStateOf(false) }
@@ -149,10 +150,10 @@ fun CashierScreen(viewModel: KasirViewModel) {
     }
     
     val context = LocalContext.current
-    val categories = listOf("Semua") + productsList.map { it.kategori }.filter { !it.isNullOrBlank() }.distinct()
+    val categories = listOf(Translator.t("Semua")) + productsList.map { it.kategori }.filter { !it.isNullOrBlank() }.distinct()
 
     val filteredProducts = productsList.filter {
-        (selectedCategory == "Semua" || it.kategori == selectedCategory) &&
+        (selectedCategory == Translator.t("Semua") || it.kategori == selectedCategory) &&
         (it.nama.contains(searchQuery, ignoreCase = true) || (it.barcode ?: "").contains(searchQuery))
     }
 
@@ -190,13 +191,13 @@ fun CashierScreen(viewModel: KasirViewModel) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(imageVector = Icons.Default.LockClock, contentDescription = null, tint = OrangePrimary)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Mulai Shift Kasir", fontWeight = FontWeight.Bold)
+                    Text(Translator.t("Mulai Shift Kasir"), fontWeight = FontWeight.Bold)
                 }
             },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        "Masukkan jumlah saldo uang modal awal (cash) yang tersedia di laci uang kasir untuk memulai pencatatan shift hari ini.",
+                        Translator.t("Masukkan jumlah saldo uang modal awal (cash) yang tersedia di laci uang kasir untuk memulai pencatatan shift hari ini."),
                         fontSize = 12.sp,
                         color = Color.DarkGray
                     )
@@ -242,7 +243,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
-                title = { Text("Kasir Pos Penjualan", fontWeight = FontWeight.Bold, fontSize = 20.sp) },
+                title = { Text(Translator.t("Kasir Pos Penjualan"), fontWeight = FontWeight.Bold, fontSize = 20.sp) },
                 navigationIcon = {
                     if (!isKasir) {
                         IconButton(onClick = { viewModel.activeScreen.value = "home" }) {
@@ -253,14 +254,14 @@ fun CashierScreen(viewModel: KasirViewModel) {
                 actions = {
                     var showMenu by remember { mutableStateOf(false) }
                     IconButton(onClick = { showMenu = true }) {
-                        Icon(imageVector = Icons.Default.MoreVert, contentDescription = "Menu Kasir", tint = OrangePrimary)
+                        Icon(imageVector = Icons.Default.MoreVert, contentDescription = Translator.t("Menu Kasir"), tint = OrangePrimary)
                     }
                     DropdownMenu(
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Transaksi Terbaru & Koreksi", fontWeight = FontWeight.Bold) },
+                            text = { Text(Translator.t("Transaksi Terbaru & Koreksi"), fontWeight = FontWeight.Bold) },
                             leadingIcon = { Icon(Icons.Default.History, contentDescription = null, tint = OrangePrimary) },
                             onClick = {
                                 showMenu = false
@@ -344,7 +345,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.testTag("pay_sheet_trigger")
                         ) {
-                            Text("Bayar Sekarang", fontWeight = FontWeight.Bold)
+                            Text(Translator.t("Bayar Sekarang"), fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.width(6.dp))
                             Icon(imageVector = Icons.Default.ArrowForward, contentDescription = null)
                         }
@@ -403,7 +404,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                             modifier = Modifier.padding(horizontal = 16.dp)
                         ) {
                             Icon(
-                                imageVector = if (cat == "Semua") Icons.Default.GridView else Icons.Default.Folder,
+                                imageVector = if (cat == Translator.t("Semua")) Icons.Default.GridView else Icons.Default.Folder,
                                 contentDescription = null,
                                 tint = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(16.dp)
@@ -431,8 +432,8 @@ fun CashierScreen(viewModel: KasirViewModel) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(imageVector = Icons.Default.Inventory2, contentDescription = null, tint = Color.LightGray, modifier = Modifier.size(72.dp))
                         Spacer(modifier = Modifier.height(12.dp))
-                        Text("Produk Kosong", fontWeight = FontWeight.Bold, color = Color.Gray)
-                        Text("Silakan tambahkan produk baru di menu Kelola Produk terlebih dahulu.", fontSize = 12.sp, color = Color.Gray, textAlign = TextAlign.Center)
+                        Text(Translator.t("Produk Kosong"), fontWeight = FontWeight.Bold, color = Color.Gray)
+                        Text(Translator.t("Silakan tambahkan produk baru di menu Kelola Produk terlebih dahulu."), fontSize = 12.sp, color = Color.Gray, textAlign = TextAlign.Center)
                     }
                 }
             } else {
@@ -586,7 +587,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
             text = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        "Masukkan manual kode barcode produk untuk memulai pencarian produk secara cepat.",
+                        Translator.t("Masukkan manual kode barcode produk untuk memulai pencarian produk secara cepat."),
                         fontSize = 12.sp,
                         textAlign = TextAlign.Center
                     )
@@ -613,7 +614,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                 Toast.makeText(context, "${matched.nama} sukses ditambahkan!", Toast.LENGTH_SHORT).show()
                             }
                         } else {
-                            Toast.makeText(context, "Barcode tidak terdaftar!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, Translator.t("Barcode tidak terdaftar!"), Toast.LENGTH_SHORT).show()
                         }
                         viewModel.showScanBarcodeDialog.value = false
                     },
@@ -632,7 +633,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
     if (showCheckoutDialog) {
         AlertDialog(
             onDismissRequest = { showCheckoutDialog = false },
-            title = { Text("Konfirmasi Pembayaran Kasir", fontWeight = FontWeight.Bold) },
+            title = { Text(Translator.t("Konfirmasi Pembayaran Kasir"), fontWeight = FontWeight.Bold) },
             text = {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -640,7 +641,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                 ) {
                     // Invoice Item List Summary
                     item {
-                        Text("Ringkasan Pesanan", fontWeight = FontWeight.Bold, color = OrangePrimary)
+                        Text(Translator.t("Ringkasan Pesanan"), fontWeight = FontWeight.Bold, color = OrangePrimary)
                     }
                     items(cart) { ci ->
                         Card(
@@ -707,7 +708,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Default.Add,
-                                                contentDescription = "Tambah",
+                                                contentDescription = Translator.t("Tambah"),
                                                 tint = OrangePrimary,
                                                 modifier = Modifier.size(16.dp)
                                             )
@@ -725,7 +726,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Default.Delete,
-                                                contentDescription = "Batal",
+                                                contentDescription = Translator.t("Batal"),
                                                 tint = Color.Red,
                                                 modifier = Modifier.size(16.dp)
                                             )
@@ -804,7 +805,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                             redeemPointsInput = filteredInput
                                         }
                                     },
-                                    label = { Text("Jumlah poin yang ditukar", fontSize = 11.sp) },
+                                    label = { Text(Translator.t("Jumlah poin yang ditukar"), fontSize = 11.sp) },
                                     modifier = Modifier.fillMaxWidth(),
                                     singleLine = true,
                                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
@@ -826,11 +827,11 @@ fun CashierScreen(viewModel: KasirViewModel) {
                     // Payment partial choice / DP option
                     item {
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text("Metode Status Piutang", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text(Translator.t("Metode Status Piutang"), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    RadioButton(selected = statusTrx == "lunas", onClick = { viewModel.transactionStatus.value = "lunas" })
-                                    Text("LUNAS", fontSize = 12.sp)
+                                    RadioButton(selected = statusTrx == Translator.t(Translator.t("lunas")), onClick = { viewModel.transactionStatus.value = "lunas" })
+                                    Text(Translator.t("LUNAS"), fontSize = 12.sp)
                                 }
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     RadioButton(selected = statusTrx == "dp", onClick = { viewModel.transactionStatus.value = "dp" })
@@ -854,7 +855,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                             Icon(imageVector = Icons.Default.Warning, contentDescription = null, tint = Color.Red, modifier = Modifier.size(16.dp))
                                             Spacer(modifier = Modifier.width(8.dp))
                                             Text(
-                                                text = "Wajib memilih pelanggan jika status adalah Hutang (DP)",
+                                                text = Translator.t("Wajib memilih pelanggan jika status adalah Hutang (DP)"),
                                                 color = Color.Red,
                                                 fontSize = 11.sp,
                                                 fontWeight = FontWeight.Bold
@@ -869,7 +870,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                         ) {
                                             Icon(imageVector = Icons.Default.PersonAdd, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                                             Spacer(modifier = Modifier.width(6.dp))
-                                            Text("Pilih / Tambah Pelanggan Sekarang", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                            Text(Translator.t("Pilih / Tambah Pelanggan Sekarang"), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                         }
                                     }
                                 }
@@ -880,10 +881,10 @@ fun CashierScreen(viewModel: KasirViewModel) {
                     // Choice of Payment Method
                     item {
                         Column {
-                            Text("Metode Pembayaran", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text(Translator.t("Metode Pembayaran"), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                             Spacer(modifier = Modifier.height(4.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                                listOf("Tunai", "QRIS").forEach { m ->
+                                listOf(Translator.t("Tunai"), "QRIS").forEach { m ->
                                     Card(
                                         onClick = { viewModel.selectedPaymentMethod.value = m },
                                         colors = CardDefaults.cardColors(
@@ -916,7 +917,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Text("SCAN QRIS TOKO", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = OrangePrimary)
+                                Text(Translator.t("SCAN QRIS TOKO"), fontWeight = FontWeight.Bold, fontSize = 14.sp, color = OrangePrimary)
                                 
                                 if (!business?.qrisBase64.isNullOrBlank()) {
                                     Box(
@@ -933,7 +934,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                         )
                                     }
                                     Text(
-                                        "Silakan pelanggan scan QRIS di atas untuk membayar sejumlah:",
+                                        Translator.t("Silakan pelanggan scan QRIS di atas untuk membayar sejumlah:"),
                                         fontSize = 11.sp,
                                         color = Color.Gray,
                                         textAlign = TextAlign.Center
@@ -958,13 +959,13 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                         )
                                         Spacer(modifier = Modifier.height(8.dp))
                                         Text(
-                                            "Foto QRIS Belum Tersedia",
+                                            Translator.t("Foto QRIS Belum Tersedia"),
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = Color.Red
                                         )
                                         Text(
-                                            "Pemilik toko harus meng-upload QRIS di menu Pengaturan terlebih dahulu.",
+                                            Translator.t("Pemilik toko harus meng-upload QRIS di menu Pengaturan terlebih dahulu."),
                                             fontSize = 10.sp,
                                             color = Color.Gray,
                                             textAlign = TextAlign.Center,
@@ -978,7 +979,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                         // Money calculator
                         item {
                             Column {
-                                Text("Nominal Pembayaran Tunai", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Text(Translator.t("Nominal Pembayaran Tunai"), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -995,7 +996,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                         onClick = { viewModel.cashAmountPaid.value = orderTotal },
                                         colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
                                     ) {
-                                        Text("PAS", fontSize = 12.sp)
+                                        Text(Translator.t("PAS"), fontSize = 12.sp)
                                     }
                                 }
                                 // Quick select nominal bills helper
@@ -1031,7 +1032,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
-                                    text = if (diff >= 0) "Kembalian Anda:" else "Sisa Piutang (Kekurangan):",
+                                    text = if (diff >= 0) Translator.t("Kembalian Anda:") else "Sisa Piutang (Kekurangan):",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.sp
                                 )
@@ -1054,7 +1055,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
 
                         // Debt/DP Customer mandatory check
                         if (statusTrx == "dp" && currentCustomer == null) {
-                            Toast.makeText(context, "Khusus transaksi hutang (DP/Piutang), Anda wajib memilih pelanggan yang sudah ada atau menambahkan pelanggan baru!", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, Translator.t("Khusus transaksi hutang (DP/Piutang), Anda wajib memilih pelanggan yang sudah ada atau menambahkan pelanggan baru!"), Toast.LENGTH_LONG).show()
                             viewModel.showToast("Peringatan: Transaksi hutang wajib memilih pelanggan!")
                             return@Button
                         }
@@ -1062,7 +1063,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                         // Free limit transaction guard (50 transactions limit)
                         if (!isPremium && viewModel.transactions.value.size >= 50) {
                             showCheckoutDialog = false
-                            viewModel.showLimitPopup.value = "Transaksi gratis bulanan mencapai batas 50 kali. Silakan upgrade ke premium!"
+                            viewModel.showLimitPopup.value = Translator.t("Transaksi gratis bulanan mencapai batas 50 kali. Silakan upgrade ke premium!")
                             return@Button
                         }
 
@@ -1079,7 +1080,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                     colors = ButtonDefaults.buttonColors(containerColor = if (statusTrx == "dp" && currentCustomer == null) Color.Gray else OrangePrimary),
                     modifier = Modifier.testTag("finalize_payment_button")
                 ) {
-                    Text(if (statusTrx == "dp") "Proses Hutang" else "Proses Lunas")
+                    Text(if (statusTrx == "dp") Translator.t("Proses Hutang") else Translator.t("Proses Lunas"))
                 }
             },
             dismissButton = {
@@ -1096,10 +1097,10 @@ fun CashierScreen(viewModel: KasirViewModel) {
                 AlertDialog(
                     onDismissRequest = { showCustomerPicker = false },
                     icon = { Icon(imageVector = Icons.Default.People, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(48.dp)) },
-                    title = { Text("Belum Ada Data Pelanggan", fontWeight = FontWeight.Bold, textAlign = TextAlign.Center) },
+                    title = { Text(Translator.t("Belum Ada Data Pelanggan"), fontWeight = FontWeight.Bold, textAlign = TextAlign.Center) },
                     text = {
                         Text(
-                            "Anda belum menambahkan data pelanggan. Tambahkan pelanggan terlebih dahulu melalui menu Pelanggan.",
+                            Translator.t("Anda belum menambahkan data pelanggan. Tambahkan pelanggan terlebih dahulu melalui menu Pelanggan."),
                             textAlign = TextAlign.Center,
                             fontSize = 14.sp
                         )
@@ -1125,10 +1126,10 @@ fun CashierScreen(viewModel: KasirViewModel) {
                 AlertDialog(
                     onDismissRequest = { showCustomerPicker = false },
                     icon = { Icon(imageVector = Icons.Default.People, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(48.dp)) },
-                    title = { Text("Belum Ada Data Pelanggan", fontWeight = FontWeight.Bold, textAlign = TextAlign.Center) },
+                    title = { Text(Translator.t("Belum Ada Data Pelanggan"), fontWeight = FontWeight.Bold, textAlign = TextAlign.Center) },
                     text = {
                         Text(
-                            "Fitur manajemen pelanggan tersedia di paket Premium. Upgrade sekarang untuk mengelola loyalitas pelanggan dan meningkatkan penjualan.",
+                            Translator.t("Fitur manajemen pelanggan tersedia di paket Premium. Upgrade sekarang untuk mengelola loyalitas pelanggan dan meningkatkan penjualan."),
                             textAlign = TextAlign.Center,
                             fontSize = 14.sp
                         )
@@ -1160,7 +1161,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Pilih Pelanggan Loyalty Hub", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text(Translator.t("Pilih Pelanggan Loyalty Hub"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }
                 },
                 text = {
@@ -1178,7 +1179,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                             ) {
                                 Icon(imageVector = Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("+ Tambah Pelanggan Baru", fontWeight = FontWeight.Bold)
+                                Text(Translator.t("+ Tambah Pelanggan Baru"), fontWeight = FontWeight.Bold)
                             }
                         }
                         
@@ -1222,14 +1223,14 @@ fun CashierScreen(viewModel: KasirViewModel) {
         AlertDialog(
             onDismissRequest = { showAddCustomerDialog = false },
             icon = { Icon(imageVector = Icons.Default.PersonAdd, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(40.dp)) },
-            title = { Text("Tambah Pelanggan Baru", fontWeight = FontWeight.Bold, fontSize = 18.sp) },
+            title = { Text(Translator.t("Tambah Pelanggan Baru"), fontWeight = FontWeight.Bold, fontSize = 18.sp) },
             text = {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        "Masukkan data pelanggan untuk dihubungkan ke program loyalty & bonus poin warung.",
+                        Translator.t("Masukkan data pelanggan untuk dihubungkan ke program loyalty & bonus poin warung."),
                         fontSize = 12.sp,
                         color = Color.Gray
                     )
@@ -1243,7 +1244,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                         label = { Text("Nama Lengkap*") },
                         placeholder = { Text("Contoh: Ahmad Budiman") },
                         isError = nameError,
-                        supportingText = { if (nameError) Text("Nama wajib diisi", color = MaterialTheme.colorScheme.error) },
+                        supportingText = { if (nameError) Text(Translator.t("Nama wajib diisi"), color = MaterialTheme.colorScheme.error) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -1323,7 +1324,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
             text = {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().heightIn(max = 250.dp)) {
                     if (promosList.isEmpty()) {
-                        item { Text("Database voucher promo kosong.", fontSize = 11.sp, color = Color.Gray) }
+                        item { Text(Translator.t("Database voucher promo kosong."), fontSize = 11.sp, color = Color.Gray) }
                     }
                     items(promosList.filter { it.isActive }) { p ->
                         Card(
@@ -1370,7 +1371,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                 pairedPrinters = BluetoothPrinterHelper.getPairedPrinters(context)
                 showBluetoothSimulation = true
             } else {
-                Toast.makeText(context, "Izin Bluetooth ditolak. Gagal menyambungkan ke printer.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, Translator.t("Izin Bluetooth ditolak. Gagal menyambungkan ke printer."), Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -1381,7 +1382,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF22C55E), modifier = Modifier.size(24.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Transaksi Berhasil!", fontWeight = FontWeight.Bold, color = Color(0xFF22C55E), fontSize = 18.sp)
+                    Text(Translator.t("Transaksi Berhasil!"), fontWeight = FontWeight.Bold, color = Color(0xFF22C55E), fontSize = 18.sp)
                 }
             },
             text = {
@@ -1403,11 +1404,11 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                 .padding(bottom = 6.dp)
                         )
                     }
-                    Text(business?.namaBisnis ?: "KASIR PRO SHOP", fontWeight = FontWeight.Bold, color = Color.Black, fontSize = 15.sp, textAlign = TextAlign.Center)
+                    Text(business?.namaBisnis ?: Translator.t("KASIR PRO SHOP"), fontWeight = FontWeight.Bold, color = Color.Black, fontSize = 15.sp, textAlign = TextAlign.Center)
                     if (!business?.alamat.isNullOrBlank()) {
                         Text(business!!.alamat!!, fontSize = 11.sp, color = Color.DarkGray, textAlign = TextAlign.Center)
                     } else {
-                        Text("Cabang Utama", fontSize = 11.sp, color = Color.DarkGray, textAlign = TextAlign.Center)
+                        Text(Translator.t("Cabang Utama"), fontSize = 11.sp, color = Color.DarkGray, textAlign = TextAlign.Center)
                     }
                     if (!business?.noTelpon.isNullOrBlank()) {
                         Text("Tel: ${business!!.noTelpon!!}", fontSize = 11.sp, color = Color.DarkGray, textAlign = TextAlign.Center)
@@ -1460,7 +1461,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                         Text(idrFormatter.format(rx.bayarNominal), fontSize = 11.sp, color = Color.Black)
                     }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("KEMBALI", fontSize = 11.sp, color = Color.Black)
+                        Text(Translator.t("KEMBALI"), fontSize = 11.sp, color = Color.Black)
                         Text(idrFormatter.format(rx.kembalian), fontSize = 11.sp, color = Color.Black)
                     }
                     Text("---------------------------------", color = Color.Black)
@@ -1477,7 +1478,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                     type = "text/plain"
                                     putExtra(Intent.EXTRA_TEXT, "Terima kasih telah berbelanja di Kasir Pro! Total belanja Anda: ${idrFormatter.format(rx.total)} dengan status: ${rx.status.uppercase()}")
                                 }
-                                context.startActivity(Intent.createChooser(shareIntent, "Bagikan struk penjualan"))
+                                context.startActivity(Intent.createChooser(shareIntent, Translator.t("Bagikan struk penjualan")))
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
                             modifier = Modifier.weight(1f)
@@ -1501,7 +1502,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                         ) {
                             Icon(imageVector = Icons.Default.Print, contentDescription = null)
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Cetak Kasir", fontSize = 11.sp)
+                            Text(Translator.t("Cetak Kasir"), fontSize = 11.sp)
                         }
                     }
                     TextButton(
@@ -1522,7 +1523,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                 title = { Text("Hubungkan Printer Thermal Bluetooth") },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("Pastikan printer Anda menyala dan telah dipasangkan (paired) di pengaturan Bluetooth HP.", fontSize = 11.sp)
+                        Text(Translator.t("Pastikan printer Anda menyala dan telah dipasangkan (paired) di pengaturan Bluetooth HP."), fontSize = 11.sp)
                         
                         if (isPrinting) {
                             Row(
@@ -1532,10 +1533,10 @@ fun CashierScreen(viewModel: KasirViewModel) {
                             ) {
                                 CircularProgressIndicator(modifier = Modifier.size(24.dp), color = OrangePrimary)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Mencetak struk...", fontSize = 12.sp)
+                                Text(Translator.t("Mencetak struk..."), fontSize = 12.sp)
                             }
                         } else if (pairedPrinters.isEmpty()) {
-                            Text("Tidak ada printer Bluetooth berpasangan ditemukan.", color = Color.Red, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text(Translator.t("Tidak ada printer Bluetooth berpasangan ditemukan."), color = Color.Red, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             Button(
                                 onClick = {
                                     if (BluetoothPrinterHelper.hasBluetoothPermissions(context)) {
@@ -1547,10 +1548,10 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
                             ) {
-                                Text("Muat Ulang / Cari Printer", fontSize = 11.sp)
+                                Text(Translator.t("Muat Ulang / Cari Printer"), fontSize = 11.sp)
                             }
                         } else {
-                            Text("Pilih printer dari daftar di bawah ini:", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text(Translator.t("Pilih printer dari daftar di bawah ini:"), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             LazyColumn(
                                 verticalArrangement = Arrangement.spacedBy(6.dp),
                                 modifier = Modifier.heightIn(max = 200.dp)
@@ -1564,7 +1565,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                                     context = context,
                                                     device = device,
                                                     rx = rx,
-                                                    businessName = viewModel.currentBusiness.value?.namaBisnis ?: "KASIR PRO",
+                                                    businessName = viewModel.currentBusiness.value?.namaBisnis ?: Translator.t("KASIR PRO"),
                                                     address = viewModel.currentBusiness.value?.alamat ?: "",
                                                     phone = viewModel.currentBusiness.value?.noTelpon ?: ""
                                                 )
@@ -1574,7 +1575,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                                     showBluetoothSimulation = false
                                                     viewModel.activeReceipt.value = null
                                                 } else {
-                                                    Toast.makeText(context, "Gagal mencetak. Harap sambungkan kembali printer Bluetooth Anda.", Toast.LENGTH_LONG).show()
+                                                    Toast.makeText(context, Translator.t("Gagal mencetak. Harap sambungkan kembali printer Bluetooth Anda."), Toast.LENGTH_LONG).show()
                                                 }
                                             }
                                         },
@@ -1601,7 +1602,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                         Divider(modifier = Modifier.padding(vertical = 4.dp))
                         Card(
                             onClick = {
-                                Toast.makeText(context, "Simulasi Cetak Struk ke printer RPP02N - Selesai!", Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, Translator.t("Simulasi Cetak Struk ke printer RPP02N - Selesai!"), Toast.LENGTH_LONG).show()
                                 showBluetoothSimulation = false
                                 viewModel.activeReceipt.value = null
                             },
@@ -1614,8 +1615,8 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column {
-                                    Text("Simulasi Cetak (Bypass)", fontWeight = FontWeight.SemiBold, fontSize = 11.sp, color = Color.Black)
-                                    Text("Gunakan jika tidak ada printer berpasangan", fontSize = 10.sp, color = Color.Gray)
+                                    Text(Translator.t("Simulasi Cetak (Bypass)"), fontWeight = FontWeight.SemiBold, fontSize = 11.sp, color = Color.Black)
+                                    Text(Translator.t("Gunakan jika tidak ada printer berpasangan"), fontSize = 10.sp, color = Color.Gray)
                                 }
                                 Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(18.dp))
                             }
@@ -1637,7 +1638,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
             }
             AlertDialog(
                 onDismissRequest = { showRecentTransactionsDialog = false },
-                title = { Text("Transaksi Terbaru & Koreksi", fontWeight = FontWeight.Bold) },
+                title = { Text(Translator.t("Transaksi Terbaru & Koreksi"), fontWeight = FontWeight.Bold) },
                 text = {
                     Column(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -1646,10 +1647,10 @@ fun CashierScreen(viewModel: KasirViewModel) {
                             .heightIn(max = 400.dp)
                             .verticalScroll(rememberScrollState())
                     ) {
-                        Text("Pilih transaksi untuk melihat detail struk atau melakukan perbaikan menggunakan authorization PIN pemilik toko.", fontSize = 11.sp, color = Color.Gray)
+                        Text(Translator.t("Pilih transaksi untuk melihat detail struk atau melakukan perbaikan menggunakan authorization PIN pemilik toko."), fontSize = 11.sp, color = Color.Gray)
                         if (recentList.isEmpty()) {
                             Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                                Text("Tidak ada transaksi selama shift ini.", color = Color.Gray, fontSize = 11.sp)
+                                Text(Translator.t("Tidak ada transaksi selama shift ini."), color = Color.Gray, fontSize = 11.sp)
                             }
                         } else {
                             recentList.forEach { tx ->
@@ -1681,13 +1682,13 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                             Box(
                                                 modifier = Modifier
                                                     .clip(RoundedCornerShape(4.dp))
-                                                    .background(if (tx.status == "lunas") Color(0xFFDCFCE7) else Color(0xFFFEE2E2))
+                                                    .background(if (tx.status == Translator.t("lunas")) Color(0xFFDCFCE7) else Color(0xFFFEE2E2))
                                                     .padding(horizontal = 4.dp, vertical = 2.dp)
                                             ) {
                                                 Text(
                                                     text = tx.status.uppercase(),
                                                     fontSize = 8.sp,
-                                                    color = if (tx.status == "lunas") Color(0xFF15803D) else Color(0xFFB91C1C),
+                                                    color = if (tx.status == Translator.t("lunas")) Color(0xFF15803D) else Color(0xFFB91C1C),
                                                     fontWeight = FontWeight.Bold
                                                 )
                                             }
@@ -1713,7 +1714,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(imageVector = Icons.Default.ReceiptLong, contentDescription = null, tint = OrangePrimary)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Detail Struk Transaksi", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text(Translator.t("Detail Struk Transaksi"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }
                 },
                 text = {
@@ -1725,7 +1726,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                             .verticalScroll(rememberScrollState()),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(viewModel.currentBusiness.value?.namaBisnis ?: "KASIR PRO", fontWeight = FontWeight.Bold, color = Color.Black, fontSize = 13.sp, textAlign = TextAlign.Center)
+                        Text(viewModel.currentBusiness.value?.namaBisnis ?: Translator.t("KASIR PRO"), fontWeight = FontWeight.Bold, color = Color.Black, fontSize = 13.sp, textAlign = TextAlign.Center)
                         Text("---------------------------------", color = Color.Black)
                         Text("No TRX: ${rx.id}", fontSize = 10.sp, color = Color.Black)
                         Text("Tanggal: ${java.text.SimpleDateFormat("dd-MM-yyyy HH:mm", java.util.Locale("id", "ID")).format(java.util.Date(rx.createdAt))}", fontSize = 10.sp, color = Color.Black)
@@ -1773,7 +1774,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                             Text(idrFormatter.format(rx.bayarNominal), fontSize = 10.sp, color = Color.Black)
                         }
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("KEMBALI", fontSize = 10.sp, color = Color.Black)
+                            Text(Translator.t("KEMBALI"), fontSize = 10.sp, color = Color.Black)
                             Text(idrFormatter.format(rx.kembalian), fontSize = 10.sp, color = Color.Black)
                         }
                         Text("---------------------------------", color = Color.Black)
@@ -1819,10 +1820,10 @@ fun CashierScreen(viewModel: KasirViewModel) {
         if (showCorrectionAuthDialog) {
             AlertDialog(
                 onDismissRequest = { showCorrectionAuthDialog = false },
-                title = { Text("Otoritas Pemilik Diperlukan", fontWeight = FontWeight.Bold) },
+                title = { Text(Translator.t("Otoritas Pemilik Diperlukan"), fontWeight = FontWeight.Bold) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("Masukkan kode otoritas/sandi pemilik warung untuk mengizinkan kasir mengedit data transaksi struk ini.", fontSize = 11.sp, color = Color.Gray)
+                        Text(Translator.t("Masukkan kode otoritas/sandi pemilik warung untuk mengizinkan kasir mengedit data transaksi struk ini."), fontSize = 11.sp, color = Color.Gray)
                         OutlinedTextField(
                             value = authCodeInput,
                             onValueChange = { authCodeInput = it },
@@ -1841,7 +1842,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                 showCorrectionEditDialog = true
                                 authCodeInput = ""
                             } else {
-                                Toast.makeText(context, "Kode Otoritas salah! Akses Ditolak.", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, Translator.t("Kode Otoritas salah! Akses Ditolak."), Toast.LENGTH_SHORT).show()
                             }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
@@ -1896,14 +1897,14 @@ fun CashierScreen(viewModel: KasirViewModel) {
 
             AlertDialog(
                 onDismissRequest = { showCorrectionEditDialog = false },
-                title = { Text("Koreksi / Perbaikan Transaksi", fontWeight = FontWeight.Bold) },
+                title = { Text(Translator.t("Koreksi / Perbaikan Transaksi"), fontWeight = FontWeight.Bold) },
                 text = {
                     Column(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
                     ) {
                         Text("No TRX: ${rx.id}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OrangePrimary)
-                        Text("Edit Produk Struk", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text(Translator.t("Edit Produk Struk"), fontSize = 12.sp, fontWeight = FontWeight.Bold)
 
                         Column(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -1913,7 +1914,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                 .padding(8.dp)
                         ) {
                             if (parsedItems.isEmpty()) {
-                                Text("Tidak ada produk di struk", fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(10.dp))
+                                Text(Translator.t("Tidak ada produk di struk"), fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(10.dp))
                             } else {
                                 parsedItems.forEachIndexed { idx, item ->
                                     Row(
@@ -1948,13 +1949,13 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                                 },
                                                 modifier = Modifier.size(24.dp)
                                             ) {
-                                                Icon(imageVector = Icons.Default.AddCircle, contentDescription = "Tambah", tint = OrangePrimary)
+                                                Icon(imageVector = Icons.Default.AddCircle, contentDescription = Translator.t("Tambah"), tint = OrangePrimary)
                                             }
                                             IconButton(
                                                 onClick = { parsedItems.removeAt(idx) },
                                                 modifier = Modifier.size(24.dp)
                                             ) {
-                                                Icon(imageVector = Icons.Default.Delete, contentDescription = "Hapus", tint = Color.Red)
+                                                Icon(imageVector = Icons.Default.Delete, contentDescription = Translator.t("Hapus"), tint = Color.Red)
                                             }
                                         }
                                     }
@@ -1970,7 +1971,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                         ) {
                             Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Tambah Produk ke Struk Baru", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text(Translator.t("Tambah Produk ke Struk Baru"), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
 
                         OutlinedTextField(
@@ -1997,9 +1998,9 @@ fun CashierScreen(viewModel: KasirViewModel) {
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                         )
 
-                        Text("Metode Pembayaran", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text(Translator.t("Metode Pembayaran"), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
-                            listOf("Tunai", "QRIS", "Transfer", "Debit").forEach { m ->
+                            listOf(Translator.t("Tunai"), "QRIS", "Transfer", "Debit").forEach { m ->
                                 Card(
                                     onClick = { editMetodeBayar = m },
                                     colors = CardDefaults.cardColors(
@@ -2014,9 +2015,9 @@ fun CashierScreen(viewModel: KasirViewModel) {
                             }
                         }
 
-                        Text("Status Pembayaran", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text(Translator.t("Status Pembayaran"), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
-                            listOf("lunas", "dp").forEach { s ->
+                            listOf(Translator.t("lunas"), "dp").forEach { s ->
                                 Card(
                                     onClick = { editStatus = s },
                                     colors = CardDefaults.cardColors(
@@ -2039,12 +2040,12 @@ fun CashierScreen(viewModel: KasirViewModel) {
                             val bayarVal = editBayarStr.toDoubleOrNull() ?: rx.bayarNominal
                             val diskonVal = editDiskonStr.toDoubleOrNull() ?: calculatedDisc
 
-                            if (bayarVal < totalVal && editStatus == "lunas") {
-                                Toast.makeText(context, "Nominal bayar kurang dari total untuk status lunas!", Toast.LENGTH_SHORT).show()
+                            if (bayarVal < totalVal && editStatus == Translator.t("lunas")) {
+                                Toast.makeText(context, Translator.t("Nominal bayar kurang dari total untuk status lunas!"), Toast.LENGTH_SHORT).show()
                                 return@Button
                             }
                             if (parsedItems.isEmpty()) {
-                                Toast.makeText(context, "Struk tidak boleh kosong!", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, Translator.t("Struk tidak boleh kosong!"), Toast.LENGTH_SHORT).show()
                                 return@Button
                             }
 
@@ -2066,7 +2067,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                             viewModel.correctTransaction(updatedTx) {
                                 showCorrectionEditDialog = false
                                 selectedTxForReceipt = null
-                                Toast.makeText(context, "Berhasil simpan koreksi transaksi!", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, Translator.t("Berhasil simpan koreksi transaksi!"), Toast.LENGTH_SHORT).show()
                             }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
@@ -2085,7 +2086,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
 
                 AlertDialog(
                     onDismissRequest = { showAddProductMenuComp = false },
-                    title = { Text("Pilih Produk", fontWeight = FontWeight.Bold) },
+                    title = { Text(Translator.t("Pilih Produk"), fontWeight = FontWeight.Bold) },
                     text = {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.heightIn(max = 280.dp)) {
                             OutlinedTextField(
@@ -2160,7 +2161,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                 icon = { Icon(Icons.Default.Payments, contentDescription = null, tint = OrangePrimary) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("Catat uang keluar / beban operasional toko selama shift saat ini.", fontSize = 11.sp, color = Color.Gray)
+                        Text(Translator.t("Catat uang keluar / beban operasional toko selama shift saat ini."), fontSize = 11.sp, color = Color.Gray)
                         OutlinedTextField(
                             value = editExpenseNominal,
                             onValueChange = { editExpenseNominal = it.filter { c -> c.isDigit() } },
@@ -2192,7 +2193,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                     showAddExpenseDialog = false
                                     editExpenseNominal = ""
                                     editExpenseKet = ""
-                                    Toast.makeText(context, "Pengeluaran kas berhasil dicatatkan!", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, Translator.t("Pengeluaran kas berhasil dicatatkan!"), Toast.LENGTH_SHORT).show()
                                 } else {
                                     Toast.makeText(context, "Gagal menyimpan pengeluaran: $error", Toast.LENGTH_LONG).show()
                                 }

@@ -1,5 +1,6 @@
 package com.kasirpro.app.ui.screens
 
+import com.kasirpro.app.util.Translator
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -126,7 +127,7 @@ fun LoginScreen(viewModel: KasirViewModel) {
                             viewModel.activeScreen.value = "home"
                         }
                     } else {
-                        errorMessage = "Google login gagal."
+                        errorMessage = Translator.t("Google login gagal.")
                     }
                 } catch (e: Exception) {
                     errorMessage = "Terjadi kesalahan: ${e.localizedMessage}"
@@ -135,7 +136,7 @@ fun LoginScreen(viewModel: KasirViewModel) {
                 }
             }
         } else {
-            errorMessage = "Gagal mendapatkan token Google atau login dibatalkan."
+            errorMessage = Translator.t("Gagal mendapatkan token Google atau login dibatalkan.")
             isLoading = false
         }
     }
@@ -155,20 +156,20 @@ fun LoginScreen(viewModel: KasirViewModel) {
         ) {
             Icon(
                 imageVector = Icons.Default.PointOfSale,
-                contentDescription = "Kasir Pro Primary Icon",
+                contentDescription = Translator.t("Kasir Pro Primary Icon"),
                 tint = OrangePrimary,
                 modifier = Modifier.size(72.dp)
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Masuk Kasir Pro",
+                text = Translator.t("Masuk Kasir Pro"),
                 style = MaterialTheme.typography.headlineLarge.copy(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
                 )
             )
             Text(
-                text = "Kelola finansial toko Anda dengan mudah",
+                text = Translator.t("Kelola finansial toko Anda dengan mudah"),
                 style = MaterialTheme.typography.bodyMedium.copy(
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                 ),
@@ -235,7 +236,7 @@ fun LoginScreen(viewModel: KasirViewModel) {
                 horizontalArrangement = Arrangement.End
             ) {
                 Text(
-                    text = "Lupa Password?",
+                    text = Translator.t("Lupa Password?"),
                     color = OrangePrimary,
                     fontWeight = FontWeight.SemiBold,
                     style = MaterialTheme.typography.bodyMedium,
@@ -250,11 +251,11 @@ fun LoginScreen(viewModel: KasirViewModel) {
             Button(
                 onClick = {
                     if (email.isBlank() || password.isBlank()) {
-                        errorMessage = "Mohon lengkapi email dan password!"
+                        errorMessage = Translator.t("Mohon lengkapi email dan password!")
                         return@Button
                     }
                     if (password.length < 6) {
-                        errorMessage = "Password minimal terdiri dari 6 karakter!"
+                        errorMessage = Translator.t("Password minimal terdiri dari 6 karakter!")
                         return@Button
                     }
                     isLoading = true
@@ -274,11 +275,11 @@ fun LoginScreen(viewModel: KasirViewModel) {
                                     viewModel.activeScreen.value = "home"
                                 }
                             } else {
-                                errorMessage = "Email atau password salah!"
+                                errorMessage = Translator.t("Email atau password salah!")
                             }
                         } catch (e: Exception) {
                             isLoading = false
-                            errorMessage = e.message ?: "Email atau password salah!"
+                            errorMessage = e.message ?: Translator.t("Email atau password salah!")
                         }
                     }
                 },
@@ -292,7 +293,7 @@ fun LoginScreen(viewModel: KasirViewModel) {
                 if (isLoading) {
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                 } else {
-                    Text("Masuk", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text(Translator.t("Masuk"), fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -310,7 +311,7 @@ fun LoginScreen(viewModel: KasirViewModel) {
                     if (intent != null) {
                         googleSignInLauncher.launch(intent)
                     } else {
-                        errorMessage = "Inisialisasi Google Sign-In gagal."
+                        errorMessage = Translator.t("Inisialisasi Google Sign-In gagal.")
                     }
                 },
                 enabled = !isLoading,
@@ -327,7 +328,7 @@ fun LoginScreen(viewModel: KasirViewModel) {
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Masuk menggunakan Google", color = OrangePrimary, fontWeight = FontWeight.Bold)
+                Text(Translator.t("Masuk menggunakan Google"), color = OrangePrimary, fontWeight = FontWeight.Bold)
             }
 
 
@@ -335,9 +336,9 @@ fun LoginScreen(viewModel: KasirViewModel) {
             Spacer(modifier = Modifier.height(32.dp))
 
             Row(horizontalArrangement = Arrangement.Center) {
-                Text(text = "Belum memiliki akun? ", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
+                Text(text = Translator.t("Belum memiliki akun? "), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
                 Text(
-                    text = "Daftar Toko Baru",
+                    text = Translator.t("Daftar Toko Baru"),
                     color = OrangePrimary,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.clickable {
@@ -374,14 +375,14 @@ fun RegisterScreen(viewModel: KasirViewModel) {
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "Daftar Toko Kasir Pro",
+                text = Translator.t("Daftar Toko Kasir Pro"),
                 style = MaterialTheme.typography.headlineLarge.copy(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
                 )
             )
             Text(
-                text = "Mulailah melayani transaksi bisnis dalam beberapa klik",
+                text = Translator.t("Mulailah melayani transaksi bisnis dalam beberapa klik"),
                 style = MaterialTheme.typography.bodyMedium.copy(
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                 ),
@@ -447,11 +448,11 @@ fun RegisterScreen(viewModel: KasirViewModel) {
             Button(
                 onClick = {
                     if (nama.isBlank() || email.isBlank() || password.isBlank()) {
-                        errorMessage = "Harap lengkapi semua data formulir!"
+                        errorMessage = Translator.t("Harap lengkapi semua data formulir!")
                         return@Button
                     }
                     if (password.length < 6) {
-                        errorMessage = "Password minimal terdiri dari 6 karakter!"
+                        errorMessage = Translator.t("Password minimal terdiri dari 6 karakter!")
                         return@Button
                     }
                     isLoading = true
@@ -463,11 +464,11 @@ fun RegisterScreen(viewModel: KasirViewModel) {
                             if (success) {
                                 viewModel.activeScreen.value = "setup_toko"
                             } else {
-                                errorMessage = "Registrasi gagal, silakan coba lagi."
+                                errorMessage = Translator.t("Registrasi gagal, silakan coba lagi.")
                             }
                         } catch (e: Exception) {
                             isLoading = false
-                            errorMessage = e.message ?: "Registrasi gagal, silakan coba lagi."
+                            errorMessage = e.message ?: Translator.t("Registrasi gagal, silakan coba lagi.")
                         }
                     }
                 },
@@ -481,7 +482,7 @@ fun RegisterScreen(viewModel: KasirViewModel) {
                 if (isLoading) {
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                 } else {
-                    Text("Daftar Sekarang", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text(Translator.t("Daftar Sekarang"), fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -490,9 +491,9 @@ fun RegisterScreen(viewModel: KasirViewModel) {
             Spacer(modifier = Modifier.height(32.dp))
 
             Row(horizontalArrangement = Arrangement.Center) {
-                Text(text = "Sudah memiliki akun? ", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
+                Text(text = Translator.t("Sudah memiliki akun? "), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f))
                 Text(
-                    text = "Kembali ke Login",
+                    text = Translator.t("Kembali ke Login"),
                     color = OrangePrimary,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.clickable {
@@ -530,11 +531,11 @@ fun ForgotPasswordScreen(viewModel: KasirViewModel) {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Lupa Password",
+                text = Translator.t("Lupa Password"),
                 style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold)
             )
             Text(
-                text = "Masukkan email terdaftar Anda dan kami akan mengirimkan link reset password.",
+                text = Translator.t("Masukkan email terdaftar Anda dan kami akan mengirimkan link reset password."),
                 style = MaterialTheme.typography.bodyMedium.copy(
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                 ),
@@ -583,13 +584,13 @@ fun ForgotPasswordScreen(viewModel: KasirViewModel) {
                     .fillMaxWidth()
                     .height(50.dp)
             ) {
-                Text("Kirim Link Reset", fontWeight = FontWeight.Bold)
+                Text(Translator.t("Kirim Link Reset"), fontWeight = FontWeight.Bold)
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "Kembali ke Login",
+                text = Translator.t("Kembali ke Login"),
                 color = OrangePrimary,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.clickable {
@@ -622,14 +623,14 @@ fun SetupTokoScreen(viewModel: KasirViewModel) {
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "Setup Toko Baru Anda",
+                text = Translator.t("Setup Toko Baru Anda"),
                 style = MaterialTheme.typography.headlineLarge.copy(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
                 )
             )
             Text(
-                text = "Tambahkan info detail operasional toko utama Anda",
+                text = Translator.t("Tambahkan info detail operasional toko utama Anda"),
                 style = MaterialTheme.typography.bodyMedium.copy(
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                 ),
@@ -646,14 +647,14 @@ fun SetupTokoScreen(viewModel: KasirViewModel) {
                     .clickable {
                         // Quick default options simulator
                         selectedImgUrl = "https://images.unsplash.com/photo-1473093295043-cdd812d0e601"
-                        statusMessage = "Logo berhasil diupload ke Storage!"
+                        statusMessage = Translator.t("Logo berhasil diupload ke Storage!")
                     },
                 contentAlignment = Alignment.Center
             ) {
                 if (selectedImgUrl == null) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(imageVector = Icons.Default.AddAPhoto, contentDescription = null, tint = OrangePrimary)
-                        Text("Logo Toko", fontSize = 11.sp, color = OrangePrimary, fontWeight = FontWeight.Bold)
+                        Text(Translator.t("Logo Toko"), fontSize = 11.sp, color = OrangePrimary, fontWeight = FontWeight.Bold)
                     }
                 } else {
                     Icon(imageVector = Icons.Default.Storefront, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(48.dp))
@@ -700,7 +701,7 @@ fun SetupTokoScreen(viewModel: KasirViewModel) {
             Button(
                 onClick = {
                     if (namaToko.isBlank() || alamatToko.isBlank()) {
-                        statusMessage = "Silakan isi nama toko dan alamat!"
+                        statusMessage = Translator.t("Silakan isi nama toko dan alamat!")
                         return@Button
                     }
                     scope.launch {
@@ -714,7 +715,7 @@ fun SetupTokoScreen(viewModel: KasirViewModel) {
                     .height(52.dp)
                     .testTag("submit_setup_toko")
             ) {
-                Text("Simpan & Masuk Beranda", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text(Translator.t("Simpan & Masuk Beranda"), fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
     }

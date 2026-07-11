@@ -795,7 +795,162 @@ object Translator {
         "contoh: Jl. Merdeka No. 45, Bandung" to "e.g., Jl. Merdeka No. 45, Bandung",
         "Daftar Cabang" to "Register Branch",
         "Edit Outlet Cabang" to "Edit Outlet Branch",
-        "Simpan Perubahan" to "Save Changes"
+        "Simpan Perubahan" to "Save Changes",
+
+        // --- NEW TRANS-KEYS FOR FULL COVERAGE ---
+        "Area Premium Pro" to "Premium Pro Area",
+        "Filter Laporan" to "Report Filters",
+        "Berdasarkan Cabang:" to "Based on Branch:",
+        "Berdasarkan Kasir / Staf:" to "Based on Cashier / Staff:",
+        "Semua Cabang" to "All Branches",
+        "Semua Kasir" to "All Cashiers",
+        "RATA-RATA TRANSAKSI" to "AVERAGE TRANSACTION",
+        "Breakdown Omset Akhir Bulan" to "End of Month Revenue Breakdown",
+        "Berikut rangkuman performa omset per Cabang dan per Staf Kasir kontributor saat ini." to "Here is a summary of the current revenue performance per branch and contributor cashier staff.",
+        "Berikut rangkuman performa omset per Branches dan per Staf Cashier kontributor saat ini." to "Here is a summary of the current revenue performance per branch and contributor cashier staff.",
+        "Penjualan Per Cabang:" to "Sales Per Branch:",
+        "Penjualan Per Branch:" to "Sales Per Branch:",
+        "Belum ada omset penjualan cabang." to "No branch sales revenue yet.",
+        "Belum ada omset penjualan Cabang." to "No branch sales revenue yet.",
+        "Belum ada omset penjualan Branches." to "No branch sales revenue yet.",
+        "Penjualan Per Staf Kasir:" to "Sales Per Cashier Staff:",
+        "Penjualan Per Staf Cashier:" to "Sales Per Cashier Staff:",
+        "Belum ada omset penjualan kasir." to "No cashier sales revenue yet.",
+        "Belum ada omset penjualan Kasir." to "No cashier sales revenue yet.",
+        "Riwayat Laporan Shift Kasir" to "Historical Cashier Shift Reports",
+        "Pantau uang modal awal, omset tunai/non-tunai, dan pencocokan uang kas fisik di laci per sesi kasir langsung dari Firestore." to "Monitor initial capital, cash/non-cash revenue, and physical cash matching in drawer per cashier session directly from Firestore.",
+        "Pantau Initial Capital, omset Cash/Non-Cash, dan pencocokan uang kas fisik di laci per sesi Cashier langsung dari Firestore." to "Monitor initial capital, cash/non-cash revenue, and physical cash matching in drawer per cashier session directly from Firestore.",
+        "Belum ada pertanggungjawaban shift kasir tercatat sesuai filter saat ini." to "No recorded cashier shift accountability matches the current filters.",
+        "Belum ada pertanggungjawaban shift Cashier tercatat sesuai filter saat ini." to "No recorded cashier shift accountability matches the current filters.",
+        "Grafik Pendapatan Harian (7 Hari Terakhir)" to "Daily Revenue Chart (Last 7 Days)",
+        "Grafik Pendapatan Daily (7 Hari Terakhir)" to "Daily Revenue Chart (Last 7 Days)",
+        "Grafik Produk Terlaris (Qty)" to "Best Selling Products Chart (Qty)",
+        "Grafik Best Selling Products (Qty)" to "Best Selling Products Chart (Qty)",
+        "Belum ada data produk terlaris di interval ini." to "No best selling products data in this interval.",
+        "Belum ada data Best Selling Products di interval ini." to "No best selling products data in this interval.",
+        "Export PDF Laporan Kasir" to "Export Cashier PDF Report",
+        "Export PDF Reports Cashier" to "Export Cashier PDF Report",
+        "Omset Tunai (Cash):" to "Cash Revenue:",
+        "Omset Non-Tunai:" to "Non-Cash Revenue:",
+        "Selisih Kas Laci Fisik:" to "Physical Drawer Cash Difference:",
+        "Riwayat Laporan Shift Kasir (Terkunci)" to "Historical Cashier Shift Reports (Locked)",
+        "+ Tambah Pelanggan Baru" to "+ Add New Customer",
+        "Aplikasi Kasir Modern Indonesia" to "Modern Indonesian Cashier Application",
+        "Backup Data" to "Backup Data",
+        "Belum Ada Mutasi" to "No Mutations/Transactions Yet",
+        "Belum pernah aktif" to "Never active",
+        "Buat Akun" to "Create Account",
+        "Buat Kode Aktivasi Baru" to "Create New Activation Code",
+        "Buat langsung kredensial masuk kasir tanpa undangan email." to "Create cashier login credentials directly without email invitation.",
+        "Buka Kasir" to "Open Cashier",
+        "Catat pengeluaran finansial / biaya beban operasional toko Anda di bawah ini." to "Record store financial expenditures / operational expenses below.",
+        "Catat penjualan kasir secepat kilat dengan pencarian pintar dan camera scan barcode otomatis." to "Record cashier sales at lightning speed with smart search and automatic camera barcode scanning.",
+        "Cloud Backup Google Drive otomatis/manual hanya didukung untuk tipe pelanggan premium!" to "Cloud Backup to Google Drive (automatic/manual) is only supported for premium accounts!",
+        "Context activity tidak valid" to "Invalid activity context",
+        "Contoh: Bayar Listrik, Gaji Karyawan, Sewa Tempat, dll." to "E.g., Electricity, Employee Salary, Rent, etc.",
+        "Contoh: Belanja es batu, Listrik" to "E.g., Ice cubes shopping, Electricity",
+        "Daftar Riwayat Notifikasi Broadcast" to "Broadcast Notification History List",
+        "Daftar Toko Baru" to "Register New Store",
+        "Data RESTORE hanya didukung untuk akun premium!" to "Data RESTORE is only supported for premium accounts!",
+        "ESTIMASI LABA BERSIH" to "ESTIMATED NET PROFIT",
+        "Edit Akun Kasir" to "Edit Cashier Account",
+        "Edit Cabang" to "Edit Branch",
+        "Edit Kasir" to "Edit Cashier",
+        "Elektronik" to "Electronics",
+        "Fitur Kode Unik Otoritas Koreksi hanya untuk pengguna Premium. Upgrade sekarang!" to "Authority Code feature for corrections is only for Premium users. Upgrade now!",
+        "Fitur Koreksi Transaksi hanya tersedia untuk pengguna Premium Pro. Upgrade sekarang!" to "Transaction Correction feature is only available for Premium Pro users. Upgrade now!",
+        "Fitur riwayat laporan shift kasir hanya tersedia untuk minimal Paket Profesional. Klik untuk upgrade sekarang!" to "Cashier shift report history feature requires at least the Professional Plan. Click to upgrade now!",
+        "Form Broadcast Baru" to "New Broadcast Form",
+        "Foto QRIS berhasil disimpan!" to "QRIS Photo successfully saved!",
+        "Gagal membuat kode!" to "Failed to create code!",
+        "Gagal memproses dokumen PDF!" to "Failed to process PDF document!",
+        "Gagal menyinkronkan kode." to "Failed to sync code.",
+        "Generate Kode Aktivasi" to "Generate Activation Code",
+        "Hapus Broadcast" to "Delete Broadcast",
+        "Hapus Cabang" to "Delete Branch",
+        "Hapus Kasir" to "Delete Cashier",
+        "I. RINGKASAN FINANSIAL OUTLET" to "I. OUTLET FINANCIAL SUMMARY",
+        "ID Pengguna (UID) wajib diisi!" to "User ID (UID) is required!",
+        "II. DAFTAR PERINGKAT PRODUK TERLARIS (QTY)" to "II. BEST-SELLING PRODUCTS RANKING LIST (QTY)",
+        "Internet mati? Transaksi tetap berjalan normal secara offline dan otomatis sync saat online kembali." to "Offline? Transactions continue normally and automatically sync when online.",
+        "Jumlah nominal pengeluaran harus valid!" to "Expense amount must be valid!",
+        "KASIR PRO" to "KASIR PRO",
+        "KASIR PRO - LAPORAN KEUANGAN" to "KASIR PRO - FINANCIAL REPORT",
+        "KASIR PRO SHOP" to "KASIR PRO SHOP",
+        "KUANTITAS TERJUAL" to "QUANTITY SOLD",
+        "Kasir Aktif" to "Active Cashier",
+        "Kasir Pro" to "Kasir Pro",
+        "Kasir Pro Logo" to "Kasir Pro Logo",
+        "Kasir Pro Primary Icon" to "Kasir Pro Primary Icon",
+        "Keterangan Operasional *" to "Operational Details *",
+        "Keterangan pengeluaran tidak boleh kosong!" to "Expense details cannot be empty!",
+        "Kirim Broadcast Notifikasi ke Semua Pengguna" to "Send Broadcast Notification to All Users",
+        "Kode Otoritas disimpan!" to "Authority Code saved!",
+        "Kode dihapus!" to "Code deleted!",
+        "Kode tidak boleh kosong!" to "Code cannot be empty!",
+        "Koreksi transaksi berhasil diperbarui!" to "Transaction correction successfully updated!",
+        "LUNAS" to "PAID",
+        "Lainnya" to "Others",
+        "Langganan Anda telah berakhir. Perpanjang sekarang" to "Your subscription has expired. Renew now",
+        "Lihat Laporan" to "View Report",
+        "Lihat Semua" to "View All",
+        "Logo berhasil disimpan!" to "Logo successfully saved!",
+        "Lupa Password?" to "Forgot Password?",
+        "Maaf Username Tidak Tersedia!" to "Sorry, Username is Not Available!",
+        "Makanan" to "Food",
+        "Manajemen Cabang & Stok" to "Branch & Stock Management",
+        "Memproses pengiriman broadcast..." to "Processing broadcast sending...",
+        "Minimal 6 karakter" to "Minimum 6 characters",
+        "Minuman" to "Beverage",
+        "MissingPermission" to "Missing Permission",
+        "Mulai Simpan" to "Start Saving",
+        "Mutasi penyesuaian stok" to "Stock adjustment mutation",
+        "NAMA BARANG / PRODUK" to "ITEM / PRODUCT NAME",
+        "Nama Kasir" to "Cashier Name",
+        "Nama toko tidak boleh kosong!" to "Store name cannot be empty!",
+        "PAS" to "EXACT",
+        "Pakaian" to "Clothing",
+        "Pantau persediaan stok minimum dan kelola banyak cabang usaha secara realtime langsung dari genggaman Anda." to "Monitor minimum stock levels and manage multiple branches in real-time from your hand.",
+        "Password" to "Password",
+        "Password Baru / Ubah" to "New / Change Password",
+        "Password Kasir" to "Cashier Password",
+        "Password minimal 6 karakter!" to "Password must be at least 6 characters!",
+        "Pengeluaran berhasil dicatat!" to "Expense successfully recorded!",
+        "Perbarui nama, login ID (username), dan password untuk kasir Anda." to "Update name, login ID (username), and password for your cashier.",
+        "Peringatan Kedaluwarsa Produk!" to "Product Expiration Warning!",
+        "Pilih / Tambah Pelanggan Sekarang" to "Select / Add Customer Now",
+        "Pilih Pelanggan Loyalty Hub" to "Select Loyalty Hub Customer",
+        "Pilih Siklus Tagihan:" to "Select Billing Cycle:",
+        "Pilih Tanggal Kedaluwarsa" to "Select Expiration Date",
+        "Poin tidak cukup!" to "Not enough points!",
+        "Restore Data" to "Restore Data",
+        "Satuan" to "Unit",
+        "Selesai" to "Finished",
+        "Seluruh log penjualan kasir dan penyesuaian resupply tercatat lengkap di riwayat ini." to "All cashier sales logs and resupply adjustments are fully recorded in this history.",
+        "Sembunyikan Sesi Shift Kasir" to "Hide Cashier Shift Session",
+        "Semua data lokal berhasil dipulihkan dari Server Cloud!" to "All local data successfully restored from Cloud Server!",
+        "Semua kolom formulir harus diisi!" to "All form fields must be filled!",
+        "Semua kolom harus diisi!" to "All fields must be filled!",
+        "Semua kolom wajib diisi!" to "All fields are required!",
+        "Silakan pilih foto QRIS terlebih dahulu" to "Please select a QRIS photo first",
+        "Simpan Akun" to "Save Account",
+        "Simulasi gagal" to "Simulation failed",
+        "Sinkronkan Kode ke Akun User" to "Sync Code to User Account",
+        "Status Aktif" to "Active Status",
+        "Stok Opname fisik otomatis dengan sinkronisasi penyesuaian (Selisih Hitung) hanya tersedia untuk premium!" to "Physical Stock Opname with adjustment synchronization (Count Difference) is only available for premium!",
+        "Struk tidak boleh kosong! Hapus transaksi jika ingin membatalkan." to "Receipt cannot be empty! Delete transaction if you want to cancel.",
+        "Tambah Pelanggan" to "Add Customer",
+        "Tambah Pelanggan Baru" to "Add New Customer",
+        "Tambah Produk" to "Add Product",
+        "Tidak Terbatas" to "Unlimited",
+        "Tipe Notifikasi:" to "Notification Type:",
+        "Transaksi Instan & Barcode" to "Instant & Barcode Transactions",
+        "Update" to "Update",
+        "belum" to "not yet",
+        "contoh: Budi Santoso" to "e.g., Budi Santoso",
+        "contoh: budi_kasir" to "e.g., budi_cashier",
+        "jumlah" to "amount",
+        "lunas" to "paid"
     )
 
     private val sortedEnEntries = enMap.entries.sortedByDescending { it.key.length }
@@ -815,6 +970,84 @@ object Translator {
         
         // 2. Handle pattern matches cleanly by translating substrings step by step
         var result = trimmed
+
+        if (result.endsWith(" Transaksi", ignoreCase = true)) {
+            val count = result.substringBeforeLast(" Transaksi")
+            result = "$count Transactions"
+        } else if (result.endsWith(" Akun", ignoreCase = true)) {
+            val count = result.substringBeforeLast(" Akun")
+            result = "$count Accounts"
+        } else if (result.endsWith(" Poin", ignoreCase = true)) {
+            val count = result.substringBeforeLast(" Poin")
+            result = "$count Points"
+        } else if (result.startsWith("Aktif hingga:", ignoreCase = true)) {
+            result = "Active until: " + result.substringAfter("Aktif hingga:")
+        } else if (result.contains("tidak ditemukan!", ignoreCase = true)) {
+            result = result.replace("tidak ditemukan!", "not found!", ignoreCase = true)
+        } else if (result.startsWith("Belum Lunas", ignoreCase = true)) {
+            result = result.replace("Belum Lunas", "Unpaid", ignoreCase = true)
+        } else if (result.startsWith("Daftar Kode Aktivasi", ignoreCase = true)) {
+            result = result.replace("Daftar Kode Aktivasi", "Activation Codes List", ignoreCase = true)
+        } else if (result.contains("Minus (", ignoreCase = true)) {
+            result = result.replace("Minus (", "Negative (", ignoreCase = true)
+        } else if (result.startsWith("Dibuat:", ignoreCase = true)) {
+            result = "Created: " + result.substringAfter("Dibuat:")
+        } else if (result.startsWith("Sisa Stok:", ignoreCase = true)) {
+            result = "Remaining Stock: " + result.substringAfter("Sisa Stok:")
+        } else if (result.startsWith("Stok:", ignoreCase = true)) {
+            result = "Stock: " + result.substringAfter("Stok:")
+        } else if (result.startsWith("Sistem Stok:", ignoreCase = true)) {
+            result = "Stock System: " + result.substringAfter("Sistem Stok:")
+        } else if (result.startsWith("Staf Kasir Terhubung", ignoreCase = true)) {
+            result = result.replace("Staf Kasir Terhubung", "Connected Cashier Staff", ignoreCase = true)
+        } else if (result.startsWith("Sudah Lunas", ignoreCase = true)) {
+            result = result.replace("Sudah Lunas", "Fully Paid", ignoreCase = true)
+        } else if (result.startsWith("Total Transaksi:", ignoreCase = true)) {
+            result = "Total Transactions: " + result.substringAfter("Total Transaksi:").replace("kali", "times", ignoreCase = true)
+        } else if (result.startsWith("Tukar Loyalty Poin", ignoreCase = true)) {
+            result = result.replace("Tukar Loyalty Poin", "Redeem Loyalty Points", ignoreCase = true).replace("Poin", "Points", ignoreCase = true).replace("Maks", "Max", ignoreCase = true)
+        } else if (result.startsWith("Versi Terbaru Tersedia:", ignoreCase = true)) {
+            result = "New Version Available: " + result.substringAfter("Versi Terbaru Tersedia:")
+        } else if (result.startsWith("Waktu Cetak Dokumen:", ignoreCase = true)) {
+            result = "Document Print Time: " + result.substringAfter("Waktu Cetak Dokumen:")
+        } else if (result.contains("AKTIF S/D", ignoreCase = true)) {
+            result = result.replace("AKTIF S/D", "ACTIVE UNTIL", ignoreCase = true).replace("HARI LAGI", "DAYS LEFT", ignoreCase = true)
+        } else if (result.contains("STATUS: AKTIF", ignoreCase = true)) {
+            result = result.replace("STATUS: AKTIF", "STATUS: ACTIVE", ignoreCase = true).replace("Masa Aktif s/d", "Active period until", ignoreCase = true).replace("Hari Lagi", "Days Left", ignoreCase = true)
+        } else if (result.contains("sukses ditambahkan!", ignoreCase = true)) {
+            result = result.replace("sukses ditambahkan!", "successfully added!", ignoreCase = true)
+        } else if (result.contains("ditambahkan ke keranjang", ignoreCase = true)) {
+            result = result.replace("ditambahkan ke keranjang", "added to cart", ignoreCase = true).replace("Banyaknya", "Qty", ignoreCase = true)
+        } else if (result.startsWith("Berhasil melampirkan", ignoreCase = true)) {
+            result = "Successfully attached " + result.substringAfter("Berhasil melampirkan").replace("foto produk!", "product photos!", ignoreCase = true)
+        } else if (result.startsWith("Gagal mencatat pengeluaran:", ignoreCase = true)) {
+            result = "Failed to record expense: " + result.substringAfter("Gagal mencatat pengeluaran:")
+        } else if (result.startsWith("Gagal mencatatkan pengeluaran:", ignoreCase = true)) {
+            result = "Failed to record expense: " + result.substringAfter("Gagal mencatatkan pengeluaran:")
+        } else if (result.startsWith("Gagal menyimpan pengeluaran:", ignoreCase = true)) {
+            result = "Failed to save expense: " + result.substringAfter("Gagal menyimpan pengeluaran:")
+        } else if (result.startsWith("Gagal memuat billing:", ignoreCase = true)) {
+            result = "Failed to load billing: " + result.substringAfter("Gagal memuat billing:")
+        } else if (result.startsWith("Simulsi: Berhasil mengaktifkan", ignoreCase = true) or result.startsWith("Simulasi: Berhasil mengaktifkan", ignoreCase = true)) {
+            result = result.replace("Berhasil mengaktifkan", "Successfully activated", ignoreCase = true).replace("Bulanan", "Monthly", ignoreCase = true).replace("Tahunan", "Annual", ignoreCase = true)
+        } else if (result.startsWith("Subscription", ignoreCase = true) and result.contains("berhasil diubah!", ignoreCase = true)) {
+            result = result.replace("berhasil diubah!", "successfully changed!", ignoreCase = true)
+        } else if (result.startsWith("Sukses mengupload", ignoreCase = true)) {
+            result = result.replace("Sukses mengupload", "Successfully uploaded", ignoreCase = true).replace("produk ke Cabang", "products to Branch", ignoreCase = true)
+        } else if (result.startsWith("Sukses: Kode", ignoreCase = true) and result.contains("berhasil dibuat!", ignoreCase = true)) {
+            result = result.replace("berhasil dibuat!", "successfully created!", ignoreCase = true)
+        } else if (result.startsWith("Sukses: Semua kode lama berhasil disinkronkan ke user!", ignoreCase = true)) {
+            result = "Success: All legacy codes successfully synced to user!"
+        } else if (result.startsWith("Tukar Hadiah:", ignoreCase = true)) {
+            result = "Redeem Reward: " + result.substringAfter("Tukar Hadiah:").replace("Pelanggan", "Customer", ignoreCase = true)
+        } else if (result.startsWith("Saran: Untuk mengoreksi transaksi ini", ignoreCase = true)) {
+            result = "Tip: To correct this transaction, open Cashier POS Sales then select the menu icon (three dots) in the top right corner."
+        } else if (result.startsWith("Semua data lokal berhasil dipulihkan", ignoreCase = true)) {
+            result = "All local data successfully restored from Cloud Server!"
+        } else if (result.contains("Ada ", ignoreCase = true) and result.contains(" produk yang telah kedaluwarsa", ignoreCase = true)) {
+            result = "There are " + result.substringAfter("Ada ").replace("produk yang telah kedaluwarsa atau mendekati kedaluwarsa. Klik untuk melihat daftar.", "expired or near-expiration products. Click to view the list.", ignoreCase = true)
+        }
+
         if (result.startsWith("Terakhir Backup:", ignoreCase = true)) {
             val suffix = result.substringAfter("Terakhir Backup:")
             val fallbackSuffix = if (suffix.contains("Belum pernah", ignoreCase = true)) "Never" else suffix

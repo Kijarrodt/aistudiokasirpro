@@ -1,5 +1,6 @@
 package com.kasirpro.app.ui.screens
 
+import com.kasirpro.app.util.Translator
 import com.kasirpro.app.util.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -68,19 +69,19 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
     val isKasir = currentUserState?.role == "kasir"
     val isPremiumState = currentUserState?.isPremium ?: false
 
-    var activeTab by remember { mutableStateOf("PRODUK") } // "PRODUK", "STOK", "RIWAYAT"
+    var activeTab by remember { mutableStateOf(Translator.t(Translator.t("PRODUK"))) } // "PRODUK", Translator.t("STOK"), Translator.t("RIWAYAT")
 
     var searchQueryProduct by remember { mutableStateOf("") }
-    var selectedCategoryFilter by remember { mutableStateOf("Semua") }
+    var selectedCategoryFilter by remember { mutableStateOf(Translator.t("Semua")) }
 
     val categories = remember(productsList) {
-        listOf("Semua") + productsList.map { it.kategori }.filter { it.isNotBlank() }.distinct()
+        listOf(Translator.t("Semua")) + productsList.map { it.kategori }.filter { it.isNotBlank() }.distinct()
     }
 
     val filteredProducts = remember(productsList, searchQueryProduct, selectedCategoryFilter) {
         productsList.filter { prod ->
             val matchName = prod.nama.contains(searchQueryProduct, ignoreCase = true)
-            val matchCat = selectedCategoryFilter == "Semua" || prod.kategori.equals(selectedCategoryFilter, ignoreCase = true)
+            val matchCat = selectedCategoryFilter == Translator.t("Semua") || prod.kategori.equals(selectedCategoryFilter, ignoreCase = true)
             matchName && matchCat
         }
     }
@@ -101,7 +102,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
             try {
                 context.contentResolver.openOutputStream(uri)?.use { out ->
                     ExcelHelper.writeProductTemplateXlsx(out)
-                    Toast.makeText(context, "Template Excel berhasil didownload!", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, Translator.t("Template Excel berhasil didownload!"), Toast.LENGTH_LONG).show()
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -125,7 +126,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
-                title = { Text("Kelola Produk & Stok", fontWeight = FontWeight.Bold) },
+                title = { Text(Translator.t("Kelola Produk & Stok"), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     if (!isKasir) {
                         IconButton(onClick = { viewModel.activeScreen.value = "home" }) {
@@ -134,7 +135,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                     }
                 },
                 actions = {
-                    if (activeTab == "PRODUK" && !isKasir) {
+                    if (activeTab == Translator.t("PRODUK") && !isKasir) {
                         Button(
                             onClick = { showBulkUploadDialog = true },
                             colors = ButtonDefaults.buttonColors(
@@ -151,14 +152,14 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Upload Massal", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text(Translator.t("Upload Massal"), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
             )
         },
         floatingActionButton = {
-            if (activeTab == "PRODUK" && !isKasir) {
+            if (activeTab == Translator.t("PRODUK") && !isKasir) {
                 FloatingActionButton(
                     onClick = { showAddProductDialog = true },
                     shape = CircleShape,
@@ -175,7 +176,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
-                        contentDescription = "Tambah Produk",
+                        contentDescription = Translator.t("Tambah Produk"),
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -191,34 +192,34 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
             // Tab Header Layouts
             TabRow(
                 selectedTabIndex = when (activeTab) {
-                    "PRODUK" -> 0
-                    "STOK" -> 1
+                    Translator.t("PRODUK") -> 0
+                    Translator.t("STOK") -> 1
                     else -> 2
                 },
                 contentColor = OrangePrimary,
                 indicator = { tabPositions ->
                     TabRowDefaults.SecondaryIndicator(
                         Modifier.tabIndicatorOffset(tabPositions[when (activeTab) {
-                            "PRODUK" -> 0
-                            "STOK" -> 1
+                            Translator.t("PRODUK") -> 0
+                            Translator.t("STOK") -> 1
                             else -> 2
                         }]),
                         color = OrangePrimary
                     )
                 }
             ) {
-                Tab(selected = activeTab == "PRODUK", onClick = { activeTab = "PRODUK" }) {
-                    Text("PRODUK", modifier = Modifier.padding(14.dp), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Tab(selected = activeTab == Translator.t(Translator.t("PRODUK")), onClick = { activeTab = "PRODUK" }) {
+                    Text(Translator.t("PRODUK"), modifier = Modifier.padding(14.dp), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 }
-                Tab(selected = activeTab == "STOK", onClick = { activeTab = "STOK" }) {
-                    Text("STOK FISIK", modifier = Modifier.padding(14.dp), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Tab(selected = activeTab == Translator.t(Translator.t("STOK")), onClick = { activeTab = "STOK" }) {
+                    Text(Translator.t("STOK FISIK"), modifier = Modifier.padding(14.dp), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 }
-                Tab(selected = activeTab == "RIWAYAT", onClick = { activeTab = "RIWAYAT" }) {
-                    Text("RIWAYAT", modifier = Modifier.padding(14.dp), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Tab(selected = activeTab == Translator.t(Translator.t("RIWAYAT")), onClick = { activeTab = "RIWAYAT" }) {
+                    Text(Translator.t("RIWAYAT"), modifier = Modifier.padding(14.dp), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 }
             }
 
-            if (activeTab == "PRODUK" || activeTab == "STOK") {
+            if (activeTab == Translator.t("PRODUK") || activeTab == Translator.t("STOK")) {
                 val totalExpiryCount by viewModel.totalExpiryWarningsCount.collectAsState()
                 val expiredList by viewModel.expiredProducts.collectAsState()
                 val nearExpiryList by viewModel.nearExpiryProducts.collectAsState()
@@ -248,7 +249,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    "Peringatan Kedaluwarsa Produk!",
+                                    Translator.t("Peringatan Kedaluwarsa Produk!"),
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF856404),
                                     fontSize = 14.sp
@@ -272,7 +273,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                     AlertDialog(
                         onDismissRequest = { showExpiryWarningDialog = false },
                         icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFD32F2F)) },
-                        title = { Text("Daftar Produk Kedaluwarsa", fontWeight = FontWeight.Bold) },
+                        title = { Text(Translator.t("Daftar Produk Kedaluwarsa"), fontWeight = FontWeight.Bold) },
                         text = {
                             LazyColumn(
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -280,7 +281,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                             ) {
                                 if (expiredList.isNotEmpty()) {
                                     item {
-                                        Text("Produk Telah Kedaluwarsa:", fontWeight = FontWeight.Bold, color = Color(0xFFD32F2F), fontSize = 13.sp)
+                                        Text(Translator.t("Produk Telah Kedaluwarsa:"), fontWeight = FontWeight.Bold, color = Color(0xFFD32F2F), fontSize = 13.sp)
                                     }
                                     items(expiredList) { prod ->
                                         val sdf = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
@@ -306,7 +307,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                 if (nearExpiryList.isNotEmpty()) {
                                     item {
                                         Spacer(modifier = Modifier.height(8.dp))
-                                        Text("Produk Mendekati Kedaluwarsa:", fontWeight = FontWeight.Bold, color = Color(0xFFE65100), fontSize = 13.sp)
+                                        Text(Translator.t("Produk Mendekati Kedaluwarsa:"), fontWeight = FontWeight.Bold, color = Color(0xFFE65100), fontSize = 13.sp)
                                     }
                                     items(nearExpiryList) { prod ->
                                         val sdf = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
@@ -348,7 +349,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                     OutlinedTextField(
                         value = searchQueryProduct,
                         onValueChange = { searchQueryProduct = it },
-                        placeholder = { Text("Cari nama produk...", fontSize = 13.sp) },
+                        placeholder = { Text(Translator.t("Cari nama produk..."), fontSize = 13.sp) },
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
                         trailingIcon = {
                             if (searchQueryProduct.isNotBlank()) {
@@ -400,18 +401,18 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
             }
 
             when (activeTab) {
-                "PRODUK" -> {
+                Translator.t("PRODUK") -> {
                     if (productsList.isEmpty()) {
                         EmptyStateIllustration(
-                            title = "Produk Belum Ada",
-                            desc = "Klik tombol '+' di pojok kanan atas untuk menambahkan produk jualan utama Anda!"
+                            title = Translator.t("Produk Belum Ada"),
+                            desc = Translator.t("Klik tombol '+' di pojok kanan atas untuk menambahkan produk jualan utama Anda!")
                         )
                     } else if (filteredProducts.isEmpty()) {
                         Box(
                             modifier = Modifier.fillMaxSize().padding(24.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("Tidak ada produk yang cocok dengan pencarian atau kategori Anda.", color = Color.Gray, fontSize = 12.sp, textAlign = TextAlign.Center)
+                            Text(Translator.t("Tidak ada produk yang cocok dengan pencarian atau kategori Anda."), color = Color.Gray, fontSize = 12.sp, textAlign = TextAlign.Center)
                         }
                     } else {
                         LazyColumn(
@@ -477,7 +478,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                                     Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit", tint = OrangePrimary)
                                                 }
                                                 IconButton(onClick = { viewModel.deleteProduct(prod.id) }) {
-                                                    Icon(imageVector = Icons.Default.Delete, contentDescription = "Hapus", tint = Color.Red)
+                                                    Icon(imageVector = Icons.Default.Delete, contentDescription = Translator.t("Hapus"), tint = Color.Red)
                                                 }
                                             }
                                         }
@@ -487,7 +488,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                         }
                     }
                 }
-                "STOK" -> {
+                Translator.t("STOK") -> {
                     LazyColumn(
                         contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 88.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -516,7 +517,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                                 colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
                                                 shape = RoundedCornerShape(8.dp)
                                             ) {
-                                                Text("TAMBAH", fontSize = 11.sp)
+                                                Text(Translator.t("TAMBAH"), fontSize = 11.sp)
                                             }
 
                                             Button(
@@ -524,7 +525,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                                     if (isPremiumState) {
                                                         showOpnameDialogItem = prod
                                                     } else {
-                                                        viewModel.showLimitPopup.value = "Stok Opname fisik otomatis dengan sinkronisasi penyesuaian (Selisih Hitung) hanya tersedia untuk premium!"
+                                                        viewModel.showLimitPopup.value = Translator.t("Stok Opname fisik otomatis dengan sinkronisasi penyesuaian (Selisih Hitung) hanya tersedia untuk premium!")
                                                     }
                                                 },
                                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF334155)),
@@ -540,7 +541,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                                 .background(Color(0xFFF1F5F9))
                                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                                         ) {
-                                            Text("Lihat Stok Saja", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                                            Text(Translator.t("Lihat Stok Saja"), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
                                         }
                                     }
                                 }
@@ -550,7 +551,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                 }
                 else -> { // RIWAYAT STOK HISTORY REC
                     if (stockHistList.isEmpty()) {
-                        EmptyStateIllustration(title = "Belum Ada Mutasi", desc = "Seluruh log penjualan kasir dan penyesuaian resupply tercatat lengkap di riwayat ini.")
+                        EmptyStateIllustration(title = Translator.t("Belum Ada Mutasi"), desc = Translator.t("Seluruh log penjualan kasir dan penyesuaian resupply tercatat lengkap di riwayat ini."))
                     } else {
                         LazyColumn(
                             contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 88.dp),
@@ -559,8 +560,8 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                             items(stockHistList) { log ->
                                 val matchedProd = productsList.find { it.id == log.productId }
                                 val colorLabel = when (log.tipe) {
-                                    "masuk" -> Color(0xFF15803D)
-                                    "keluar" -> Color(0xFFB91C1C)
+                                    Translator.t("masuk") -> Color(0xFF15803D)
+                                    Translator.t("keluar") -> Color(0xFFB91C1C)
                                     else -> OrangePrimary
                                 }
                                 Card(
@@ -573,8 +574,8 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Column {
-                                            Text(matchedProd?.nama ?: "Produk Terhapus", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                            Text(log.keterangan ?: "Mutasi penyesuaian stok", fontSize = 11.sp, color = Color.Gray)
+                                            Text(matchedProd?.nama ?: Translator.t("Produk Terhapus"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                            Text(log.keterangan ?: Translator.t("Mutasi penyesuaian stok"), fontSize = 11.sp, color = Color.Gray)
                                         }
 
                                         Column(horizontalAlignment = Alignment.End) {
@@ -637,12 +638,12 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                         if (base64 != null) {
                             addUploadedFotoUrl = base64
                         } else {
-                            Toast.makeText(context, "Foto terlalu besar. Pilih foto yang lebih kecil.", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, Translator.t("Foto terlalu besar. Pilih foto yang lebih kecil."), Toast.LENGTH_LONG).show()
                             addImgUri = null
                         }
                     } catch (e: Exception) {
                         e.printStackTrace()
-                        Toast.makeText(context, "Gagal memproses foto", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, Translator.t("Gagal memproses foto"), Toast.LENGTH_SHORT).show()
                     } finally {
                         isUploadingPhoto = false
                     }
@@ -666,11 +667,11 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                             addUploadedFotoUrl = base64
                             addImgBytes = bytes
                         } else {
-                            Toast.makeText(context, "Foto terlalu besar. Pilih foto yang lebih kecil.", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, Translator.t("Foto terlalu besar. Pilih foto yang lebih kecil."), Toast.LENGTH_LONG).show()
                         }
                     } catch (e: Exception) {
                         e.printStackTrace()
-                        Toast.makeText(context, "Gagal memproses foto", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, Translator.t("Gagal memproses foto"), Toast.LENGTH_SHORT).show()
                     } finally {
                         isUploadingPhoto = false
                     }
@@ -682,7 +683,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
 
         AlertDialog(
             onDismissRequest = { if (!isUploadingPhoto) showAddProductDialog = false },
-            title = { Text("Tambah Produk Jualan Baru", fontWeight = FontWeight.Bold) },
+            title = { Text(Translator.t("Tambah Produk Jualan Baru"), fontWeight = FontWeight.Bold) },
             text = {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -727,7 +728,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(imageVector = Icons.Default.CloudUpload, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(36.dp))
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text("Pilih / Ambil Foto Produk", fontSize = 11.sp, color = Color.Gray)
+                                Text(Translator.t("Pilih / Ambil Foto Produk"), fontSize = 11.sp, color = Color.Gray)
                             }
                         }
 
@@ -817,7 +818,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                 Icon(imageVector = androidx.compose.material.icons.Icons.Default.Lock, contentDescription = "Lock", tint = MaterialTheme.colorScheme.primary)
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(
-                                    text = "Aktifkan Fitur Harga Grosir & Kedaluwarsa (Profesional/Bisnis)",
+                                    text = Translator.t("Aktifkan Fitur Harga Grosir & Kedaluwarsa (Profesional/Bisnis)"),
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
@@ -825,7 +826,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                         }
                     } else {
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                        Text("Pengaturan Grosir", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                        Text(Translator.t("Pengaturan Grosir"), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             OutlinedTextField(
                                 value = addWholesalePrice,
@@ -844,7 +845,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                         }
 
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                        Text("Pengaturan Kedaluwarsa", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                        Text(Translator.t("Pengaturan Kedaluwarsa"), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
                         
                         val calendar = java.util.Calendar.getInstance()
                         if (addExpiryDate != null) {
@@ -875,9 +876,9 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                             Text(
                                 text = if (addExpiryDate != null) {
                                     val sdf = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
-                                    "Kedaluwarsa: " + sdf.format(java.util.Date(addExpiryDate!!))
+                                    Translator.t("Kedaluwarsa: ") + sdf.format(java.util.Date(addExpiryDate!!))
                                 } else {
-                                    "Pilih Tanggal Kedaluwarsa"
+                                    Translator.t("Pilih Tanggal Kedaluwarsa")
                                 },
                                 color = if (addExpiryDate != null) Color.Black else Color.Gray,
                                 modifier = Modifier.weight(1f)
@@ -908,7 +909,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = OrangePrimary)
-                            Text("Memproses foto produk...", fontSize = 11.sp, color = Color.Gray)
+                            Text(Translator.t("Memproses foto produk..."), fontSize = 11.sp, color = Color.Gray)
                         }
                     }
                 }
@@ -933,7 +934,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                         }
 
                         if (addNama.isBlank() || addHargaJual.isBlank() || addHargaModal.isBlank() || addStok.isBlank() || addMinStok.isBlank()) {
-                            Toast.makeText(context, "Silakan isi semua data wajib!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, Translator.t("Silakan isi semua data wajib!"), Toast.LENGTH_SHORT).show()
                             return@Button
                         }
 
@@ -956,7 +957,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                 expiryReminderDays = addExpiryReminderDays.toIntOrNull() ?: 7
                             )
                             showAddProductDialog = false
-                            Toast.makeText(context, "Menyimpan Produk", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, Translator.t("Menyimpan Produk"), Toast.LENGTH_SHORT).show()
                         }
                     },
                     enabled = !isUploadingPhoto,
@@ -974,7 +975,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
         if (showAddPhotoSourceDialog) {
             AlertDialog(
                 onDismissRequest = { showAddPhotoSourceDialog = false },
-                title = { Text("Pilih Sumber Foto", fontWeight = FontWeight.Bold) },
+                title = { Text(Translator.t("Pilih Sumber Foto"), fontWeight = FontWeight.Bold) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Card(
@@ -991,7 +992,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                             ) {
                                 Icon(Icons.Default.PhotoCamera, contentDescription = null, tint = OrangePrimary)
                                 Spacer(modifier = Modifier.width(12.dp))
-                                Text("Ambil Foto dari Kamera", fontWeight = FontWeight.Medium)
+                                Text(Translator.t("Ambil Foto dari Kamera"), fontWeight = FontWeight.Medium)
                             }
                         }
 
@@ -1009,7 +1010,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                             ) {
                                 Icon(Icons.Default.Photo, contentDescription = null, tint = OrangePrimary)
                                 Spacer(modifier = Modifier.width(12.dp))
-                                Text("Pilih dari Galeri", fontWeight = FontWeight.Medium)
+                                Text(Translator.t("Pilih dari Galeri"), fontWeight = FontWeight.Medium)
                             }
                         }
                     }
@@ -1077,7 +1078,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                     onClick = {
                         val qty = restockAmount.toIntOrNull() ?: 0
                         if (qty > 0) {
-                            viewModel.updateProductStock(prod.id, "masuk", qty, restockNote)
+                            viewModel.updateProductStock(prod.id, Translator.t("masuk"), qty, restockNote)
                         }
                         showRestockDialogItem = null
                     },
@@ -1096,7 +1097,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
     if (showOpnameDialogItem != null) {
         val prod = showOpnameDialogItem!!
         var physicalAmount by remember { mutableStateOf("") }
-        var opnameNote by remember { mutableStateOf("Opname stok akhir bulan") }
+        var opnameNote by remember { mutableStateOf(Translator.t("Opname stok akhir bulan")) }
 
         AlertDialog(
             onDismissRequest = { showOpnameDialogItem = null },
@@ -1175,12 +1176,12 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                         if (base64 != null) {
                             eFotoUrlState = base64
                         } else {
-                            Toast.makeText(context, "Foto terlalu besar. Pilih foto yang lebih kecil.", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, Translator.t("Foto terlalu besar. Pilih foto yang lebih kecil."), Toast.LENGTH_LONG).show()
                             eImgUri = null
                         }
                     } catch (e: Exception) {
                         e.printStackTrace()
-                        Toast.makeText(context, "Gagal memproses foto", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, Translator.t("Gagal memproses foto"), Toast.LENGTH_SHORT).show()
                     } finally {
                         isEditingUploading = false
                     }
@@ -1205,11 +1206,11 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                             eFotoUrlState = base64
                             eImgBytes = bytes
                         } else {
-                            Toast.makeText(context, "Foto terlalu besar. Pilih foto yang lebih kecil.", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, Translator.t("Foto terlalu besar. Pilih foto yang lebih kecil."), Toast.LENGTH_LONG).show()
                         }
                     } catch (e: Exception) {
                         e.printStackTrace()
-                        Toast.makeText(context, "Gagal memproses foto", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, Translator.t("Gagal memproses foto"), Toast.LENGTH_SHORT).show()
                     } finally {
                         isEditingUploading = false
                     }
@@ -1219,7 +1220,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
 
         AlertDialog(
             onDismissRequest = { if (!isEditingUploading) editProductItem = null },
-            title = { Text("Edit Detail Produk", fontWeight = FontWeight.Bold) },
+            title = { Text(Translator.t("Edit Detail Produk"), fontWeight = FontWeight.Bold) },
             text = {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -1290,7 +1291,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(imageVector = Icons.Default.PhotoCamera, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(36.dp))
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text("Ganti atau Tambah Foto Produk", fontSize = 11.sp, color = Color.Gray)
+                                Text(Translator.t("Ganti atau Tambah Foto Produk"), fontSize = 11.sp, color = Color.Gray)
                             }
                         }
 
@@ -1367,7 +1368,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                 Icon(imageVector = androidx.compose.material.icons.Icons.Default.Lock, contentDescription = "Lock", tint = MaterialTheme.colorScheme.primary)
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(
-                                    text = "Aktifkan Fitur Harga Grosir & Kedaluwarsa (Profesional/Bisnis)",
+                                    text = Translator.t("Aktifkan Fitur Harga Grosir & Kedaluwarsa (Profesional/Bisnis)"),
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
@@ -1375,7 +1376,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                         }
                     } else {
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                        Text("Pengaturan Grosir", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                        Text(Translator.t("Pengaturan Grosir"), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             OutlinedTextField(
                                 value = eWholesalePrice,
@@ -1394,7 +1395,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                         }
 
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                        Text("Pengaturan Kedaluwarsa", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                        Text(Translator.t("Pengaturan Kedaluwarsa"), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
                         
                         val calendar = java.util.Calendar.getInstance()
                         if (eExpiryDate != null) {
@@ -1425,9 +1426,9 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                             Text(
                                 text = if (eExpiryDate != null) {
                                     val sdf = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
-                                    "Kedaluwarsa: " + sdf.format(java.util.Date(eExpiryDate!!))
+                                    Translator.t("Kedaluwarsa: ") + sdf.format(java.util.Date(eExpiryDate!!))
                                 } else {
-                                    "Pilih Tanggal Kedaluwarsa"
+                                    Translator.t("Pilih Tanggal Kedaluwarsa")
                                 },
                                 color = if (eExpiryDate != null) Color.Black else Color.Gray,
                                 modifier = Modifier.weight(1f)
@@ -1458,7 +1459,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = OrangePrimary)
-                            Text("Menyimpan perubahan dan foto...", fontSize = 11.sp, color = Color.Gray)
+                            Text(Translator.t("Menyimpan perubahan dan foto..."), fontSize = 11.sp, color = Color.Gray)
                         }
                     }
                 }
@@ -1467,7 +1468,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                 Button(
                     onClick = {
                         if (eNama.isBlank() || eHargaJual.isBlank() || eHargaModal.isBlank() || eStok.isBlank() || eMinStok.isBlank()) {
-                            Toast.makeText(context, "Silakan lengkapi semua parameter wajib!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, Translator.t("Silakan lengkapi semua parameter wajib!"), Toast.LENGTH_SHORT).show()
                             return@Button
                         }
 
@@ -1488,7 +1489,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                             viewModel.editProduct(updated)
                             isEditingUploading = false
                             editProductItem = null
-                            Toast.makeText(context, "Menyimpan Produk", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, Translator.t("Menyimpan Produk"), Toast.LENGTH_SHORT).show()
                         }
                     },
                     enabled = !isEditingUploading,
@@ -1505,7 +1506,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
         if (showEditPhotoSourceDialog) {
             AlertDialog(
                 onDismissRequest = { showEditPhotoSourceDialog = false },
-                title = { Text("Pilih Sumber Foto", fontWeight = FontWeight.Bold) },
+                title = { Text(Translator.t("Pilih Sumber Foto"), fontWeight = FontWeight.Bold) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Card(
@@ -1522,7 +1523,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                             ) {
                                 Icon(Icons.Default.PhotoCamera, contentDescription = null, tint = OrangePrimary)
                                 Spacer(modifier = Modifier.width(12.dp))
-                                Text("Ambil Foto dari Kamera", fontWeight = FontWeight.Medium)
+                                Text(Translator.t("Ambil Foto dari Kamera"), fontWeight = FontWeight.Medium)
                             }
                         }
 
@@ -1540,7 +1541,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                             ) {
                                 Icon(Icons.Default.Photo, contentDescription = null, tint = OrangePrimary)
                                 Spacer(modifier = Modifier.width(12.dp))
-                                Text("Pilih dari Galeri", fontWeight = FontWeight.Medium)
+                                Text(Translator.t("Pilih dari Galeri"), fontWeight = FontWeight.Medium)
                             }
                         }
                     }
@@ -1590,7 +1591,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                 validateRow(row, index + 2)
                             }
                         } else {
-                            Toast.makeText(context, "File kosong atau tidak dapat di-parse", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, Translator.t("File kosong atau tidak dapat di-parse"), Toast.LENGTH_SHORT).show()
                         }
                     }
                     val isSpreadsheet = excelFileName.endsWith(".xlsx", ignoreCase = true)
@@ -1621,7 +1622,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(imageVector = Icons.Default.CloudUpload, contentDescription = null, tint = OrangePrimary)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Upload Produk Massal (.xlsx / .csv)", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text(Translator.t("Upload Produk Massal (.xlsx / .csv)"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 }
             },
             text = {
@@ -1632,7 +1633,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                         .verticalScroll(rememberScrollState())
                 ) {
                     // Step 1: Branch Picker
-                    Text("1. Pilih Cabang Toko Tujuan", fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = Color.Gray)
+                    Text(Translator.t("1. Pilih Cabang Toko Tujuan"), fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = Color.Gray)
                     Box(modifier = Modifier.fillMaxWidth()) {
                         var branchExpanded by remember { mutableStateOf(false) }
                         OutlinedButton(
@@ -1640,7 +1641,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(8.dp)
                         ) {
-                            Text(selectedBranch?.namaCabang ?: "Pilih Cabang...")
+                            Text(selectedBranch?.namaCabang ?: Translator.t("Pilih Cabang..."))
                         }
                         DropdownMenu(expanded = branchExpanded, onDismissRequest = { branchExpanded = false }) {
                             destBranches.forEach { br ->
@@ -1661,7 +1662,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("2. Unduh Template Resmi", fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = Color.Gray)
+                        Text(Translator.t("2. Unduh Template Resmi"), fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = Color.Gray)
                         TextButton(
                             onClick = { templateSaverLauncher.launch("template_upload_massal_kasirpro.xlsx") },
                             colors = ButtonDefaults.textButtonColors(contentColor = OrangePrimary)
@@ -1673,7 +1674,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                     }
 
                     // Step 3: Select Spreadsheet File
-                    Text("3. Pilih Spreadsheet (.xlsx / .csv)", fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = Color.Gray)
+                    Text(Translator.t("3. Pilih Spreadsheet (.xlsx / .csv)"), fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = Color.Gray)
                     OutlinedButton(
                         onClick = { filePickerLauncher.launch("*/*") },
                         modifier = Modifier.fillMaxWidth(),
@@ -1682,24 +1683,24 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                     ) {
                         Icon(imageVector = Icons.Default.InsertDriveFile, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(if (excelFileUri != null) excelFileName else "Pilih File Excel / CSV")
+                        Text(if (excelFileUri != null) excelFileName else Translator.t("Pilih File Excel / CSV"))
                     }
 
                     // Step 4: Product Photo Integration Guideline
-                    Text("4. Foto Produk Langsung Di Dalam Spreadsheet", fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = Color.Gray)
+                    Text(Translator.t("4. Foto Produk Langsung Di Dalam Spreadsheet"), fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = Color.Gray)
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                     ) {
                         Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(
-                                "Foto produk wajib disatukan di dalam file Excel / CSV:",
+                                Translator.t("Foto produk wajib disatukan di dalam file Excel / CSV:"),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = OrangePrimary
                             )
                             Text(
-                                "• Untuk file Excel (.xlsx): Anda bisa langsung menyisipkan/menyematkan gambar ke dalam sel baris produk Anda.\n• Untuk file CSV (.csv): Anda dapat menuliskan tautan atau link URL gambar publik (http/https) atau teks Base64 pada kolom 'Keterangan Foto'.",
+                                Translator.t("• Untuk file Excel (.xlsx): Anda bisa langsung menyisipkan/menyematkan gambar ke dalam sel baris produk Anda.\n• Untuk file CSV (.csv): Anda dapat menuliskan tautan atau link URL gambar publik (http/https) atau teks Base64 pada kolom 'Keterangan Foto'."),
                                 fontSize = 10.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -1798,7 +1799,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                     )
                                     
                                     Text(
-                                        text = "Mengunggah Produk Massal",
+                                        text = Translator.t("Mengunggah Produk Massal"),
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 16.sp,
                                         color = MaterialTheme.colorScheme.onSurface
@@ -1856,7 +1857,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                         }
 
                         if (selectedBranch == null) {
-                            Toast.makeText(context, "Silakan pilih cabang tujuan!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, Translator.t("Silakan pilih cabang tujuan!"), Toast.LENGTH_SHORT).show()
                             return@Button
                         }
 
@@ -1876,7 +1877,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                 var imageUrl: String? = null
                                 
                                 // Priority 1: Check if the spreadsheet cell directly has an image URL link or Base64 string
-                                if (p.fotoName != null && (p.fotoName.startsWith("http://", ignoreCase = true) || p.fotoName.startsWith("https://", ignoreCase = true) || p.fotoName.startsWith("data:", ignoreCase = true))) {
+                                if (p.fotoName != null && (p.fotoName.startsWith("http://", ignoreCase = true) || p.fotoName.startsWith("https://", ignoreCase = true) || p.fotoName.startsWith(Translator.t("data:"), ignoreCase = true))) {
                                     imageUrl = p.fotoName
                                 } else {
                                     // Priority 2: Check embeddedPhotos extracted from XLSX directly
@@ -1975,7 +1976,7 @@ fun validateRow(row: List<String>, rowIndex: Int): ParsedBulkProduct {
 
     if (nama.isBlank()) {
         isValid = false
-        errors.add("Nama produk wajib diisi.")
+        errors.add(Translator.t("Nama produk wajib diisi."))
     }
     if (kategori.isBlank()) {
         isValid = false
@@ -1985,7 +1986,7 @@ fun validateRow(row: List<String>, rowIndex: Int): ParsedBulkProduct {
     val jPrice = rawHargaJual.toDoubleOrNull()
     if (jPrice == null || jPrice <= 0.0) {
         isValid = false
-        errors.add("Harga jual harus angka valid > 0.")
+        errors.add(Translator.t("Harga jual harus angka valid > 0."))
     }
 
     val mPrice = rawHargaModal.toDoubleOrNull() ?: 0.0
@@ -1993,10 +1994,10 @@ fun validateRow(row: List<String>, rowIndex: Int): ParsedBulkProduct {
     val startStock = rawStok.toIntOrNull()
     if (startStock == null) {
         isValid = false
-        errors.add("Stok awal harus angka.")
+        errors.add(Translator.t("Stok awal harus angka."))
     } else if (startStock < 0) {
         isValid = false
-        errors.add("Stok awal tidak boleh negatif.")
+        errors.add(Translator.t("Stok awal tidak boleh negatif."))
     }
 
     val minSt = rawMinStok.toIntOrNull() ?: 5
@@ -2049,7 +2050,7 @@ fun CategorySelectionField(
     onValueChange: (String) -> Unit,
     productsList: List<ProductEntity>
 ) {
-    val predefined = listOf("Makanan", "Minuman", "Snack", "Rokok", "Sembako", "Kebersihan", "Kesehatan", "Elektronik", "Pakaian", "Alat Tulis", "Lainnya")
+    val predefined = listOf(Translator.t("Makanan"), Translator.t("Minuman"), "Snack", "Rokok", "Sembako", "Kebersihan", "Kesehatan", Translator.t("Elektronik"), Translator.t("Pakaian"), "Alat Tulis", Translator.t("Lainnya"))
     
     // Sort historic by frequency
     val categoryFrequencies = productsList.map { it.kategori }
@@ -2118,7 +2119,7 @@ fun SatuanSelectionField(
     value: String,
     onValueChange: (String) -> Unit
 ) {
-    val predefinedUnits = listOf("Pcs", "Kg", "Gram", "Liter", "Ml", "Lusin", "Karton", "Pack", "Botol", "Sachet", "Lainnya")
+    val predefinedUnits = listOf("Pcs", "Kg", "Gram", "Liter", "Ml", "Lusin", "Karton", "Pack", "Botol", "Sachet", Translator.t("Lainnya"))
 
     Column(modifier = Modifier.fillMaxWidth()) {
         OutlinedTextField(

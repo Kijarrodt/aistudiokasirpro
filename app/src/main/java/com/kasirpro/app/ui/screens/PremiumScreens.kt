@@ -1,5 +1,6 @@
 package com.kasirpro.app.ui.screens
 
+import com.kasirpro.app.util.Translator
 import android.content.Intent
 import android.net.Uri
 import com.kasirpro.app.util.Toast
@@ -50,7 +51,7 @@ fun PremiumScreens(viewModel: KasirViewModel) {
     val user by viewModel.currentUser.collectAsState()
     val isPremium = user?.isPremium ?: false
 
-    var selectedModule by remember { mutableStateOf("LAPORAN") } // LAPORAN, HUTANG, CRM POIN
+    var selectedModule by remember { mutableStateOf(Translator.t("LAPORAN")) } // LAPORAN, HUTANG, CRM POIN
 
     val context = LocalContext.current
 
@@ -80,7 +81,7 @@ fun PremiumScreens(viewModel: KasirViewModel) {
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Menu Laporan Keuangan, dan Kelola Hutang hanya tersedia untuk pelanggan Premium Pro.",
+                    text = Translator.t("Menu Laporan Keuangan, dan Kelola Hutang hanya tersedia untuk pelanggan Premium Pro."),
                     color = Color.LightGray,
                     textAlign = TextAlign.Center,
                     fontSize = 14.sp
@@ -96,7 +97,7 @@ fun PremiumScreens(viewModel: KasirViewModel) {
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 TextButton(onClick = { viewModel.activeScreen.value = "home" }) {
-                    Text("Kembali ke Beranda", color = Color.Gray)
+                    Text(Translator.t("Kembali ke Beranda"), color = Color.Gray)
                 }
             }
         }
@@ -160,9 +161,9 @@ fun PremiumScreens(viewModel: KasirViewModel) {
                     .background(MaterialTheme.colorScheme.background)
             ) {
                 when (selectedModule) {
-                    "LAPORAN" -> PremiumLaporanTab(viewModel)
-                    "HUTANG" -> PremiumHutangTab(viewModel)
-                    "CRM POIN" -> PremiumPelangganTab(viewModel)
+                    Translator.t("LAPORAN") -> PremiumLaporanTab(viewModel)
+                    Translator.t("HUTANG") -> PremiumHutangTab(viewModel)
+                    Translator.t("CRM POIN") -> PremiumPelangganTab(viewModel)
                 }
             }
         }
@@ -191,12 +192,12 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
 
     var selectedBranchId by remember { mutableStateOf("all") }
     var selectedCashierId by remember { mutableStateOf("all") }
-    var reportInterval by remember { mutableStateOf(if (user?.isAtLeastProfesional == true) "BULANAN" else "HARIAN") } // HARIAN, MINGGUAN, BULANAN
+    var reportInterval by remember { mutableStateOf(if (user?.isAtLeastProfesional == true) Translator.t("BULANAN") else Translator.t("HARIAN")) } // HARIAN, MINGGUAN, BULANAN
     var isShiftsExpanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(isAtLeastProfesional, user) {
-        if (!isAtLeastProfesional && reportInterval == "BULANAN") {
-            reportInterval = "HARIAN"
+        if (!isAtLeastProfesional && reportInterval == Translator.t("BULANAN")) {
+            reportInterval = Translator.t("HARIAN")
         }
     }
 
@@ -252,7 +253,7 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                 if (error == null && snapshot != null) {
                     val list = snapshot.documents.map { doc ->
                         val amt = doc.getDouble("amount") 
-                            ?: doc.getDouble("jumlah") 
+                            ?: doc.getDouble(Translator.t("jumlah")) 
                             ?: doc.getDouble("nominal") 
                             ?: doc.getLong("amount")?.toDouble() 
                             ?: doc.getLong("jumlah")?.toDouble() 
@@ -322,9 +323,9 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
         val matchCashier = (selectedCashierId == "all" || tx.kasirId == selectedCashierId)
         
         val matchInterval = when (reportInterval) {
-            "HARIAN" -> tx.createdAt >= todayStart
-            "MINGGUAN" -> tx.createdAt >= sevenDaysAgoStart
-            "BULANAN" -> tx.createdAt >= monthStart
+            Translator.t("HARIAN") -> tx.createdAt >= todayStart
+            Translator.t("MINGGUAN") -> tx.createdAt >= sevenDaysAgoStart
+            Translator.t("BULANAN") -> tx.createdAt >= monthStart
             else -> true
         }
         matchBranch && matchCashier && matchInterval
@@ -361,9 +362,9 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
     // Filter historical expenses based on interval
     val filteredExpenses = mergedExpenses.filter { exp ->
         when (reportInterval) {
-            "HARIAN" -> exp.createdAt >= todayStart
-            "MINGGUAN" -> exp.createdAt >= sevenDaysAgoStart
-            "BULANAN" -> exp.createdAt >= monthStart
+            Translator.t("HARIAN") -> exp.createdAt >= todayStart
+            Translator.t("MINGGUAN") -> exp.createdAt >= sevenDaysAgoStart
+            Translator.t("BULANAN") -> exp.createdAt >= monthStart
             else -> true
         }
     }
@@ -430,11 +431,11 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Filter Laporan", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text(Translator.t("Filter Laporan"), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     
                     // Branch Selector Row
                     Column {
-                        Text("Berdasarkan Cabang:", fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                        Text(Translator.t("Berdasarkan Cabang:"), fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(6.dp))
                         Row(
                             modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -454,7 +455,7 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                                     }
                                     .padding(horizontal = 12.dp, vertical = 6.dp)
                             ) {
-                                Text("Semua Cabang", fontSize = 11.sp, color = if (selectedBranchId == "all") Color.White else MaterialTheme.colorScheme.onSurface)
+                                Text(Translator.t("Semua Cabang"), fontSize = 11.sp, color = if (selectedBranchId == "all") Color.White else MaterialTheme.colorScheme.onSurface)
                             }
 
                             branchesList.forEach { br ->
@@ -474,7 +475,7 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
 
                     // Cashier Selector Row
                     Column {
-                        Text("Berdasarkan Kasir / Staf:", fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                        Text(Translator.t("Berdasarkan Kasir / Staf:"), fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(6.dp))
                         Row(
                             modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -488,7 +489,7 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                                     .clickable { selectedCashierId = "all" }
                                     .padding(horizontal = 12.dp, vertical = 6.dp)
                             ) {
-                                Text("Semua Kasir", fontSize = 11.sp, color = if (selectedCashierId == "all") Color.White else MaterialTheme.colorScheme.onSurface)
+                                Text(Translator.t("Semua Kasir"), fontSize = 11.sp, color = if (selectedCashierId == "all") Color.White else MaterialTheme.colorScheme.onSurface)
                             }
 
                             val distinctCashiers = txs.map { it.kasirId to it.kasirNama }.distinct()
@@ -515,13 +516,13 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
         // Interval toggles
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("HARIAN", "MINGGUAN", "BULANAN").forEach { mode ->
+                listOf(Translator.t("HARIAN"), Translator.t("MINGGUAN"), Translator.t("BULANAN")).forEach { mode ->
                     val sel = reportInterval == mode
                     Card(
                         modifier = Modifier
                             .weight(1f)
                             .clickable {
-                                if (mode == "BULANAN" && !isAtLeastProfesional) {
+                                if (mode == Translator.t("BULANAN") && !isAtLeastProfesional) {
                                     viewModel.triggerUpgradePopup("Paket Profesional")
                                 } else {
                                     reportInterval = mode
@@ -562,7 +563,7 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                             Text(idrFormatter.format(totalExpensesValue), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFB91C1C))
                         }
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Laba Bersih Finansial:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                            Text(Translator.t("Laba Bersih Finansial:"), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
                             Text(idrFormatter.format(finalFinancialNet), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (finalFinancialNet >= 0) Color(0xFF15803D) else Color(0xFFB91C1C))
                         }
 
@@ -576,7 +577,7 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                         ) {
                             Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Tambah Pengeluaran", color = OrangePrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text(Translator.t("Tambah Pengeluaran"), color = OrangePrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                     }
                 }
@@ -584,13 +585,13 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Card(modifier = Modifier.weight(1f)) {
                         Column(modifier = Modifier.padding(12.dp)) {
-                            Text("RATA-RATA TRANSAKSI", fontSize = 10.sp, color = Color.Gray)
+                            Text(Translator.t("RATA-RATA TRANSAKSI"), fontSize = 10.sp, color = Color.Gray)
                             Text(idrFormatter.format(averageBasket), fontSize = 13.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                     Card(modifier = Modifier.weight(1f)) {
                         Column(modifier = Modifier.padding(12.dp)) {
-                            Text("TOTAL TRANSAKSI", fontSize = 10.sp, color = Color.Gray)
+                            Text(Translator.t("TOTAL TRANSAKSI"), fontSize = 10.sp, color = Color.Gray)
                             Text("$countTx Transaksi", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                         }
                     }
@@ -614,18 +615,18 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                         Text("Breakdown Omset Akhir Bulan", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Icon(imageVector = Icons.Default.Summarize, contentDescription = null, tint = OrangePrimary)
                     }
-                    Text("Berikut rangkuman performa omset per Cabang dan per Staf Kasir kontributor saat ini.", fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(bottom = 12.dp))
+                    Text(Translator.t("Berikut rangkuman performa omset per Cabang dan per Staf Kasir kontributor saat ini."), fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(bottom = 12.dp))
                     
                     // Group by Branch
-                    Text("Penjualan Per Cabang:", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = OrangePrimary)
+                    Text(Translator.t("Penjualan Per Cabang:"), fontWeight = FontWeight.Bold, fontSize = 12.sp, color = OrangePrimary)
                     Spacer(modifier = Modifier.height(6.dp))
                     
                     val branchGroups = filtered.groupBy { it.branchId }
                     if (branchGroups.isEmpty()) {
-                        Text("Belum ada omset penjualan cabang.", fontSize = 11.sp, color = Color.Gray)
+                        Text(Translator.t("Belum ada omset penjualan cabang."), fontSize = 11.sp, color = Color.Gray)
                     } else {
                         branchGroups.forEach { (bId, bTxs) ->
-                            val bName = branchesList.find { it.id == bId }?.namaCabang ?: "Cabang Utama"
+                            val bName = branchesList.find { it.id == bId }?.namaCabang ?: Translator.t("Cabang Utama")
                             val bSum = bTxs.sumOf { it.actualIncome }
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -645,12 +646,12 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                     Spacer(modifier = Modifier.height(14.dp))
 
                     // Group by Cashier
-                    Text("Penjualan Per Staf Kasir:", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = OrangePrimary)
+                    Text(Translator.t("Penjualan Per Staf Kasir:"), fontWeight = FontWeight.Bold, fontSize = 12.sp, color = OrangePrimary)
                     Spacer(modifier = Modifier.height(6.dp))
                     
                     val cashierGroups = filtered.groupBy { it.kasirId to it.kasirNama }
                     if (cashierGroups.isEmpty()) {
-                        Text("Belum ada omset penjualan kasir.", fontSize = 11.sp, color = Color.Gray)
+                        Text(Translator.t("Belum ada omset penjualan kasir."), fontSize = 11.sp, color = Color.Gray)
                     } else {
                         cashierGroups.forEach { (key, cTxs) ->
                             val (cId, cName) = key
@@ -695,16 +696,16 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Riwayat Laporan Shift Kasir", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text(Translator.t("Riwayat Laporan Shift Kasir"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                             Icon(imageVector = Icons.Default.SupervisorAccount, contentDescription = null, tint = OrangePrimary)
                         }
-                        Text("Pantau uang modal awal, omset tunai/non-tunai, dan pencocokan uang kas fisik di laci per sesi kasir langsung dari Firestore.", fontSize = 11.sp, color = Color.Gray)
+                        Text(Translator.t("Pantau uang modal awal, omset tunai/non-tunai, dan pencocokan uang kas fisik di laci per sesi kasir langsung dari Firestore."), fontSize = 11.sp, color = Color.Gray)
 
                         HorizontalDivider()
 
                         if (filteredShifts.isEmpty()) {
                             Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                                Text("Belum ada pertanggungjawaban shift kasir tercatat sesuai filter saat ini.", fontSize = 11.sp, color = Color.Gray, textAlign = TextAlign.Center)
+                                Text(Translator.t("Belum ada pertanggungjawaban shift kasir tercatat sesuai filter saat ini."), fontSize = 11.sp, color = Color.Gray, textAlign = TextAlign.Center)
                             }
                         } else {
                             val displayShifts = if (isShiftsExpanded) filteredShifts else filteredShifts.take(3)
@@ -720,20 +721,20 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                                             Box(
                                                 modifier = Modifier
                                                     .clip(RoundedCornerShape(4.dp))
-                                                    .background(if (shift.status == "aktif") Color(0xFFFEF08A) else Color(0xFFDCFCE7))
+                                                    .background(if (shift.status == Translator.t("aktif")) Color(0xFFFEF08A) else Color(0xFFDCFCE7))
                                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                                             ) {
                                                 Text(
                                                     shift.status.uppercase(),
                                                     fontSize = 9.sp,
                                                     fontWeight = FontWeight.Bold,
-                                                    color = if (shift.status == "aktif") Color(0xFF854D0E) else Color(0xFF15803D)
+                                                    color = if (shift.status == Translator.t("aktif")) Color(0xFF854D0E) else Color(0xFF15803D)
                                                 )
                                             }
                                         }
                                         
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                            Text("Cabang:", fontSize = 11.sp, color = Color.Gray)
+                                            Text(Translator.t("Cabang:"), fontSize = 11.sp, color = Color.Gray)
                                             Text(shift.branchName, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                                         }
 
@@ -745,7 +746,7 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
 
                                         if (shift.endTime != null) {
                                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                                Text("Selesai Shift:", fontSize = 11.sp, color = Color.Gray)
+                                                Text(Translator.t("Selesai Shift:"), fontSize = 11.sp, color = Color.Gray)
                                                 val endStr = java.text.SimpleDateFormat("dd MMM, HH:mm", java.util.Locale("id", "ID")).format(java.util.Date(shift.endTime))
                                                 Text(endStr, fontSize = 11.sp)
                                             }
@@ -754,17 +755,17 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                                         HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
 
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                            Text("Uang Modal Awal:", fontSize = 11.sp, color = Color.Gray)
+                                            Text(Translator.t("Uang Modal Awal:"), fontSize = 11.sp, color = Color.Gray)
                                             Text(idrFormatter.format(shift.modalAwal), fontSize = 11.sp, fontWeight = FontWeight.Medium)
                                         }
 
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                            Text("Omset Tunai (Cash):", fontSize = 11.sp, color = Color.Gray)
+                                            Text(Translator.t("Omset Tunai (Cash):"), fontSize = 11.sp, color = Color.Gray)
                                             Text(idrFormatter.format(shift.totalTunai), fontSize = 11.sp, fontWeight = FontWeight.Medium)
                                         }
 
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                            Text("Omset Non-Tunai:", fontSize = 11.sp, color = Color.Gray)
+                                            Text(Translator.t("Omset Non-Tunai:"), fontSize = 11.sp, color = Color.Gray)
                                             Text(idrFormatter.format(shift.totalNonTunai), fontSize = 11.sp, fontWeight = FontWeight.Medium)
                                         }
 
@@ -773,9 +774,9 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                                             Text(idrFormatter.format(shift.modalAwal + shift.totalTunai), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                                         }
 
-                                        if (shift.status != "aktif") {
+                                        if (shift.status != Translator.t("aktif")) {
                                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                                Text("Uang Fisik Dilaporkan:", fontSize = 11.sp, color = Color.Gray)
+                                                Text(Translator.t("Uang Fisik Dilaporkan:"), fontSize = 11.sp, color = Color.Gray)
                                                 Text(idrFormatter.format(shift.actualDrawerCash), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                                             }
 
@@ -789,7 +790,7 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                                                 "Defisit / Minus (${idrFormatter.format(selisihVal)})"
                                             }
                                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                                Text("Selisih Kas Laci Fisik:", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                Text(Translator.t("Selisih Kas Laci Fisik:"), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                                 Text(labelText, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = selisihColor)
                                             }
                                         }
@@ -843,10 +844,10 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                     ) {
                         Icon(imageVector = Icons.Default.Lock, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(36.dp))
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text("Riwayat Laporan Shift Kasir (Terkunci)", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text(Translator.t("Riwayat Laporan Shift Kasir (Terkunci)"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Fitur riwayat laporan shift kasir hanya tersedia untuk minimal Paket Profesional. Klik untuk upgrade sekarang!",
+                            text = Translator.t("Fitur riwayat laporan shift kasir hanya tersedia untuk minimal Paket Profesional. Klik untuk upgrade sekarang!"),
                             fontSize = 11.sp,
                             color = Color.Gray,
                             textAlign = TextAlign.Center
@@ -865,7 +866,7 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Grafik Pendapatan Harian (7 Hari Terakhir)", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text(Translator.t("Grafik Pendapatan Harian (7 Hari Terakhir)"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Icon(imageVector = Icons.Default.TrendingUp, contentDescription = null, tint = OrangePrimary)
                     }
                     Spacer(modifier = Modifier.height(16.dp))
@@ -922,14 +923,14 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Grafik Produk Terlaris (Qty)", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text(Translator.t("Grafik Produk Terlaris (Qty)"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Icon(imageVector = Icons.Default.Leaderboard, contentDescription = null, tint = OrangePrimary)
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     
                     if (topProducts.isEmpty()) {
                         Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                            Text("Belum ada data produk terlaris di interval ini.", fontSize = 11.sp, color = Color.Gray)
+                            Text(Translator.t("Belum ada data produk terlaris di interval ini."), fontSize = 11.sp, color = Color.Gray)
                         }
                     } else {
                         val maxQty = topProducts.maxOfOrNull { it.second } ?: 1
@@ -969,7 +970,7 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                     val pdfFile = generateLaporanKeuanganPdf(
                         context = context,
                         interval = reportInterval,
-                        storeName = user?.nama ?: "Toko Utama",
+                        storeName = user?.nama ?: Translator.t("Toko Utama"),
                         omset = finalIncome,
                         hpp = calculatedCapital,
                         pengeluaran = totalExpensesValue,
@@ -991,14 +992,14 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                                 putExtra(Intent.EXTRA_STREAM, uri)
                                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                             }
-                            context.startActivity(Intent.createChooser(shareIntent, "Export PDF Laporan Keuangan"))
-                            Toast.makeText(context, "Dokumen PDF Laporan berhasil dibuat!", Toast.LENGTH_SHORT).show()
+                            context.startActivity(Intent.createChooser(shareIntent, Translator.t("Export PDF Laporan Keuangan")))
+                            Toast.makeText(context, Translator.t("Dokumen PDF Laporan berhasil dibuat!"), Toast.LENGTH_SHORT).show()
                         } catch (e: Exception) {
                             e.printStackTrace()
                             Toast.makeText(context, "Error sharing PDF: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
                         }
                     } else {
-                        Toast.makeText(context, "Gagal memproses dokumen PDF!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, Translator.t("Gagal memproses dokumen PDF!"), Toast.LENGTH_SHORT).show()
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
@@ -1007,7 +1008,7 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
             ) {
                 Icon(imageVector = Icons.Default.PictureAsPdf, contentDescription = null, tint = Color.White)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Export PDF Laporan Kasir", fontWeight = FontWeight.Bold, color = Color.White)
+                Text(Translator.t("Export PDF Laporan Kasir"), fontWeight = FontWeight.Bold, color = Color.White)
             }
         }
     }
@@ -1019,7 +1020,7 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
             title = { Text("Catat Pengeluaran Baru", fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Catat pengeluaran finansial / biaya beban operasional toko Anda di bawah ini.", fontSize = 11.sp, color = Color.Gray)
+                    Text(Translator.t("Catat pengeluaran finansial / biaya beban operasional toko Anda di bawah ini."), fontSize = 11.sp, color = Color.Gray)
                     
                     OutlinedTextField(
                         value = editExpenseNominal,
@@ -1045,11 +1046,11 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                     onClick = {
                         val amt = editExpenseNominal.toDoubleOrNull() ?: 0.0
                         if (amt <= 0.0) {
-                            Toast.makeText(context, "Jumlah nominal pengeluaran harus valid!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, Translator.t("Jumlah nominal pengeluaran harus valid!"), Toast.LENGTH_SHORT).show()
                             return@Button
                         }
                         if (editExpenseKet.isBlank()) {
-                            Toast.makeText(context, "Keterangan pengeluaran tidak boleh kosong!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, Translator.t("Keterangan pengeluaran tidak boleh kosong!"), Toast.LENGTH_SHORT).show()
                             return@Button
                         }
 
@@ -1058,7 +1059,7 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                                 showAddExpenseDialog = false
                                 editExpenseNominal = ""
                                 editExpenseKet = ""
-                                Toast.makeText(context, "Pengeluaran berhasil dicatat!", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, Translator.t("Pengeluaran berhasil dicatat!"), Toast.LENGTH_SHORT).show()
                             } else {
                                 Toast.makeText(context, "Gagal mencatatkan pengeluaran: $error", Toast.LENGTH_SHORT).show()
                             }
@@ -1086,8 +1087,8 @@ fun PremiumHutangTab(viewModel: KasirViewModel) {
     val idrFormatter = NumberFormat.getCurrencyInstance(Locale("id", "ID"))
     idrFormatter.maximumFractionDigits = 0
 
-    val unpaid = debtsList.filter { it.status == "belum" }
-    val paid = debtsList.filter { it.status == "lunas" }
+    val unpaid = debtsList.filter { it.status == Translator.t("belum") }
+    val paid = debtsList.filter { it.status == Translator.t("lunas") }
 
     var showUnpaidByMe by remember { mutableStateOf(true) }
 
@@ -1132,7 +1133,7 @@ fun PremiumHutangTab(viewModel: KasirViewModel) {
         if (activeList.isEmpty()) {
             item {
                 Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                    Text("Tidak ada rekaman hutang.", color = Color.Gray, fontSize = 13.sp)
+                    Text(Translator.t("Tidak ada rekaman hutang."), color = Color.Gray, fontSize = 13.sp)
                 }
             }
         } else {
@@ -1151,8 +1152,8 @@ fun PremiumHutangTab(viewModel: KasirViewModel) {
                             Text("Ref Transaksi ID: ${debt.transaksiId}", fontSize = 11.sp, color = Color.Gray)
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            Text(idrFormatter.format(debt.jumlah), fontWeight = FontWeight.Bold, color = if (debt.status == "belum") Color.Red else Color(0xFF15803D))
-                            if (debt.status == "belum") {
+                            Text(idrFormatter.format(debt.jumlah), fontWeight = FontWeight.Bold, color = if (debt.status == Translator.t("belum")) Color.Red else Color(0xFF15803D))
+                            if (debt.status == Translator.t("belum")) {
                                 Button(
                                     onClick = { viewModel.settleDebt(debt.id) },
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF15803D)),
@@ -1250,11 +1251,11 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Directory Pelanggan Loyal", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(Translator.t("Directory Pelanggan Loyal"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Button(onClick = { showAddCustDialog = true }, colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)) {
                     Icon(imageVector = Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Pelanggan Baru", fontSize = 12.sp)
+                    Text(Translator.t("Pelanggan Baru"), fontSize = 12.sp)
                 }
             }
         }
@@ -1274,7 +1275,7 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(imageVector = Icons.Default.Settings, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Aturan Loyalty & Poin CRM", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text(Translator.t("Aturan Loyalty & Poin CRM"), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
                         Icon(
                             imageVector = if (showConfigLoyalty) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
@@ -1288,7 +1289,7 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
                             OutlinedTextField(
                                 value = earnRateInput,
                                 onValueChange = { earnRateInput = it },
-                                label = { Text("Belanja per Poin (Rp)", fontSize = 10.sp) },
+                                label = { Text(Translator.t("Belanja per Poin (Rp)"), fontSize = 10.sp) },
                                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                                 modifier = Modifier.weight(1f),
                                 textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp)
@@ -1296,7 +1297,7 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
                             OutlinedTextField(
                                 value = redeemRateInput,
                                 onValueChange = { redeemRateInput = it },
-                                label = { Text("Nilai 1 Poin (Rp)", fontSize = 10.sp) },
+                                label = { Text(Translator.t("Nilai 1 Poin (Rp)"), fontSize = 10.sp) },
                                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
                                 modifier = Modifier.weight(1f),
                                 textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp)
@@ -1309,13 +1310,13 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
                                 val rRate = redeemRateInput.toDoubleOrNull() ?: 100.0
                                 viewModel.setPointEarnRate(eRate)
                                 viewModel.setPointRedeemRate(rRate)
-                                Toast.makeText(context, "Aturan CRM berhasil disimpan!", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, Translator.t("Aturan CRM berhasil disimpan!"), Toast.LENGTH_SHORT).show()
                                 showConfigLoyalty = false
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("Simpan Aturan", fontSize = 12.sp)
+                            Text(Translator.t("Simpan Aturan"), fontSize = 12.sp)
                         }
                     }
                 }
@@ -1337,7 +1338,7 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(imageVector = Icons.Default.CardGiftcard, contentDescription = null, tint = OrangePrimary, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Katalog Hadiah Loyalty (Tukar Hadiah)", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text(Translator.t("Katalog Hadiah Loyalty (Tukar Hadiah)"), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
                         Icon(
                             imageVector = if (showConfigRewards) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
@@ -1352,7 +1353,7 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Katalog Hadiah untuk Ditukar Poin:", fontSize = 11.sp, color = Color.Gray)
+                            Text(Translator.t("Katalog Hadiah untuk Ditukar Poin:"), fontSize = 11.sp, color = Color.Gray)
                             TextButton(
                                 onClick = { showAddRewardDialog = true },
                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
@@ -1360,14 +1361,14 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
                             ) {
                                 Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp), tint = OrangePrimary)
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Tambah Hadiah", fontSize = 11.sp, color = OrangePrimary)
+                                Text(Translator.t("Tambah Hadiah"), fontSize = 11.sp, color = OrangePrimary)
                             }
                         }
                         Spacer(modifier = Modifier.height(6.dp))
 
                         val currentRewards = rewardsState
                         if (currentRewards.isEmpty()) {
-                            Text("Memuat daftar hadiah...", fontSize = 11.sp, modifier = Modifier.padding(vertical = 8.dp), color = Color.Gray)
+                            Text(Translator.t("Memuat daftar hadiah..."), fontSize = 11.sp, modifier = Modifier.padding(vertical = 8.dp), color = Color.Gray)
                         } else {
                             currentRewards.forEach { reward ->
                                 Row(
@@ -1394,12 +1395,12 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
                                             onClick = {
                                                 if (!ownerId.isNullOrBlank()) {
                                                     viewModel.deleteLocalReward(reward.id, ownerId)
-                                                    Toast.makeText(context, "Hadiah berhasil dihapus!", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(context, Translator.t("Hadiah berhasil dihapus!"), Toast.LENGTH_SHORT).show()
                                                 }
                                             },
                                             modifier = Modifier.size(24.dp)
                                         ) {
-                                            Icon(imageVector = Icons.Default.Delete, contentDescription = "Hapus", tint = Color.Red, modifier = Modifier.size(14.dp))
+                                            Icon(imageVector = Icons.Default.Delete, contentDescription = Translator.t("Hapus"), tint = Color.Red, modifier = Modifier.size(14.dp))
                                         }
                                     }
                                 }
@@ -1413,7 +1414,7 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
         if (customersList.isEmpty()) {
             item {
                 Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                    Text("Belum ada pelanggan terdaftar.", color = Color.Gray)
+                    Text(Translator.t("Belum ada pelanggan terdaftar."), color = Color.Gray)
                 }
             }
         } else {
@@ -1524,10 +1525,10 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
                             val newId = java.util.UUID.randomUUID().toString()
                             val newReward = RewardItem(newId, rName, points, cost, ownerId)
                             viewModel.saveLocalReward(newReward.toMap(), ownerId)
-                            Toast.makeText(context, "Hadiah berhasil ditambahkan!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, Translator.t("Hadiah berhasil ditambahkan!"), Toast.LENGTH_SHORT).show()
                             showAddRewardDialog = false
                         } else {
-                            Toast.makeText(context, "Kolom tidak valid!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, Translator.t("Kolom tidak valid!"), Toast.LENGTH_SHORT).show()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
@@ -1537,7 +1538,7 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
             },
             dismissButton = {
                 TextButton(onClick = { showAddRewardDialog = false }) {
-                    Text("Batal", color = Color.Gray)
+                    Text(Translator.t("Batal"), color = Color.Gray)
                 }
             }
         )
@@ -1584,10 +1585,10 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
                         if (rName.isNotBlank() && points > 0 && !ownerId.isNullOrBlank()) {
                             val updated = target.copy(name = rName, pointsCost = points, financialCost = cost)
                             viewModel.saveLocalReward(updated.toMap(), ownerId)
-                            Toast.makeText(context, "Hadiah berhasil diperbarui!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, Translator.t("Hadiah berhasil diperbarui!"), Toast.LENGTH_SHORT).show()
                             editRewardTarget = null
                         } else {
-                            Toast.makeText(context, "Kolom tidak valid!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, Translator.t("Kolom tidak valid!"), Toast.LENGTH_SHORT).show()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
@@ -1597,7 +1598,7 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
             },
             dismissButton = {
                 TextButton(onClick = { editRewardTarget = null }) {
-                    Text("Batal", color = Color.Gray)
+                    Text(Translator.t("Batal"), color = Color.Gray)
                 }
             }
         )
@@ -1628,11 +1629,11 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
                         horizontalArrangement = Arrangement.SpaceAround
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("Total Poin", fontSize = 10.sp, color = Color.Gray)
+                            Text(Translator.t("Total Poin"), fontSize = 10.sp, color = Color.Gray)
                             Text("${cust.totalPoin}", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = OrangeDark)
                         }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("Sesi Belanja", fontSize = 10.sp, color = Color.Gray)
+                            Text(Translator.t("Sesi Belanja"), fontSize = 10.sp, color = Color.Gray)
                             Text("${cust.totalTransaksi}", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -1653,17 +1654,17 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
                         }
                     ) {
                         Tab(selected = activeSubTab == 0, onClick = { activeSubTab = 0 }) {
-                            Text("Penyesuaian", modifier = Modifier.padding(8.dp), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text(Translator.t("Penyesuaian"), modifier = Modifier.padding(8.dp), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                         Tab(selected = activeSubTab == 1, onClick = { activeSubTab = 1 }) {
-                            Text("Tukar Hadiah", modifier = Modifier.padding(8.dp), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text(Translator.t("Tukar Hadiah"), modifier = Modifier.padding(8.dp), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
 
                     if (activeSubTab == 0) {
                         // Point adjustment & Share CRM
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Koreksi / Bonus Poin Manual", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color.Gray)
+                            Text(Translator.t("Koreksi / Bonus Poin Manual"), fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color.Gray)
                             OutlinedTextField(
                                 value = adjustPoinStr,
                                 onValueChange = { adjustPoinStr = it },
@@ -1680,7 +1681,7 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
                                             viewModel.updateCustomer(updated)
                                             selectedCustForDetail = updated
                                             adjustPoinStr = ""
-                                            Toast.makeText(context, "Poin berhasil diperbarui!", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, Translator.t("Poin berhasil diperbarui!"), Toast.LENGTH_SHORT).show()
                                         }
                                     },
                                     colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
@@ -1694,7 +1695,7 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
                             HorizontalDivider()
                             Spacer(modifier = Modifier.height(4.dp))
 
-                            Text("Kirim Broadcast Point CRM", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color.Gray)
+                            Text(Translator.t("Kirim Broadcast Point CRM"), fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color.Gray)
                             Button(
                                 onClick = {
                                     val earnR = viewModel.getPointEarnRate().toInt()
@@ -1705,7 +1706,7 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
                                         context.startActivity(intent)
                                     } catch (e: Exception) {
                                         clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(msg))
-                                        Toast.makeText(context, "Link WA gagal dibuka. Teks pesan telah disalin ke Clipboard!", Toast.LENGTH_LONG).show()
+                                        Toast.makeText(context, Translator.t("Link WA gagal dibuka. Teks pesan telah disalin ke Clipboard!"), Toast.LENGTH_LONG).show()
                                     }
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)), // WhatsApp Green
@@ -1713,17 +1714,17 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
                             ) {
                                 Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Share Promo & Poin WA", fontSize = 12.sp)
+                                Text(Translator.t("Share Promo & Poin WA"), fontSize = 12.sp)
                             }
                         }
                     } else {
                         // Gift Redemption Catalog
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Pilih Hadiah Poin Pelanggan:", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color.Gray)
+                            Text(Translator.t("Pilih Hadiah Poin Pelanggan:"), fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color.Gray)
                             
                             val rewards = rewardsState
                             if (rewards.isEmpty()) {
-                                Text("Tidak ada hadiah tersedia di katalog.", fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(8.dp))
+                                Text(Translator.t("Tidak ada hadiah tersedia di katalog."), fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(8.dp))
                             } else {
                                 rewards.forEach { reward ->
                                     val cost = reward.pointsCost
@@ -1758,7 +1759,7 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
                                                         Toast.makeText(context, "Hadiah '$gift' berhasil ditukarkan! $cost Poin dikurangi.", Toast.LENGTH_LONG).show()
                                                     }
                                                 } else {
-                                                    Toast.makeText(context, "Poin tidak cukup!", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(context, Translator.t("Poin tidak cukup!"), Toast.LENGTH_SHORT).show()
                                                 }
                                             },
                                             enabled = (cust.totalPoin >= cost),
@@ -1766,7 +1767,7 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
                                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                                             modifier = Modifier.height(28.dp)
                                         ) {
-                                            Text("Tukar", fontSize = 10.sp)
+                                            Text(Translator.t("Tukar"), fontSize = 10.sp)
                                         }
                                     }
                                 }
@@ -1777,7 +1778,7 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
             },
             confirmButton = {
                 TextButton(onClick = { selectedCustForDetail = null }) {
-                    Text("Tutup", color = OrangePrimary)
+                    Text(Translator.t("Tutup"), color = OrangePrimary)
                 }
             }
         )
@@ -1801,9 +1802,9 @@ fun PremiumPromoTab(viewModel: KasirViewModel) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Kupon / Voucher Belanja", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(Translator.t("Kupon / Voucher Belanja"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Button(onClick = { showAddPromoDialog = true }, colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)) {
-                    Text("Buat Voucher", fontSize = 12.sp)
+                    Text(Translator.t("Buat Voucher"), fontSize = 12.sp)
                 }
             }
         }
@@ -1811,7 +1812,7 @@ fun PremiumPromoTab(viewModel: KasirViewModel) {
         if (promosList.isEmpty()) {
             item {
                 Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                    Text("Belum ada promo aktif.", color = Color.Gray)
+                    Text(Translator.t("Belum ada promo aktif."), color = Color.Gray)
                 }
             }
         } else {
@@ -1922,7 +1923,7 @@ fun PremiumCabangTab(viewModel: KasirViewModel) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Daftar Cabang Usaha", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(Translator.t("Daftar Cabang Usaha"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Button(
                     onClick = { showAddBranchDialog = true },
                     colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
@@ -1930,7 +1931,7 @@ fun PremiumCabangTab(viewModel: KasirViewModel) {
                 ) {
                     Icon(imageVector = Icons.Default.AddBusiness, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Tambah Cabang", fontSize = 12.sp)
+                    Text(Translator.t("Tambah Cabang"), fontSize = 12.sp)
                 }
             }
         }
@@ -1943,9 +1944,9 @@ fun PremiumCabangTab(viewModel: KasirViewModel) {
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Cabang Utama (Default)", fontWeight = FontWeight.Bold, color = OrangePrimary)
+                        Text(Translator.t("Cabang Utama (Default)"), fontWeight = FontWeight.Bold, color = OrangePrimary)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text("Anda belum mendaftarkan cabang tambahan. Tambahkan cabang outlet baru untuk memantau data kasir terpisah secara realtime!", fontSize = 12.sp, color = Color.Gray)
+                        Text(Translator.t("Anda belum mendaftarkan cabang tambahan. Tambahkan cabang outlet baru untuk memantau data kasir terpisah secara realtime!"), fontSize = 12.sp, color = Color.Gray)
                     }
                 }
             }
@@ -1980,11 +1981,11 @@ fun PremiumCabangTab(viewModel: KasirViewModel) {
                             
                             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                 IconButton(onClick = { editBranchTarget = br }) {
-                                    Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit Cabang", tint = OrangePrimary)
+                                    Icon(imageVector = Icons.Default.Edit, contentDescription = Translator.t("Edit Cabang"), tint = OrangePrimary)
                                 }
                                 if (!br.id.startsWith("branch-1")) {
                                     IconButton(onClick = { viewModel.removeBranch(br.id) }) {
-                                        Icon(imageVector = Icons.Default.Delete, contentDescription = "Hapus Cabang", tint = Color.Red)
+                                        Icon(imageVector = Icons.Default.Delete, contentDescription = Translator.t("Hapus Cabang"), tint = Color.Red)
                                     }
                                 }
                             }
@@ -2000,7 +2001,7 @@ fun PremiumCabangTab(viewModel: KasirViewModel) {
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         if (assignedCashiers.isEmpty()) {
-                            Text("Belum ada kasir yang ditugaskan ke cabang ini.", fontSize = 11.sp, color = Color.Gray)
+                            Text(Translator.t("Belum ada kasir yang ditugaskan ke cabang ini."), fontSize = 11.sp, color = Color.Gray)
                         } else {
                             Row(
                                 modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -2030,10 +2031,10 @@ fun PremiumCabangTab(viewModel: KasirViewModel) {
 
         AlertDialog(
             onDismissRequest = { showAddBranchDialog = false },
-            title = { Text("Tambah Outlet Cabang Baru", fontWeight = FontWeight.Bold) },
+            title = { Text(Translator.t("Tambah Outlet Cabang Baru"), fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Daftarkan cabang usaha baru Anda untuk manajemen produk dan alokasi kasir terpisah.", fontSize = 12.sp, color = Color.Gray)
+                    Text(Translator.t("Daftarkan cabang usaha baru Anda untuk manajemen produk dan alokasi kasir terpisah."), fontSize = 12.sp, color = Color.Gray)
                     OutlinedTextField(
                         value = bNama,
                         onValueChange = { bNama = it },
@@ -2081,7 +2082,7 @@ fun PremiumCabangTab(viewModel: KasirViewModel) {
 
         AlertDialog(
             onDismissRequest = { editBranchTarget = null },
-            title = { Text("Edit Outlet Cabang", fontWeight = FontWeight.Bold) },
+            title = { Text(Translator.t("Edit Outlet Cabang"), fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(
@@ -2191,7 +2192,7 @@ fun PremiumKasirTab(viewModel: KasirViewModel) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Staf & Akun Kasir", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(Translator.t("Staf & Akun Kasir"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Button(
                     onClick = { showAddCashierDialog = true },
                     colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
@@ -2199,7 +2200,7 @@ fun PremiumKasirTab(viewModel: KasirViewModel) {
                 ) {
                     Icon(imageVector = Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Tambah Kasir", fontSize = 12.sp)
+                    Text(Translator.t("Tambah Kasir"), fontSize = 12.sp)
                 }
             }
         }
@@ -2215,8 +2216,8 @@ fun PremiumKasirTab(viewModel: KasirViewModel) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(imageVector = Icons.Default.Badge, contentDescription = null, tint = OrangePrimary.copy(alpha = 0.5f), modifier = Modifier.size(48.dp))
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("Belum ada kasir terdaftar", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Text("Tambah akun kasir pertama Anda melalui tombol di atas untuk mendelegasikan transaksi kasir.", fontSize = 12.sp, color = Color.Gray, textAlign = TextAlign.Center)
+                            Text(Translator.t("Belum ada kasir terdaftar"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text(Translator.t("Tambah akun kasir pertama Anda melalui tombol di atas untuk mendelegasikan transaksi kasir."), fontSize = 12.sp, color = Color.Gray, textAlign = TextAlign.Center)
                         }
                     }
                 }
@@ -2263,11 +2264,11 @@ fun PremiumKasirTab(viewModel: KasirViewModel) {
                                         .background(Color(0xFFDCFCE7))
                                         .padding(horizontal = 6.dp, vertical = 2.dp)
                                 ) {
-                                    Text("AKTIF", fontSize = 9.sp, color = Color(0xFF15803D), fontWeight = FontWeight.Bold)
+                                    Text(Translator.t("AKTIF"), fontSize = 9.sp, color = Color(0xFF15803D), fontWeight = FontWeight.Bold)
                                 }
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "Dibuat: " + formatRelativeTime(cs.createdAt),
+                                    text = Translator.t("Dibuat: ") + formatRelativeTime(cs.createdAt),
                                     fontSize = 10.sp,
                                     color = Color.Gray
                                 )
@@ -2300,7 +2301,7 @@ fun PremiumKasirTab(viewModel: KasirViewModel) {
                                     shape = RoundedCornerShape(8.dp),
                                     modifier = Modifier.height(30.dp)
                                 ) {
-                                    Text("Atur Cabang", fontSize = 10.sp, color = OrangePrimary, fontWeight = FontWeight.Bold)
+                                    Text(Translator.t("Atur Cabang"), fontSize = 10.sp, color = OrangePrimary, fontWeight = FontWeight.Bold)
                                 }
 
                                 IconButton(
@@ -2316,17 +2317,17 @@ fun PremiumKasirTab(viewModel: KasirViewModel) {
                                     },
                                     modifier = Modifier.size(30.dp)
                                 ) {
-                                    Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit Kasir", tint = OrangePrimary, modifier = Modifier.size(18.dp))
+                                    Icon(imageVector = Icons.Default.Edit, contentDescription = Translator.t("Edit Kasir"), tint = OrangePrimary, modifier = Modifier.size(18.dp))
                                 }
                                 
                                 IconButton(
                                     onClick = { 
                                         viewModel.deleteCashier(cs.uid)
-                                        Toast.makeText(context, "Akun kasir berhasil dihapus", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, Translator.t("Akun kasir berhasil dihapus"), Toast.LENGTH_SHORT).show()
                                     },
                                     modifier = Modifier.size(30.dp)
                                 ) {
-                                    Icon(imageVector = Icons.Default.Delete, contentDescription = "Hapus Kasir", tint = Color.Red, modifier = Modifier.size(18.dp))
+                                    Icon(imageVector = Icons.Default.Delete, contentDescription = Translator.t("Hapus Kasir"), tint = Color.Red, modifier = Modifier.size(18.dp))
                                 }
                             }
                         }
@@ -2343,13 +2344,13 @@ fun PremiumKasirTab(viewModel: KasirViewModel) {
 
         AlertDialog(
             onDismissRequest = { showAddCashierDialog = false },
-            title = { Text("Tambah Akun Kasir", fontWeight = FontWeight.Bold) },
+            title = { Text(Translator.t("Tambah Akun Kasir"), fontWeight = FontWeight.Bold) },
             text = {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Text("Buat langsung kredensial masuk kasir tanpa undangan email.", fontSize = 12.sp, color = Color.Gray)
+                    Text(Translator.t("Buat langsung kredensial masuk kasir tanpa undangan email."), fontSize = 12.sp, color = Color.Gray)
                     
                     OutlinedTextField(
                         value = cashierName,
@@ -2384,11 +2385,11 @@ fun PremiumKasirTab(viewModel: KasirViewModel) {
                             if (isAddUsernameAvailable == true) {
                                 Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF15803D), modifier = Modifier.size(12.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Username tersedia & siap digunakan!", fontSize = 11.sp, color = Color(0xFF15803D))
+                                Text(Translator.t("Username tersedia & siap digunakan!"), fontSize = 11.sp, color = Color(0xFF15803D))
                             } else {
                                 Icon(imageVector = Icons.Default.Error, contentDescription = null, tint = Color.Red, modifier = Modifier.size(12.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Maaf Username Tidak Tersedia!", fontSize = 11.sp, color = Color.Red)
+                                Text(Translator.t("Maaf Username Tidak Tersedia!"), fontSize = 11.sp, color = Color.Red)
                             }
                         }
                     }
@@ -2403,7 +2404,7 @@ fun PremiumKasirTab(viewModel: KasirViewModel) {
                         modifier = Modifier.fillMaxWidth().testTag("add_cashier_password")
                     )
 
-                    Text("Tugaskan ke Cabang:", fontWeight = FontWeight.Bold, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+                    Text(Translator.t("Tugaskan ke Cabang:"), fontWeight = FontWeight.Bold, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         branchesList.forEach { br ->
                             val isSelected = selectedBranchId == br.id
@@ -2434,15 +2435,15 @@ fun PremiumKasirTab(viewModel: KasirViewModel) {
                 Button(
                     onClick = {
                         if (cashierName.isBlank() || cashierUsername.isBlank() || cashierPassword.isBlank() || selectedBranchId.isBlank()) {
-                            Toast.makeText(context, "Semua kolom formulir harus diisi!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, Translator.t("Semua kolom formulir harus diisi!"), Toast.LENGTH_SHORT).show()
                             return@Button
                         }
                         if (cashierPassword.length < 6) {
-                            Toast.makeText(context, "Password minimal 6 karakter!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, Translator.t("Password minimal 6 karakter!"), Toast.LENGTH_SHORT).show()
                             return@Button
                         }
                         if (isAddUsernameAvailable != true) {
-                            Toast.makeText(context, "Username tidak tersedia atau sedang divalidasi. Silakan periksa kembali!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, Translator.t("Username tidak tersedia atau sedang divalidasi. Silakan periksa kembali!"), Toast.LENGTH_SHORT).show()
                             return@Button
                         }
                         viewModel.addCashier(
@@ -2479,13 +2480,13 @@ fun PremiumKasirTab(viewModel: KasirViewModel) {
     if (editCashierTarget != null) {
         AlertDialog(
             onDismissRequest = { editCashierTarget = null },
-            title = { Text("Edit Akun Kasir", fontWeight = FontWeight.Bold) },
+            title = { Text(Translator.t("Edit Akun Kasir"), fontWeight = FontWeight.Bold) },
             text = {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Text("Perbarui nama, login ID (username), dan password untuk kasir Anda.", fontSize = 12.sp, color = Color.Gray)
+                    Text(Translator.t("Perbarui nama, login ID (username), dan password untuk kasir Anda."), fontSize = 12.sp, color = Color.Gray)
                     
                     OutlinedTextField(
                         value = editCashierName,
@@ -2517,11 +2518,11 @@ fun PremiumKasirTab(viewModel: KasirViewModel) {
                             if (isEditUsernameAvailable == true) {
                                 Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF15803D), modifier = Modifier.size(12.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Username tersedia!", fontSize = 11.sp, color = Color(0xFF15803D))
+                                Text(Translator.t("Username tersedia!"), fontSize = 11.sp, color = Color(0xFF15803D))
                             } else {
                                 Icon(imageVector = Icons.Default.Error, contentDescription = null, tint = Color.Red, modifier = Modifier.size(12.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Maaf Username Tidak Tersedia!", fontSize = 11.sp, color = Color.Red)
+                                Text(Translator.t("Maaf Username Tidak Tersedia!"), fontSize = 11.sp, color = Color.Red)
                             }
                         }
                     }
@@ -2541,15 +2542,15 @@ fun PremiumKasirTab(viewModel: KasirViewModel) {
                 Button(
                     onClick = {
                         if (editCashierName.isBlank() || editCashierUsername.isBlank() || editCashierPassword.isBlank()) {
-                            Toast.makeText(context, "Semua kolom harus diisi!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, Translator.t("Semua kolom harus diisi!"), Toast.LENGTH_SHORT).show()
                             return@Button
                         }
                         if (editCashierPassword.length < 6) {
-                            Toast.makeText(context, "Password minimal 6 karakter!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, Translator.t("Password minimal 6 karakter!"), Toast.LENGTH_SHORT).show()
                             return@Button
                         }
                         if (isEditUsernameAvailable != true) {
-                            Toast.makeText(context, "Username tidak tersedia atau sedang divalidasi. Silakan periksa kembali!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, Translator.t("Username tidak tersedia atau sedang divalidasi. Silakan periksa kembali!"), Toast.LENGTH_SHORT).show()
                             return@Button
                         }
                         
@@ -2583,7 +2584,7 @@ fun PremiumKasirTab(viewModel: KasirViewModel) {
     assignBranchTarget?.let { target ->
         AlertDialog(
             onDismissRequest = { assignBranchTarget = null },
-            title = { Text("Tugaskan Kasir ke Cabang", fontWeight = FontWeight.Bold) },
+            title = { Text(Translator.t("Tugaskan Kasir ke Cabang"), fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Pilih outlet cabang tempat kasir '${target.nama}' akan ditempatkan:", fontSize = 12.sp, color = Color.Gray)
@@ -2636,7 +2637,7 @@ fun formatRelativeTime(timestamp: Long): String {
 }
 
 fun formatLastActiveString(timestamp: Long?): String {
-    if (timestamp == null) return "Belum pernah aktif"
+    if (timestamp == null) return Translator.t("Belum pernah aktif")
     return formatRelativeTime(timestamp)
 }
 
@@ -2674,7 +2675,7 @@ fun generateLaporanKeuanganPdf(
             isAntiAlias = true
             typeface = Typeface.create(Typeface.DEFAULT_BOLD, Typeface.BOLD)
         }
-        canvas.drawText("KASIR PRO - LAPORAN KEUANGAN", 30f, 45f, titlePaint)
+        canvas.drawText(Translator.t("KASIR PRO - LAPORAN KEUANGAN"), 30f, 45f, titlePaint)
         
         val subtitlePaint = Paint().apply {
             color = android.graphics.Color.WHITE
@@ -2695,7 +2696,7 @@ fun generateLaporanKeuanganPdf(
             typeface = Typeface.create(Typeface.DEFAULT_BOLD, Typeface.BOLD)
         }
         
-        canvas.drawText("I. RINGKASAN FINANSIAL OUTLET", 30f, yPosition, sectionTitlePaint)
+        canvas.drawText(Translator.t("I. RINGKASAN FINANSIAL OUTLET"), 30f, yPosition, sectionTitlePaint)
         
         val linePaint = Paint().apply {
             color = android.graphics.Color.parseColor("#CBD5E1")
@@ -2748,7 +2749,7 @@ fun generateLaporanKeuanganPdf(
             isAntiAlias = true
             typeface = Typeface.create(Typeface.DEFAULT_BOLD, Typeface.BOLD)
         }
-        canvas.drawText("ESTIMASI LABA BERSIH", 45f, yPosition + 27f, netProfitLabelPaint)
+        canvas.drawText(Translator.t("ESTIMASI LABA BERSIH"), 45f, yPosition + 27f, netProfitLabelPaint)
         
         val netProfitVal = idrFormatter.format(labaBersih)
         val netProfitValuePaint = Paint().apply {
@@ -2763,13 +2764,13 @@ fun generateLaporanKeuanganPdf(
         yPosition += 80f
         
         // Section: Produk Terlaris
-        canvas.drawText("II. DAFTAR PERINGKAT PRODUK TERLARIS (QTY)", 30f, yPosition, sectionTitlePaint)
+        canvas.drawText(Translator.t("II. DAFTAR PERINGKAT PRODUK TERLARIS (QTY)"), 30f, yPosition, sectionTitlePaint)
         yPosition += 8f
         canvas.drawLine(30f, yPosition, 565f, yPosition, linePaint)
         yPosition += 25f
         
         if (topProducts.isEmpty()) {
-            canvas.drawText("Belum ada data barang / produk terjual di selang waktu laporan keuangan ini.", 40f, yPosition, gridLabelPaint)
+            canvas.drawText(Translator.t("Belum ada data barang / produk terjual di selang waktu laporan keuangan ini."), 40f, yPosition, gridLabelPaint)
             yPosition += 20f
         } else {
             val thPaint = Paint().apply {
@@ -2778,8 +2779,8 @@ fun generateLaporanKeuanganPdf(
                 isAntiAlias = true
                 typeface = Typeface.create(Typeface.DEFAULT_BOLD, Typeface.BOLD)
             }
-            canvas.drawText("NAMA BARANG / PRODUK", 40f, yPosition, thPaint)
-            canvas.drawText("KUANTITAS TERJUAL", 440f, yPosition, thPaint)
+            canvas.drawText(Translator.t("NAMA BARANG / PRODUK"), 40f, yPosition, thPaint)
+            canvas.drawText(Translator.t("KUANTITAS TERJUAL"), 440f, yPosition, thPaint)
             yPosition += 12f
             canvas.drawLine(30f, yPosition, 565f, yPosition, linePaint)
             yPosition += 20f
@@ -2802,7 +2803,7 @@ fun generateLaporanKeuanganPdf(
             isAntiAlias = true
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
         }
-        canvas.drawText("Dokumen ini digenerasi murni oleh Kasir Pro Premium Laporan Keuangan.", 30f, 795f, footerLabelPaint)
+        canvas.drawText(Translator.t("Dokumen ini digenerasi murni oleh Kasir Pro Premium Laporan Keuangan."), 30f, 795f, footerLabelPaint)
         
         val dateFormatted = java.text.SimpleDateFormat("dd MMMM yyyy HH:mm:ss", java.util.Locale("id", "ID")).format(java.util.Date())
         canvas.drawText("Waktu Cetak Dokumen: $dateFormatted WITA/WIB", 30f, 810f, footerLabelPaint)

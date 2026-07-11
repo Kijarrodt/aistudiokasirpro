@@ -1,5 +1,6 @@
 package com.kasirpro.app.ui.screens
 
+import com.kasirpro.app.util.Translator
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -59,7 +60,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
     val isOnlineState by viewModel.isOnline.collectAsState()
 
     var showBranchDropdown by remember { mutableStateOf(false) }
-    var selectedBranchName by remember { mutableStateOf("Semua Cabang") }
+    var selectedBranchName by remember { mutableStateOf(Translator.t("Semua Cabang")) }
 
     var selectedTxForReceipt by remember { mutableStateOf<TransactionEntity?>(null) }
     var showCorrectionAuthDialog by remember { mutableStateOf(false) }
@@ -77,7 +78,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
         tx.actualIncome * 0.45 // Estimated margin simulator based on user parameters
     }
     val trxCount = todayTransactions.size
-    val activeDebts = debtsList.filter { it.status == "belum" }.sumOf { it.jumlah }
+    val activeDebts = debtsList.filter { it.status == Translator.t("belum") }.sumOf { it.jumlah }
 
     // Last 7 days real revenue aggregation for the interactive financial graph
     val last7DaysData = remember(transactionsList) {
@@ -123,7 +124,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                 title = {
                     Column {
                         Text(
-                            text = business?.namaBisnis ?: "Toko Kasir Pro",
+                            text = business?.namaBisnis ?: Translator.t("Toko Kasir Pro"),
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
                             color = MaterialTheme.colorScheme.onBackground
@@ -217,7 +218,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                     .graphicsLayer(scaleX = posScale, scaleY = posScale)
                     .testTag("floating_pos_btn")
             ) {
-                Icon(imageVector = Icons.Default.ShoppingCart, contentDescription = "Buka Kasir")
+                Icon(imageVector = Icons.Default.ShoppingCart, contentDescription = Translator.t("Buka Kasir"))
             }
         }
     ) { innerPadding ->
@@ -268,7 +269,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                                 DropdownMenuItem(
                                     text = { Text("Semua Cabang") },
                                     onClick = {
-                                        selectedBranchName = "Semua Cabang"
+                                        selectedBranchName = Translator.t("Semua Cabang")
                                         showBranchDropdown = false
                                     }
                                 )
@@ -350,7 +351,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                             Column(modifier = Modifier.padding(14.dp)) {
                                 Icon(Icons.Default.ReceiptLong, contentDescription = null, tint = OrangePrimary)
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Text("Transaksi Hari Ini", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), fontWeight = FontWeight.SemiBold)
+                                Text(Translator.t("Transaksi Hari Ini"), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), fontWeight = FontWeight.SemiBold)
                                 Text("$trxCount Transaksi", fontSize = 15.sp, fontWeight = FontWeight.Bold)
                             }
                         }
@@ -364,7 +365,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                             Column(modifier = Modifier.padding(14.dp)) {
                                 Icon(Icons.Default.PendingActions, contentDescription = null, tint = Color(0xFFE11D48))
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Text("Hutang Aktif", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), fontWeight = FontWeight.SemiBold)
+                                Text(Translator.t("Hutang Aktif"), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), fontWeight = FontWeight.SemiBold)
                                 Text(
                                     text = idrFormatter.format(activeDebts),
                                     fontSize = 15.sp,
@@ -390,9 +391,9 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Peringatan Stok Tipis", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text(Translator.t("Peringatan Stok Tipis"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Text(
-                        text = "Lihat Semua",
+                        text = Translator.t("Lihat Semua"),
                         color = OrangePrimary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
@@ -415,7 +416,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                         ) {
                             Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF22C55E))
                             Spacer(modifier = Modifier.width(12.dp))
-                            Text("Hebat! Persediaan stok semua produk aman.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(0.7f))
+                            Text(Translator.t("Hebat! Persediaan stok semua produk aman."), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(0.7f))
                         }
                     }
                 }
@@ -456,9 +457,9 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Transaksi Terbaru", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text(Translator.t("Transaksi Terbaru"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Text(
-                        text = "Lihat Laporan",
+                        text = Translator.t("Lihat Laporan"),
                         color = OrangePrimary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
@@ -477,7 +478,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                             .padding(24.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("Belum ada transaksi terekam saat ini.", color = Color.Gray, fontSize = 13.sp)
+                        Text(Translator.t("Belum ada transaksi terekam saat ini."), color = Color.Gray, fontSize = 13.sp)
                     }
                 }
             } else {
@@ -518,13 +519,13 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(4.dp))
-                                        .background(if (tx.status == "lunas") Color(0xFFDCFCE7) else Color(0xFFFEE2E2))
+                                        .background(if (tx.status == Translator.t("lunas")) Color(0xFFDCFCE7) else Color(0xFFFEE2E2))
                                         .padding(horizontal = 6.dp, vertical = 2.dp)
                                 ) {
                                     Text(
                                         text = tx.status.uppercase(),
                                         fontSize = 9.sp,
-                                        color = if (tx.status == "lunas") Color(0xFF15803D) else Color(0xFFB91C1C),
+                                        color = if (tx.status == Translator.t("lunas")) Color(0xFF15803D) else Color(0xFFB91C1C),
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
@@ -549,7 +550,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(imageVector = Icons.Default.ReceiptLong, contentDescription = null, tint = OrangePrimary)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Detail Struk Transaksi", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text(Translator.t("Detail Struk Transaksi"), fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 }
             },
             text = {
@@ -572,11 +573,11 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                                 .padding(bottom = 6.dp)
                         )
                     }
-                    Text(business?.namaBisnis ?: "KASIR PRO SHOP", fontWeight = FontWeight.Bold, color = Color.Black, fontSize = 14.sp, textAlign = TextAlign.Center)
+                    Text(business?.namaBisnis ?: Translator.t("KASIR PRO SHOP"), fontWeight = FontWeight.Bold, color = Color.Black, fontSize = 14.sp, textAlign = TextAlign.Center)
                     if (!business?.alamat.isNullOrBlank()) {
                         Text(business!!.alamat!!, fontSize = 11.sp, color = Color.DarkGray, textAlign = TextAlign.Center)
                     } else {
-                        Text("Cabang Utama", fontSize = 11.sp, color = Color.DarkGray, textAlign = TextAlign.Center)
+                        Text(Translator.t("Cabang Utama"), fontSize = 11.sp, color = Color.DarkGray, textAlign = TextAlign.Center)
                     }
                     if (!business?.noTelpon.isNullOrBlank()) {
                         Text("Tel: ${business!!.noTelpon!!}", fontSize = 11.sp, color = Color.DarkGray, textAlign = TextAlign.Center)
@@ -629,7 +630,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                         Text(idrFormatter.format(rx.bayarNominal), fontSize = 11.sp, color = Color.Black)
                     }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("KEMBALI", fontSize = 11.sp, color = Color.Black)
+                        Text(Translator.t("KEMBALI"), fontSize = 11.sp, color = Color.Black)
                         Text(idrFormatter.format(rx.kembalian), fontSize = 11.sp, color = Color.Black)
                     }
                     Text("---------------------------------", color = Color.Black)
@@ -655,7 +656,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                             if (isPremium) {
                                 showCorrectionAuthDialog = true
                             } else {
-                                viewModel.showLimitPopup.value = "Fitur Koreksi Transaksi hanya tersedia untuk pengguna Premium Pro. Upgrade sekarang!"
+                                viewModel.showLimitPopup.value = Translator.t("Fitur Koreksi Transaksi hanya tersedia untuk pengguna Premium Pro. Upgrade sekarang!")
                             }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
@@ -681,10 +682,10 @@ fun DashboardScreen(viewModel: KasirViewModel) {
         val context = LocalContext.current
         AlertDialog(
             onDismissRequest = { showCorrectionAuthDialog = false },
-            title = { Text("Otoritas Pemilik Diperlukan", fontWeight = FontWeight.Bold) },
+            title = { Text(Translator.t("Otoritas Pemilik Diperlukan"), fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Masukkan Kode Unik Otoritas dari Pemilik Toko untuk mengizinkan koreksi/edit pada transaksi ini.", fontSize = 12.sp, color = Color.Gray)
+                    Text(Translator.t("Masukkan Kode Unik Otoritas dari Pemilik Toko untuk mengizinkan koreksi/edit pada transaksi ini."), fontSize = 12.sp, color = Color.Gray)
                     OutlinedTextField(
                         value = authCodeInput,
                         onValueChange = { authCodeInput = it },
@@ -703,7 +704,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                             showCorrectionEditDialog = true
                             authCodeInput = "" // clear
                         } else {
-                            Toast.makeText(context, "Kode Otoritas salah! Akses Ditolak.", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, Translator.t("Kode Otoritas salah! Akses Ditolak."), Toast.LENGTH_SHORT).show()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
@@ -764,7 +765,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
 
         AlertDialog(
             onDismissRequest = { showCorrectionEditDialog = false },
-            title = { Text("Form Koreksi Transaksi", fontWeight = FontWeight.Bold) },
+            title = { Text(Translator.t("Form Koreksi Transaksi"), fontWeight = FontWeight.Bold) },
             text = {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -772,7 +773,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                 ) {
                     Text("ID Transaksi: ${rx.id}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OrangePrimary)
                     
-                    Text("Detail Produk Struk", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = OrangePrimary)
+                    Text(Translator.t("Detail Produk Struk"), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = OrangePrimary)
                     
                     Column(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -782,7 +783,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                             .padding(8.dp)
                     ) {
                         if (parsedItems.isEmpty()) {
-                            Text("Tidak ada produk di struk", fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(8.dp))
+                            Text(Translator.t("Tidak ada produk di struk"), fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(8.dp))
                         } else {
                             parsedItems.forEachIndexed { index, item ->
                                 Row(
@@ -822,7 +823,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                                             },
                                             modifier = Modifier.size(28.dp)
                                         ) {
-                                            Icon(imageVector = Icons.Default.AddCircle, contentDescription = "Tambah", tint = OrangePrimary)
+                                            Icon(imageVector = Icons.Default.AddCircle, contentDescription = Translator.t("Tambah"), tint = OrangePrimary)
                                         }
 
                                         // Delete Button
@@ -830,7 +831,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                                             onClick = { parsedItems.removeAt(index) },
                                             modifier = Modifier.size(28.dp)
                                         ) {
-                                            Icon(imageVector = Icons.Default.Delete, contentDescription = "Hapus", tint = Color.Red)
+                                            Icon(imageVector = Icons.Default.Delete, contentDescription = Translator.t("Hapus"), tint = Color.Red)
                                         }
                                     }
                                 }
@@ -850,7 +851,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                     ) {
                         Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Tambah Produk ke Struk", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text(Translator.t("Tambah Produk ke Struk"), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
 
                     Spacer(modifier = Modifier.height(4.dp))
@@ -881,9 +882,9 @@ fun DashboardScreen(viewModel: KasirViewModel) {
 
                     // Dropdown for Metode Bayar
                     Column {
-                        Text("Metode Pembayaran", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text(Translator.t("Metode Pembayaran"), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
-                            listOf("Tunai", "QRIS", "Transfer", "Debit").forEach { m ->
+                            listOf(Translator.t("Tunai"), "QRIS", "Transfer", "Debit").forEach { m ->
                                 Card(
                                     onClick = { editMetodeBayar = m },
                                     colors = CardDefaults.cardColors(
@@ -901,9 +902,9 @@ fun DashboardScreen(viewModel: KasirViewModel) {
 
                     // Dropdown for Status
                     Column {
-                        Text("Status Pembayaran", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text(Translator.t("Status Pembayaran"), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
-                            listOf("lunas", "dp").forEach { s ->
+                            listOf(Translator.t("lunas"), "dp").forEach { s ->
                                 Card(
                                     onClick = { editStatus = s },
                                     colors = CardDefaults.cardColors(
@@ -927,13 +928,13 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                         val bayarVal = editBayarStr.toDoubleOrNull() ?: rx.bayarNominal
                         val diskonVal = editDiskonStr.toDoubleOrNull() ?: calculatedDiskon
 
-                        if (bayarVal < totalVal && editStatus == "lunas") {
-                            Toast.makeText(context, "Nominal bayar kurang dari total untuk status lunas!", Toast.LENGTH_SHORT).show()
+                        if (bayarVal < totalVal && editStatus == Translator.t("lunas")) {
+                            Toast.makeText(context, Translator.t("Nominal bayar kurang dari total untuk status lunas!"), Toast.LENGTH_SHORT).show()
                             return@Button
                         }
 
                         if (parsedItems.isEmpty()) {
-                            Toast.makeText(context, "Struk tidak boleh kosong! Hapus transaksi jika ingin membatalkan.", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, Translator.t("Struk tidak boleh kosong! Hapus transaksi jika ingin membatalkan."), Toast.LENGTH_SHORT).show()
                             return@Button
                         }
 
@@ -958,7 +959,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                         viewModel.correctTransaction(updatedTx) {
                             showCorrectionEditDialog = false
                             selectedTxForReceipt = null
-                            Toast.makeText(context, "Koreksi transaksi berhasil diperbarui!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, Translator.t("Koreksi transaksi berhasil diperbarui!"), Toast.LENGTH_SHORT).show()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
@@ -980,7 +981,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
 
             AlertDialog(
                 onDismissRequest = { showAddProductMenu = false },
-                title = { Text("Pilih Produk", fontWeight = FontWeight.Bold) },
+                title = { Text(Translator.t("Pilih Produk"), fontWeight = FontWeight.Bold) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.heightIn(max = 300.dp)) {
                         OutlinedTextField(
@@ -1074,12 +1075,12 @@ fun InteractiveFinancialChart(
             ) {
                 Column {
                     Text(
-                        text = "Grafik Keuangan (7 Hari Terakhir)",
+                        text = Translator.t("Grafik Keuangan (7 Hari Terakhir)"),
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
                     )
                     Text(
-                        text = "Tekan & geser untuk detail interaktif",
+                        text = Translator.t("Tekan & geser untuk detail interaktif"),
                         fontSize = 11.sp,
                         color = Color.Gray
                     )

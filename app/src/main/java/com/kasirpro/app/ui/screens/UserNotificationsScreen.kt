@@ -1,5 +1,6 @@
 package com.kasirpro.app.ui.screens
 
+import com.kasirpro.app.util.Translator
 import android.content.Intent
 import android.net.Uri
 import com.kasirpro.app.util.Toast
@@ -64,7 +65,7 @@ fun UserNotificationsScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("Detail Notifikasi", fontWeight = FontWeight.Bold) },
+                    title = { Text(Translator.t("Detail Notifikasi"), fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = { selectedNotification = null }) {
                             Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
@@ -154,7 +155,7 @@ fun UserNotificationsScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "Harap unduh pembaruan APK dari server penyedia resmi untuk performa terbaik dan perlindungan fitur baru.",
+                                text = Translator.t("Harap unduh pembaruan APK dari server penyedia resmi untuk performa terbaik dan perlindungan fitur baru."),
                                 color = Color.Gray,
                                 fontSize = 11.sp
                             )
@@ -165,7 +166,7 @@ fun UserNotificationsScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl))
                                         context.startActivity(intent)
                                     } catch (e: Exception) {
-                                        Toast.makeText(context, "Gagal membuka link download!", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, Translator.t("Gagal membuka link download!"), Toast.LENGTH_SHORT).show()
                                     }
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = Color.Green),
@@ -173,7 +174,7 @@ fun UserNotificationsScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                             ) {
                                 Icon(imageVector = Icons.Default.Download, contentDescription = null, tint = Slate900)
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Unduh APK Baru", color = Slate900, fontWeight = FontWeight.Bold)
+                                Text(Translator.t("Unduh APK Baru"), color = Slate900, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -193,7 +194,7 @@ fun UserNotificationsScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("Notifikasi Broadcast", fontWeight = FontWeight.Bold) },
+                    title = { Text(Translator.t("Notifikasi Broadcast"), fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
@@ -203,7 +204,7 @@ fun UserNotificationsScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                         IconButton(
                             onClick = {
                                 viewModel.markAllNotifsRead()
-                                Toast.makeText(context, "Semua notifikasi ditandai dibaca", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, Translator.t("Semua notifikasi ditandai dibaca"), Toast.LENGTH_SHORT).show()
                             },
                             modifier = Modifier.testTag("mark_all_read_btn")
                         ) {
@@ -239,7 +240,7 @@ fun UserNotificationsScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = "Tidak ada notifikasi untuk Anda",
+                                text = Translator.t("Tidak ada notifikasi untuk Anda"),
                                 color = Color.Gray,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium
