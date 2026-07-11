@@ -1087,7 +1087,8 @@ fun InteractiveFinancialChart(
                 
                 val labelShow = if (selectedIndex != null && selectedIndex!! in data.indices) {
                     val p = data[selectedIndex!!]
-                    "${p.first}: ${currencyFormatter.format(p.second)}"
+                    val translatedDay = com.kasirpro.app.util.t(p.first)
+                    "$translatedDay: ${currencyFormatter.format(p.second)}"
                 } else {
                     val total7Days = data.sumOf { it.second }
                     "Total: ${currencyFormatter.format(total7Days)}"
@@ -1233,7 +1234,7 @@ fun InteractiveFinancialChart(
                 data.forEachIndexed { idx, pair ->
                     val pt = points[idx]
                     drawContext.canvas.nativeCanvas.drawText(
-                        pair.first,
+                        com.kasirpro.app.util.tNon(pair.first),
                         pt.x,
                         canvasHeight - 6.dp.toPx(),
                         android.graphics.Paint().apply {
