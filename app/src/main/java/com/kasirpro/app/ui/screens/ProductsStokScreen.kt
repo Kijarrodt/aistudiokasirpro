@@ -69,7 +69,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
     val isKasir = currentUserState?.role == "kasir"
     val isPremiumState = currentUserState?.isPremium ?: false
 
-    var activeTab by remember { mutableStateOf(Translator.t(Translator.t("PRODUK"))) } // "PRODUK", Translator.t("STOK"), Translator.t("RIWAYAT")
+    var activeTab by remember { mutableStateOf("PRODUK") } // "PRODUK", Translator.t("STOK"), Translator.t("RIWAYAT")
 
     var searchQueryProduct by remember { mutableStateOf("") }
     var selectedCategoryFilter by remember { mutableStateOf(Translator.t("Semua")) }
@@ -135,7 +135,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                     }
                 },
                 actions = {
-                    if (activeTab == Translator.t("PRODUK") && !isKasir) {
+                    if (activeTab == "PRODUK" && !isKasir) {
                         Button(
                             onClick = { showBulkUploadDialog = true },
                             colors = ButtonDefaults.buttonColors(
@@ -159,7 +159,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
             )
         },
         floatingActionButton = {
-            if (activeTab == Translator.t("PRODUK") && !isKasir) {
+            if (activeTab == "PRODUK" && !isKasir) {
                 FloatingActionButton(
                     onClick = { showAddProductDialog = true },
                     shape = CircleShape,
@@ -192,34 +192,34 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
             // Tab Header Layouts
             TabRow(
                 selectedTabIndex = when (activeTab) {
-                    Translator.t("PRODUK") -> 0
-                    Translator.t("STOK") -> 1
+                    "PRODUK" -> 0
+                    "STOK" -> 1
                     else -> 2
                 },
                 contentColor = OrangePrimary,
                 indicator = { tabPositions ->
                     TabRowDefaults.SecondaryIndicator(
                         Modifier.tabIndicatorOffset(tabPositions[when (activeTab) {
-                            Translator.t("PRODUK") -> 0
-                            Translator.t("STOK") -> 1
+                            "PRODUK" -> 0
+                            "STOK" -> 1
                             else -> 2
                         }]),
                         color = OrangePrimary
                     )
                 }
             ) {
-                Tab(selected = activeTab == Translator.t(Translator.t("PRODUK")), onClick = { activeTab = "PRODUK" }) {
+                Tab(selected = activeTab == "PRODUK", onClick = { activeTab = "PRODUK" }) {
                     Text(Translator.t("PRODUK"), modifier = Modifier.padding(14.dp), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 }
-                Tab(selected = activeTab == Translator.t(Translator.t("STOK")), onClick = { activeTab = "STOK" }) {
+                Tab(selected = activeTab == "STOK", onClick = { activeTab = "STOK" }) {
                     Text(Translator.t("STOK FISIK"), modifier = Modifier.padding(14.dp), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 }
-                Tab(selected = activeTab == Translator.t(Translator.t("RIWAYAT")), onClick = { activeTab = "RIWAYAT" }) {
+                Tab(selected = activeTab == "RIWAYAT", onClick = { activeTab = "RIWAYAT" }) {
                     Text(Translator.t("RIWAYAT"), modifier = Modifier.padding(14.dp), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 }
             }
 
-            if (activeTab == Translator.t("PRODUK") || activeTab == Translator.t("STOK")) {
+            if (activeTab == "PRODUK" || activeTab == "STOK") {
                 val totalExpiryCount by viewModel.totalExpiryWarningsCount.collectAsState()
                 val expiredList by viewModel.expiredProducts.collectAsState()
                 val nearExpiryList by viewModel.nearExpiryProducts.collectAsState()
@@ -401,7 +401,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
             }
 
             when (activeTab) {
-                Translator.t("PRODUK") -> {
+                "PRODUK" -> {
                     if (productsList.isEmpty()) {
                         EmptyStateIllustration(
                             title = Translator.t("Produk Belum Ada"),
@@ -488,7 +488,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                         }
                     }
                 }
-                Translator.t("STOK") -> {
+                "STOK" -> {
                     LazyColumn(
                         contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 88.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
