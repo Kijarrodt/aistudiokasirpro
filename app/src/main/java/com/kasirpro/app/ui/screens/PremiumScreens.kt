@@ -51,7 +51,7 @@ fun PremiumScreens(viewModel: KasirViewModel) {
     val user by viewModel.currentUser.collectAsState()
     val isPremium = user?.isPremium ?: false
 
-    var selectedModule by remember { mutableStateOf(Translator.t("LAPORAN")) } // LAPORAN, HUTANG, CRM POIN
+    var selectedModule by remember { mutableStateOf("LAPORAN") } // LAPORAN, HUTANG, CRM POIN
 
     val context = LocalContext.current
 
@@ -161,9 +161,9 @@ fun PremiumScreens(viewModel: KasirViewModel) {
                     .background(MaterialTheme.colorScheme.background)
             ) {
                 when (selectedModule) {
-                    Translator.t("LAPORAN") -> PremiumLaporanTab(viewModel)
-                    Translator.t("HUTANG") -> PremiumHutangTab(viewModel)
-                    Translator.t("CRM POIN") -> PremiumPelangganTab(viewModel)
+                    "LAPORAN" -> PremiumLaporanTab(viewModel)
+                    "HUTANG" -> PremiumHutangTab(viewModel)
+                    "CRM POIN" -> PremiumPelangganTab(viewModel)
                 }
             }
         }
@@ -721,14 +721,14 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                                             Box(
                                                 modifier = Modifier
                                                     .clip(RoundedCornerShape(4.dp))
-                                                    .background(if (shift.status == Translator.t("aktif")) Color(0xFFFEF08A) else Color(0xFFDCFCE7))
+                                                    .background(if (shift.status == "aktif") Color(0xFFFEF08A) else Color(0xFFDCFCE7))
                                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                                             ) {
                                                 Text(
                                                     shift.status.uppercase(),
                                                     fontSize = 9.sp,
                                                     fontWeight = FontWeight.Bold,
-                                                    color = if (shift.status == Translator.t("aktif")) Color(0xFF854D0E) else Color(0xFF15803D)
+                                                    color = if (shift.status == "aktif") Color(0xFF854D0E) else Color(0xFF15803D)
                                                 )
                                             }
                                         }
@@ -774,7 +774,7 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                                             Text(idrFormatter.format(shift.modalAwal + shift.totalTunai), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                                         }
 
-                                        if (shift.status != Translator.t("aktif")) {
+                                        if (shift.status != "aktif") {
                                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                                 Text(Translator.t("Uang Fisik Dilaporkan:"), fontSize = 11.sp, color = Color.Gray)
                                                 Text(idrFormatter.format(shift.actualDrawerCash), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
@@ -1087,8 +1087,8 @@ fun PremiumHutangTab(viewModel: KasirViewModel) {
     val idrFormatter = NumberFormat.getCurrencyInstance(Locale("id", "ID"))
     idrFormatter.maximumFractionDigits = 0
 
-    val unpaid = debtsList.filter { it.status == Translator.t("belum") }
-    val paid = debtsList.filter { it.status == Translator.t("lunas") }
+    val unpaid = debtsList.filter { it.status == "belum" }
+    val paid = debtsList.filter { it.status == "lunas" }
 
     var showUnpaidByMe by remember { mutableStateOf(true) }
 
@@ -1152,8 +1152,8 @@ fun PremiumHutangTab(viewModel: KasirViewModel) {
                             Text("Ref Transaksi ID: ${debt.transaksiId}", fontSize = 11.sp, color = Color.Gray)
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            Text(idrFormatter.format(debt.jumlah), fontWeight = FontWeight.Bold, color = if (debt.status == Translator.t("belum")) Color.Red else Color(0xFF15803D))
-                            if (debt.status == Translator.t("belum")) {
+                            Text(idrFormatter.format(debt.jumlah), fontWeight = FontWeight.Bold, color = if (debt.status == "belum") Color.Red else Color(0xFF15803D))
+                            if (debt.status == "belum") {
                                 Button(
                                     onClick = { viewModel.settleDebt(debt.id) },
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF15803D)),
