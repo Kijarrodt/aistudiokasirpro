@@ -337,6 +337,39 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         return product.hargaJual
     }
 
+    // Promo Validation Helpers
+    fun isPromoValid(promo: PromoEntity, subtotal: Double): Boolean {
+        if (!promo.isActive) return false
+        if (promo.berlakuSampai > 0 && promo.berlakuSampai < System.currentTimeMillis()) return false
+        if (subtotal < promo.minTransaksi) return false
+        return true
+    }
+
+    fun getPromoInvalidReason(promo: PromoEntity, subtotal: Double): String? {
+        if (isPromoValid(promo, subtotal)) return null
+        if (promo.berlakuSampai > 0 && promo.berlakuSampai < System.currentTimeMillis()) {
+            return "Promo sudah kadaluarsa"
+        }
+        if (subtotal < promo.minTransaksi) {
+            val idrFormatter = java.text.NumberFormat.getCurrencyInstance(java.util.Locale("id", "ID")).apply {
+                maximumFractionDigits = 0
+            }
+            return "Minimum belanja ${idrFormatter.format(promo.minTransaksi)}"
+        }
+        return "Promo tidak aktif"
+    }
+
+    private fun revalidateAppliedPromo() {
+        val promo = appliedPromo.value ?: return
+        val items = cartItems.value
+        val subtotal = items.sumOf { (it.harga - it.diskon) * it.jumlah }
+        if (!isPromoValid(promo, subtotal)) {
+            appliedPromo.value = null
+            val reason = getPromoInvalidReason(promo, subtotal)
+            showToast("Promo dilepas karena syarat tidak lagi terpenuhi${if (reason != null) ": $reason" else ""}")
+        }
+    }
+
     // CART ACTIONS
     fun addToCart(product: ProductEntity, selectedVariant: ProductVariant? = null) {
         val current = cartItems.value.toMutableList()
@@ -374,6 +407,7 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
             )
         }
         cartItems.value = current
+        revalidateAppliedPromo()
     }
 
     fun updateCartQuantity(item: TransactionItem, newQty: Int) {
@@ -395,6 +429,7 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
                 } else it
             }
         }
+        revalidateAppliedPromo()
     }
 
     fun applyCartItemDiscount(item: TransactionItem, discountAmount: Double) {
@@ -403,6 +438,7 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
                 it.copy(diskon = discountAmount)
             } else it
         }
+        revalidateAppliedPromo()
     }
 
     fun clearCart() {
@@ -430,6 +466,15 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val items = cartItems.value
             val subtotal = items.sumOf { (it.harga - it.diskon) * it.jumlah }
+
+            val currentPromo = appliedPromo.value
+            if (currentPromo != null && !isPromoValid(currentPromo, subtotal)) {
+                appliedPromo.value = null
+                val reason = getPromoInvalidReason(currentPromo, subtotal) ?: "Promo tidak valid"
+                showToast("Promo tidak valid ($reason). Checkout dibatalkan, silakan periksa kembali promo.")
+                return@launch
+            }
+
             val promoDisc = appliedPromo.value?.let { p ->
                 if (p.tipe == "diskon_persen") {
                     subtotal * (p.nilai / 100.0)

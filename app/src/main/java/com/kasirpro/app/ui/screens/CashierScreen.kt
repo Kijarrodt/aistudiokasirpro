@@ -24,6 +24,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -1318,6 +1319,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
 
     // Secondarypicker: Promos picker Dialog
     if (showPromoPicker) {
+        val currentSubtotal = cart.sumOf { (it.harga - it.diskon) * it.jumlah }
         AlertDialog(
             onDismissRequest = { showPromoPicker = false },
             title = { Text("Gunakan Voucher Kupon Promo") },
@@ -1327,21 +1329,35 @@ fun CashierScreen(viewModel: KasirViewModel) {
                         item { Text(Translator.t("Database voucher promo kosong."), fontSize = 11.sp, color = Color.Gray) }
                     }
                     items(promosList.filter { it.isActive }) { p ->
+                        val isValid = viewModel.isPromoValid(p, currentSubtotal)
+                        val invalidReason = viewModel.getPromoInvalidReason(p, currentSubtotal)
                         Card(
                             onClick = {
-                                viewModel.appliedPromo.value = p
-                                showPromoPicker = false
+                                if (isValid) {
+                                    viewModel.appliedPromo.value = p
+                                    showPromoPicker = false
+                                }
                             },
-                            modifier = Modifier.fillMaxWidth(),
+                            enabled = isValid,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .then(if (!isValid) Modifier.alpha(0.4f) else Modifier),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                         ) {
-                            Row(modifier = Modifier.padding(12.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Column {
+                            Row(
+                                modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
                                     Text(p.nama, fontWeight = FontWeight.SemiBold)
                                     Text("Kode: ${p.kode}", fontSize = 11.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                                    if (!isValid && invalidReason != null) {
+                                        Text(invalidReason, fontSize = 11.sp, color = Color.Red, fontWeight = FontWeight.Medium)
+                                    }
                                 }
                                 val amountText = if (p.tipe == "diskon_persen") "${p.nilai.toInt()}%" else idrFormatter.format(p.nilai)
-                                Text(amountText, fontWeight = FontWeight.Bold, color = Color(0xFF15803D))
+                                Text(amountText, fontWeight = FontWeight.Bold, color = if (isValid) Color(0xFF15803D) else Color.Gray)
                             }
                         }
                     }
