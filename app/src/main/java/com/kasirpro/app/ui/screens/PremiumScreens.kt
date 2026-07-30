@@ -1831,6 +1831,28 @@ fun PremiumPromoTab(viewModel: KasirViewModel) {
                         Column {
                             Text(p.nama, fontWeight = FontWeight.Bold)
                             Text("Kode: ${p.kode} • Min Tx: Rp${p.minTransaksi.toInt()}", fontSize = 11.sp, color = Color.Gray)
+                            val now = System.currentTimeMillis()
+                            if (p.berlakuSampai <= 0L) {
+                                Text("Tanpa batas waktu", fontSize = 11.sp, color = Color.Gray)
+                            } else if (p.berlakuSampai < now) {
+                                val sdf = java.text.SimpleDateFormat("d MMMM yyyy", Locale("id", "ID"))
+                                Text(
+                                    "Kadaluarsa (${sdf.format(java.util.Date(p.berlakuSampai))})",
+                                    fontSize = 11.sp,
+                                    color = Color.Red,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            } else {
+                                val sdf = java.text.SimpleDateFormat("d MMMM yyyy", Locale("id", "ID"))
+                                val diffMillis = p.berlakuSampai - now
+                                val remainingDays = (diffMillis / (24 * 60 * 60 * 1000L)).toInt().coerceAtLeast(0)
+                                val textColor = if (remainingDays <= 3) OrangePrimary else Color.Gray
+                                Text(
+                                    "Berlaku sampai ${sdf.format(java.util.Date(p.berlakuSampai))}, sisa $remainingDays hari",
+                                    fontSize = 11.sp,
+                                    color = textColor
+                                )
+                            }
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Switch(
@@ -1878,6 +1900,53 @@ fun PremiumPromoTab(viewModel: KasirViewModel) {
 
                     OutlinedTextField(value = pNilai, onValueChange = { pNilai = it }, label = { Text("Nilai Diskon") })
                     OutlinedTextField(value = pMinTx, onValueChange = { pMinTx = it }, label = { Text("Min Transaksi Belanja") })
+
+                    Text("Masa Berlaku Promo:")
+                    val quickOptions = listOf(
+                        "7 Hari" to "7",
+                        "30 Hari" to "30",
+                        "90 Hari" to "90",
+                        "Tanpa Batas Waktu" to "0"
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        quickOptions.forEach { (label, value) ->
+                            val isSelected = pDays == value
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = { pDays = value },
+                                label = { Text(label, fontSize = 12.sp) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = OrangePrimary,
+                                    selectedLabelColor = Color.White
+                                )
+                            )
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = pDays,
+                        onValueChange = { pDays = it },
+                        label = { Text("Atau isi jumlah hari sendiri") },
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    val daysInt = pDays.toIntOrNull() ?: 0
+                    val previewText = if (daysInt <= 0) {
+                        "Promo berlaku selamanya"
+                    } else {
+                        val expiryMillis = System.currentTimeMillis() + (daysInt * 24L * 60 * 60 * 1000L)
+                        val sdf = java.text.SimpleDateFormat("d MMMM yyyy", Locale("id", "ID"))
+                        "Berlaku sampai ${sdf.format(java.util.Date(expiryMillis))}"
+                    }
+                    Text(text = previewText, fontSize = 11.sp, color = Color.Gray)
                 }
             },
             confirmButton = {
@@ -1890,7 +1959,7 @@ fun PremiumPromoTab(viewModel: KasirViewModel) {
                                 nilai = pNilai.toDoubleOrNull() ?: 0.0,
                                 minTx = pMinTx.toDoubleOrNull() ?: 0.0,
                                 kode = pKode.uppercase(),
-                                durationDays = pDays.toIntOrNull() ?: 30
+                                durationDays = pDays.toIntOrNull() ?: 0
                             )
                         }
                         showAddPromoDialog = false

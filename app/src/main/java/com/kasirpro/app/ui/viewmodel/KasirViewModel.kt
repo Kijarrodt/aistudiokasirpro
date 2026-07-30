@@ -659,7 +659,7 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
         viewModelScope.launch {
-            val berlakuSampai = System.currentTimeMillis() + (durationDays * 24L * 60 * 60 * 1000)
+            val berlakuSampai = if (durationDays <= 0) 0L else System.currentTimeMillis() + (durationDays * 24L * 60 * 60 * 1000)
             repository.addPromo(nama, tipe, nilai, minTx, kode, berlakuSampai)
         }
     }
