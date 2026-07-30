@@ -20,29 +20,51 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import com.kasirpro.app.ui.theme.OrangePrimary
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 
 object ImageHelper {
 
-    // Simple cache for decoded Bitmaps to prevent redundant decoding overhead
-    private val bitmapCache = java.util.concurrent.ConcurrentHashMap<String, Bitmap>()
+    private val cacheSizeKb = (Runtime.getRuntime().maxMemory() / 8 / 1024).toInt().coerceAtLeast(4096)
+    private val bitmapCache = object : android.util.LruCache<String, Bitmap>(cacheSizeKb) {
+        override fun sizeOf(key: String, value: Bitmap): Int {
+            return value.byteCount / 1024
+        }
+    }
+
+    private fun keyOf(base64: String): String {
+        return "${base64.length}-${base64.hashCode()}"
+    }
+
+    fun peekCache(base64Str: String?): Bitmap? {
+        if (base64Str.isNullOrBlank()) return null
+        return bitmapCache.get(keyOf(base64Str))
+    }
 
     /**
      * Converts base64 string back to Bitmap using local in-memory caching.
      */
     fun base64ToBitmap(base64Str: String?): Bitmap? {
         if (base64Str.isNullOrBlank()) return null
-        val cached = bitmapCache[base64Str]
+        val key = keyOf(base64Str)
+        val cached = bitmapCache.get(key)
         if (cached != null) return cached
 
         return try {
             val decodedBytes = android.util.Base64.decode(base64Str, android.util.Base64.DEFAULT)
-            val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+            val options = BitmapFactory.Options().apply {
+                inPreferredConfig = Bitmap.Config.RGB_565
+            }
+            val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size, options)
             if (bitmap != null) {
-                bitmapCache[base64Str] = bitmap
+                bitmapCache.put(key, bitmap)
             }
             bitmap
+        } catch (e: OutOfMemoryError) {
+            bitmapCache.evictAll()
+            null
         } catch (e: Exception) {
             e.printStackTrace()
             null
@@ -53,7 +75,7 @@ object ImageHelper {
      * Clear the local cache on Logout or App Close.
      */
     fun clearCache() {
-        bitmapCache.clear()
+        bitmapCache.evictAll()
     }
 
     /**
@@ -150,18 +172,24 @@ fun ProductImage(
     contentScale: ContentScale = ContentScale.Crop,
     defaultIcon: ImageVector = Icons.Default.Fastfood
 ) {
-    val bitmap = remember(fotoBase64) {
-        if (!fotoBase64.isNullOrBlank()) {
-            ImageHelper.base64ToBitmap(fotoBase64)
-        } else {
-            null
+    var bitmap by remember(fotoBase64) {
+        mutableStateOf(ImageHelper.peekCache(fotoBase64))
+    }
+
+    LaunchedEffect(fotoBase64) {
+        if (bitmap == null && !fotoBase64.isNullOrBlank()) {
+            val decoded = withContext(Dispatchers.IO) {
+                ImageHelper.base64ToBitmap(fotoBase64)
+            }
+            bitmap = decoded
         }
     }
 
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        if (bitmap != null) {
+        val currentBitmap = bitmap
+        if (currentBitmap != null) {
             Image(
-                bitmap = bitmap.asImageBitmap(),
+                bitmap = currentBitmap.asImageBitmap(),
                 contentDescription = contentDescription,
                 contentScale = contentScale,
                 modifier = Modifier.fillMaxSize()
@@ -185,18 +213,24 @@ fun ShopLogoImage(
     contentScale: ContentScale = ContentScale.Crop,
     defaultIcon: ImageVector = Icons.Default.Fastfood
 ) {
-    val bitmap = remember(logoBase64) {
-        if (!logoBase64.isNullOrBlank()) {
-            ImageHelper.base64ToBitmap(logoBase64)
-        } else {
-            null
+    var bitmap by remember(logoBase64) {
+        mutableStateOf(ImageHelper.peekCache(logoBase64))
+    }
+
+    LaunchedEffect(logoBase64) {
+        if (bitmap == null && !logoBase64.isNullOrBlank()) {
+            val decoded = withContext(Dispatchers.IO) {
+                ImageHelper.base64ToBitmap(logoBase64)
+            }
+            bitmap = decoded
         }
     }
 
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        if (bitmap != null) {
+        val currentBitmap = bitmap
+        if (currentBitmap != null) {
             Image(
-                bitmap = bitmap.asImageBitmap(),
+                bitmap = currentBitmap.asImageBitmap(),
                 contentDescription = contentDescription,
                 contentScale = contentScale,
                 modifier = Modifier.fillMaxSize()
@@ -220,18 +254,24 @@ fun ShopQrisImage(
     contentScale: ContentScale = ContentScale.Fit,
     defaultIcon: ImageVector = Icons.Default.QrCodeScanner
 ) {
-    val bitmap = remember(qrisBase64) {
-        if (!qrisBase64.isNullOrBlank()) {
-            ImageHelper.base64ToBitmap(qrisBase64)
-        } else {
-            null
+    var bitmap by remember(qrisBase64) {
+        mutableStateOf(ImageHelper.peekCache(qrisBase64))
+    }
+
+    LaunchedEffect(qrisBase64) {
+        if (bitmap == null && !qrisBase64.isNullOrBlank()) {
+            val decoded = withContext(Dispatchers.IO) {
+                ImageHelper.base64ToBitmap(qrisBase64)
+            }
+            bitmap = decoded
         }
     }
 
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        if (bitmap != null) {
+        val currentBitmap = bitmap
+        if (currentBitmap != null) {
             Image(
-                bitmap = bitmap.asImageBitmap(),
+                bitmap = currentBitmap.asImageBitmap(),
                 contentDescription = contentDescription,
                 contentScale = contentScale,
                 modifier = Modifier.fillMaxSize()

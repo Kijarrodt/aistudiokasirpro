@@ -10,6 +10,7 @@ import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.*
@@ -88,29 +89,34 @@ fun BranchEntity.toMap(): Map<String, Any?> = mapOf(
     "createdAt" to createdAt
 )
 
-fun ProductEntity.toMap(): Map<String, Any?> = mapOf(
-    "id" to id,
-    "businessId" to businessId,
-    "userId" to businessId.removePrefix("biz-"),
-    "branchId" to branchId,
-    "nama" to nama,
-    "kategori" to kategori,
-    "hargaJual" to hargaJual,
-    "retailPrice" to hargaJual,
-    "hargaModal" to hargaModal,
-    "stok" to stok,
-    "stokMinimum" to stokMinimum,
-    "barcode" to barcode,
-    "fotoBase64" to fotoBase64,
-    "varianRaw" to varianRaw,
-    "satuan" to satuan,
-    "isActive" to isActive,
-    "createdAt" to createdAt,
-    "wholesalePrice" to wholesalePrice,
-    "wholesaleMinQty" to wholesaleMinQty,
-    "expiryDate" to expiryDate?.let { com.google.firebase.Timestamp(java.util.Date(it)) },
-    "expiryReminderDays" to expiryReminderDays
-)
+fun ProductEntity.toMap(): Map<String, Any?> {
+    val map = mutableMapOf<String, Any?>(
+        "id" to id,
+        "businessId" to businessId,
+        "userId" to businessId.removePrefix("biz-"),
+        "branchId" to branchId,
+        "nama" to nama,
+        "kategori" to kategori,
+        "hargaJual" to hargaJual,
+        "retailPrice" to hargaJual,
+        "hargaModal" to hargaModal,
+        "stok" to stok,
+        "stokMinimum" to stokMinimum,
+        "barcode" to barcode,
+        "varianRaw" to varianRaw,
+        "satuan" to satuan,
+        "isActive" to isActive,
+        "createdAt" to createdAt,
+        "wholesalePrice" to wholesalePrice,
+        "wholesaleMinQty" to wholesaleMinQty,
+        "expiryDate" to expiryDate?.let { com.google.firebase.Timestamp(java.util.Date(it)) },
+        "expiryReminderDays" to expiryReminderDays
+    )
+    if (!fotoBase64.isNullOrEmpty()) {
+        map["fotoBase64"] = fotoBase64
+    }
+    return map
+}
 
 fun TransactionEntity.toMap(): Map<String, Any?> = mapOf(
     "id" to id,
@@ -1105,7 +1111,7 @@ data class GoogleLoginResult(
                 ProductEntity(
                     id = doc.id,
                     businessId = doc.getString("businessId") ?: getResolvedBusinessId(),
-                    branchId = doc.getString("branchId") ?: "branch-1",
+                    branchId = doc.getString("branchId") ?: "branch-1-${getResolvedBusinessId()}",
                     nama = doc.getString("nama") ?: "",
                     kategori = doc.getString("kategori") ?: "",
                     hargaJual = doc.getSafeDouble("retailPrice").takeIf { it > 0.0 } ?: doc.getSafeDouble("hargaJual"),
@@ -1256,7 +1262,7 @@ data class GoogleLoginResult(
 
     suspend fun updateProduct(product: ProductEntity) {
         try {
-            firestore.collection("products").document(product.id).set(product.toMap()).await()
+            firestore.collection("products").document(product.id).set(product.toMap(), SetOptions.merge()).await()
         } catch (e: Exception) { e.printStackTrace() }
         dao.insertProduct(product)
     }
@@ -1285,7 +1291,7 @@ data class GoogleLoginResult(
         }
         val updated = prod.copy(stok = stokSesudah)
         try {
-            firestore.collection("products").document(updated.id).set(updated.toMap()).await()
+            firestore.collection("products").document(updated.id).set(updated.toMap(), SetOptions.merge()).await()
         } catch (e: Exception) { e.printStackTrace() }
         dao.insertProduct(updated)
 
@@ -1399,7 +1405,7 @@ data class GoogleLoginResult(
                 // Asynchronously update product stock on firestore
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
-                        firestore.collection("products").document(updatedProduct.id).set(updatedProduct.toMap()).await()
+                        firestore.collection("products").document(updatedProduct.id).set(updatedProduct.toMap(), SetOptions.merge()).await()
                     } catch (e: Exception) { e.printStackTrace() }
                 }
                 
@@ -1480,7 +1486,7 @@ data class GoogleLoginResult(
             localProducts.forEach { p ->
                 // Push metadata to Firestore
                 try {
-                    firestore.collection("products").document(p.id).set(p.toMap()).await()
+                    firestore.collection("products").document(p.id).set(p.toMap(), SetOptions.merge()).await()
                 } catch (dbEx: Exception) {
                     android.util.Log.e("OFFLINE_SYNC", "Failed to sync product ${p.nama} to Firestore: ${dbEx.message}")
                 }
@@ -2941,7 +2947,7 @@ data class GoogleLoginResult(
                             val updatedProduct = product.copy(stok = stokSesudah)
                             
                             try {
-                                firestore.collection("products").document(updatedProduct.id).set(updatedProduct.toMap()).await()
+                                firestore.collection("products").document(updatedProduct.id).set(updatedProduct.toMap(), SetOptions.merge()).await()
                             } catch (e: Exception) { e.printStackTrace() }
                             dao.insertProduct(updatedProduct)
 
@@ -2981,7 +2987,7 @@ data class GoogleLoginResult(
                         val updatedProduct = product.copy(stok = stokSesudah)
                         
                         try {
-                            firestore.collection("products").document(updatedProduct.id).set(updatedProduct.toMap()).await()
+                            firestore.collection("products").document(updatedProduct.id).set(updatedProduct.toMap(), SetOptions.merge()).await()
                         } catch (e: Exception) { e.printStackTrace() }
                         dao.insertProduct(updatedProduct)
 
