@@ -7,6 +7,7 @@ import com.kasirpro.app.data.local.*
 import com.kasirpro.app.data.repository.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
 class KasirViewModel(application: Application) : AndroidViewModel(application) {
@@ -371,7 +372,31 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // CART ACTIONS
+    val strictStockMode = MutableStateFlow(prefs.getBoolean("strict_stock_mode", false))
+
+    fun setStrictStockMode(enabled: Boolean) {
+        prefs.edit().putBoolean("strict_stock_mode", enabled).apply()
+        strictStockMode.value = enabled
+    }
+
+    fun getAvailableStock(productId: String): Int {
+        val prod = products.value.find { it.id == productId } ?: return 0
+        val totalInCart = cartItems.value.filter { it.id == productId }.sumOf { it.jumlah }
+        return prod.stok - totalInCart
+    }
+
     fun addToCart(product: ProductEntity, selectedVariant: ProductVariant? = null) {
+        val available = getAvailableStock(product.id)
+        if (available <= 0) {
+            if (strictStockMode.value) {
+                showToast("Stok produk ${product.nama} sudah habis")
+                return
+            } else {
+                val minusUnit = -(available - 1)
+                showToast("Peringatan: Penjualan produk ${product.nama} membuat stok menjadi minus $minusUnit unit")
+            }
+        }
+
         val current = cartItems.value.toMutableList()
         val variantName = selectedVariant?.nama
         
@@ -411,7 +436,27 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun updateCartQuantity(item: TransactionItem, newQty: Int) {
-        if (newQty <= 0) {
+        val targetQty: Int
+        if (newQty > item.jumlah) {
+            val diff = newQty - item.jumlah
+            val available = getAvailableStock(item.id)
+            if (diff > available) {
+                if (strictStockMode.value) {
+                    targetQty = (item.jumlah + available).coerceAtLeast(0)
+                    showToast("Jumlah ${item.nama} disesuaikan menjadi $targetQty karena stok terbatas")
+                } else {
+                    targetQty = newQty
+                    val minusUnit = -(available - diff)
+                    showToast("Peringatan: Penjualan produk ${item.nama} membuat stok menjadi minus $minusUnit unit")
+                }
+            } else {
+                targetQty = newQty
+            }
+        } else {
+            targetQty = newQty
+        }
+
+        if (targetQty <= 0) {
             cartItems.value = cartItems.value.filterNot { 
                 it.id == item.id && it.varianSelected == item.varianSelected 
             }
@@ -421,11 +466,11 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
                     val prod = products.value.find { p -> p.id == item.id }
                     val hasVariant = item.varianSelected != null
                     val finalPrice = if (prod != null && !hasVariant) {
-                        getEffectivePriceForCartItem(prod, newQty, false)
+                        getEffectivePriceForCartItem(prod, targetQty, false)
                     } else {
                         item.harga
                     }
-                    it.copy(jumlah = newQty, harga = finalPrice)
+                    it.copy(jumlah = targetQty, harga = finalPrice)
                 } else it
             }
         }
@@ -452,14 +497,61 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         selectedPaymentMethod.value = "Tunai"
     }
 
+    companion object {
+        const val FREE_MONTHLY_TRANSACTION_LIMIT = 50
+    }
+
+    private fun getStartOfCurrentMonthMillis(): Long {
+        val calendar = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.DAY_OF_MONTH, 1)
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }
+        return calendar.timeInMillis
+    }
+
+    val transactionCountThisMonth: Int
+        get() {
+            val startOfMonth = getStartOfCurrentMonthMillis()
+            return transactions.value.count { it.createdAt >= startOfMonth }
+        }
+
+    fun isFreeTransactionLimitReached(): Boolean {
+        val user = currentUser.value
+        val isPremium = user?.isPremium ?: false
+        if (isPremium) return false
+
+        val currentMonthStr = java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.US).format(java.util.Date())
+        val localCount = transactionCountThisMonth
+        val serverCount = if (user?.freeTxPeriod == currentMonthStr) user.freeTxCount else 0
+
+        val maxCount = maxOf(localCount, serverCount)
+        return maxCount >= FREE_MONTHLY_TRANSACTION_LIMIT
+    }
+
+    fun getRemainingFreeTransactions(): Int {
+        val user = currentUser.value
+        val isPremium = user?.isPremium ?: false
+        if (isPremium) return FREE_MONTHLY_TRANSACTION_LIMIT
+
+        val currentMonthStr = java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.US).format(java.util.Date())
+        val localCount = transactionCountThisMonth
+        val serverCount = if (user?.freeTxPeriod == currentMonthStr) user.freeTxCount else 0
+
+        val maxCount = maxOf(localCount, serverCount)
+        return (FREE_MONTHLY_TRANSACTION_LIMIT - maxCount).coerceAtLeast(0)
+    }
+
     // CHECKOUT PROCESS
     fun processCheckout(customDiscountPrice: Double = 0.0, pointsRedeemedAmount: Int = 0, pointRateValue: Double = 100.0) {
         val user = currentUser.value
         val isPremium = user?.isPremium ?: false
 
         // Rule limit validation for Free Tier (Max 50 transactions per month)
-        if (!isPremium && transactions.value.size >= 50) {
-            showLimitPopup.value = "Batas 50 transaksi bulanan untuk akun Gratis telah tercapai. Hubungi Admin atau pasang Kode Aktivasi Paket untuk transaksi tanpa batas!"
+        if (isFreeTransactionLimitReached()) {
+            showLimitPopup.value = "Batas $FREE_MONTHLY_TRANSACTION_LIMIT transaksi untuk bulan berjalan sudah tercapai. Kuota transaksi gratis akan otomatis pulih pada tanggal 1 bulan depan. Silakan upgrade ke Paket Premium untuk transaksi tanpa batas!"
             return
         }
 
@@ -529,6 +621,40 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
 
             activeReceipt.value = tx
             clearCart()
+
+            if (!isPremium) {
+                viewModelScope.launch {
+                    try {
+                        val uid = user?.uid ?: com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+                        if (!uid.isNullOrEmpty()) {
+                            val currentPeriod = java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.US).format(java.util.Date())
+                            val userDocRef = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                                .collection("users").document(uid)
+                            val snapshot = try {
+                                userDocRef.get().await()
+                            } catch (e: Exception) {
+                                null
+                            }
+                            val docPeriod = if (snapshot != null && snapshot.exists()) snapshot.getString("freeTxPeriod") else null
+                            if (docPeriod != currentPeriod) {
+                                userDocRef.set(
+                                    mapOf(
+                                        "freeTxPeriod" to currentPeriod,
+                                        "freeTxCount" to 1
+                                    ),
+                                    com.google.firebase.firestore.SetOptions.merge()
+                                ).await()
+                            } else {
+                                userDocRef.update(
+                                    "freeTxCount", com.google.firebase.firestore.FieldValue.increment(1)
+                                ).await()
+                            }
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("KasirViewModel", "Failed updating freeTxCount in Firestore: ${e.message}")
+                    }
+                }
+            }
         }
     }
 

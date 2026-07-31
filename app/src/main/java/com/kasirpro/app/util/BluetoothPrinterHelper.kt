@@ -156,27 +156,23 @@ object BluetoothPrinterHelper {
         addLine("--------------------------------", center)
 
         // Cart items List
-        val itemsSplit = rx.itemsRaw.split(";").filter { it.isNotBlank() }
-        for (line in itemsSplit) {
-            val parts = line.split(":")
-            if (parts.size >= 4) {
-                val name = parts.getOrNull(1).orEmpty()
-                val qty = parts.getOrNull(2)?.toIntOrNull() ?: 1
-                val price = parts.getOrNull(3)?.toDoubleOrNull() ?: 0.0
-                val disc = parts.getOrNull(5)?.toDoubleOrNull() ?: 0.0
-                val itemSub = (price - disc) * qty
+        val items = TransactionItemCodec.decode(rx.itemsRaw)
+        for (item in items) {
+            val name = item.nama
+            val qty = item.jumlah
+            val price = item.harga
+            val itemSub = item.subtotal()
 
-                val itemName = if (name.length > 30) name.substring(0, 27) + "..." else name
-                addLine(itemName, left, isBold = true)
-                
-                // Format qty & subtotal right alignment
-                val qtyPriceStr = "  ${qty} x ${formatIdrValue(price)}"
-                val subtotalStr = formatIdrValue(itemSub)
-                
-                val spacesCount = 31 - qtyPriceStr.length - subtotalStr.length
-                val spaces = if (spacesCount > 0) " ".repeat(spacesCount) else " "
-                addLine("$qtyPriceStr$spaces$subtotalStr", left)
-            }
+            val itemName = if (name.length > 30) name.substring(0, 27) + "..." else name
+            addLine(itemName, left, isBold = true)
+            
+            // Format qty & subtotal right alignment
+            val qtyPriceStr = "  ${qty} x ${formatIdrValue(price)}"
+            val subtotalStr = formatIdrValue(itemSub)
+            
+            val spacesCount = 31 - qtyPriceStr.length - subtotalStr.length
+            val spaces = if (spacesCount > 0) " ".repeat(spacesCount) else " "
+            addLine("$qtyPriceStr$spaces$subtotalStr", left)
         }
 
         addLine("--------------------------------", center)

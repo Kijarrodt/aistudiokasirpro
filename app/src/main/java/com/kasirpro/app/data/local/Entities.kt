@@ -15,7 +15,9 @@ data class UserEntity(
     val subscriptionStartDate: Long?,
     val subscriptionEndDate: Long?,
     val createdAt: Long = System.currentTimeMillis(),
-    val lastActiveAt: Long? = null
+    val lastActiveAt: Long? = null,
+    val freeTxPeriod: String? = null,
+    val freeTxCount: Int = 0
 )
 
 val UserEntity.isPremium: Boolean 
@@ -85,7 +87,7 @@ data class TransactionEntity(
     val branchId: String,
     val kasirId: String,
     val kasirNama: String,
-    val itemsRaw: String, // JSON payload representing list of transaction items
+    val itemsRaw: String, // JSON array payload representing list of transaction items (data lama bisa berformat delimiter titik dua & titik koma yang tetap didukung saat pembacaan)
     val subtotal: Double,
     val diskonTotal: Double,
     val kodePromo: String?,

@@ -337,19 +337,16 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
     var calculatedCapital = 0.0
     filtered.forEach { tx ->
         var txHpp = 0.0
-        val itemsSplit = tx.itemsRaw.split(";").filter { it.isNotBlank() }
-        itemsSplit.forEach { line ->
-            val parts = line.split(":")
-            if (parts.size >= 3) {
-                val pId = parts[0]
-                val qty = parts[2].toIntOrNull() ?: 1
-                val sellPrice = parts.getOrNull(3)?.toDoubleOrNull() ?: 0.0
-                val diskon = parts.getOrNull(5)?.toDoubleOrNull() ?: 0.0
-                val finalItemPrice = sellPrice - diskon
-                
-                val itemCost = productCostMap[pId] ?: (finalItemPrice * 0.55)
-                txHpp += itemCost * qty
-            }
+        val items = com.kasirpro.app.util.TransactionItemCodec.decode(tx.itemsRaw)
+        items.forEach { item ->
+            val pId = item.id
+            val qty = item.jumlah
+            val sellPrice = item.harga
+            val diskon = item.diskon
+            val finalItemPrice = sellPrice - diskon
+            
+            val itemCost = productCostMap[pId] ?: (finalItemPrice * 0.55)
+            txHpp += itemCost * qty
         }
         if (txHpp == 0.0 && tx.total > 0.0) {
             txHpp = tx.total * 0.55
@@ -378,14 +375,11 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
     val topProducts = remember(filtered) {
         val map = mutableMapOf<String, Int>()
         filtered.forEach { tx ->
-            val itemsSplit = tx.itemsRaw.split(";").filter { it.isNotBlank() }
-            itemsSplit.forEach { line ->
-                val parts = line.split(":")
-                if (parts.size >= 2) {
-                    val name = parts[1]
-                    val qty = parts.getOrNull(2)?.toIntOrNull() ?: 1
-                    map[name] = (map[name] ?: 0) + qty
-                }
+            val items = com.kasirpro.app.util.TransactionItemCodec.decode(tx.itemsRaw)
+            items.forEach { item ->
+                val name = item.nama
+                val qty = item.jumlah
+                map[name] = (map[name] ?: 0) + qty
             }
         }
         map.toList().sortedByDescending { it.second }.take(4)

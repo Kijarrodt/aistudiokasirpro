@@ -1,6 +1,8 @@
 package com.kasirpro.app.ui.screens
 
 import com.kasirpro.app.util.Translator
+import com.kasirpro.app.util.TransactionItemCodec
+import com.kasirpro.app.data.repository.TransactionItem
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -589,24 +591,19 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                     Text("---------------------------------", color = Color.Black)
 
                     // Serialized items
-                    val itemsSplit = rx.itemsRaw.split(";").filter { it.isNotBlank() }
-                    itemsSplit.forEach { line ->
-                        val parts = line.split(":")
-                        if (parts.size >= 4) {
-                            val name = parts.getOrNull(1).orEmpty()
-                            val qty = parts.getOrNull(2)?.toIntOrNull() ?: 1
-                            val price = parts.getOrNull(3)?.toDoubleOrNull() ?: 0.0
-                            val disc = parts.getOrNull(5)?.toDoubleOrNull() ?: 0.0
-                            val sat = parts.getOrNull(6).orEmpty().takeIf { it.isNotBlank() } ?: "Pcs"
-                            val itemSub = (price - disc) * qty
+                    val items = TransactionItemCodec.decode(rx.itemsRaw)
+                    items.forEach { item ->
+                        val name = item.nama
+                        val qty = item.jumlah
+                        val sat = item.satuan
+                        val itemSub = item.subtotal()
 
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("$name x$qty $sat", fontSize = 11.sp, color = Color.Black)
-                                Text(idrFormatter.format(itemSub), fontSize = 11.sp, color = Color.Black)
-                            }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("$name x$qty $sat", fontSize = 11.sp, color = Color.Black)
+                            Text(idrFormatter.format(itemSub), fontSize = 11.sp, color = Color.Black)
                         }
                     }
 
@@ -727,18 +724,16 @@ fun DashboardScreen(viewModel: KasirViewModel) {
 
         // Parse items
         val parsedItems = remember(rx.id) {
-            rx.itemsRaw.split(";").filter { it.isNotBlank() }.mapNotNull { line ->
-                val parts = line.split(":")
-                if (parts.size >= 4) {
-                    val id = parts[0]
-                    val nama = parts[1]
-                    val jumlah = parts[2].toIntOrNull() ?: 1
-                    val harga = parts[3].toDoubleOrNull() ?: 0.0
-                    val varianSelected = parts.getOrNull(4) ?: ""
-                    val diskon = parts.getOrNull(5)?.toDoubleOrNull() ?: 0.0
-                    val satuan = parts.getOrNull(6).orEmpty().takeIf { it.isNotBlank() } ?: "Pcs"
-                    CorrectionItem(id, nama, jumlah, harga, varianSelected, diskon, satuan)
-                } else null
+            TransactionItemCodec.decode(rx.itemsRaw).map { item ->
+                CorrectionItem(
+                    id = item.id,
+                    nama = item.nama,
+                    jumlah = item.jumlah,
+                    harga = item.harga,
+                    varianSelected = item.varianSelected ?: "",
+                    diskon = item.diskon,
+                    satuan = item.satuan
+                )
             }.toMutableStateList()
         }
 
@@ -941,9 +936,19 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                         val calculatedKembalian = (bayarVal - totalVal).coerceAtLeast(0.0)
 
                         // Serialize itemsRaw
-                        val updatedItemsString = parsedItems.joinToString(";") {
-                            "${it.id}:${it.nama}:${it.jumlah}:${it.harga}:${it.varianSelected}:${it.diskon}:${it.satuan}"
-                        }
+                        val updatedItemsString = TransactionItemCodec.encode(
+                            parsedItems.map { item ->
+                                TransactionItem(
+                                    id = item.id,
+                                    nama = item.nama,
+                                    jumlah = item.jumlah,
+                                    harga = item.harga,
+                                    varianSelected = item.varianSelected.ifBlank { null },
+                                    diskon = item.diskon,
+                                    satuan = item.satuan
+                                )
+                            }
+                        )
 
                         val updatedTx = rx.copy(
                             itemsRaw = updatedItemsString,

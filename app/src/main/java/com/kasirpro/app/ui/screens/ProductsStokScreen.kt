@@ -468,7 +468,29 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                                     }
                                                 }
                                                 Text("Modal: ${idrFormatter.format(prod.hargaModal)} • Jual: ${idrFormatter.format(prod.hargaJual)}", fontSize = 12.sp, color = Color.Gray)
-                                                Text("Sisa Stok: ${prod.stok} ${prod.satuan}", fontSize = 11.sp, color = if (prod.stok <= prod.stokMinimum) Color.Red else Color.Gray, fontWeight = FontWeight.SemiBold)
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Text(
+                                                        text = "Sisa Stok: ${prod.stok} ${prod.satuan}",
+                                                        fontSize = 11.sp,
+                                                        color = if (prod.stok < 0 || prod.stok <= prod.stokMinimum) Color.Red else Color.Gray,
+                                                        fontWeight = if (prod.stok < 0) FontWeight.Bold else FontWeight.SemiBold
+                                                    )
+                                                    if (prod.stok < 0) {
+                                                        Spacer(modifier = Modifier.width(6.dp))
+                                                        Surface(
+                                                            color = Color.Red.copy(alpha = 0.12f),
+                                                            shape = RoundedCornerShape(4.dp)
+                                                        ) {
+                                                            Text(
+                                                                text = "Perlu koreksi stok",
+                                                                color = Color.Red,
+                                                                fontSize = 9.sp,
+                                                                fontWeight = FontWeight.Bold,
+                                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                }
                                             }
                                         }
 
@@ -507,7 +529,29 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                 ) {
                                     Column {
                                         Text(prod.nama, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                        Text("Sistem Stok: ${prod.stok} unit", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = "Sistem Stok: ${prod.stok} unit",
+                                                fontSize = 12.sp,
+                                                color = if (prod.stok < 0) Color.Red else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                                fontWeight = if (prod.stok < 0) FontWeight.Bold else FontWeight.Normal
+                                            )
+                                            if (prod.stok < 0) {
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Surface(
+                                                    color = Color.Red.copy(alpha = 0.12f),
+                                                    shape = RoundedCornerShape(4.dp)
+                                                ) {
+                                                    Text(
+                                                        text = "Perlu koreksi stok",
+                                                        color = Color.Red,
+                                                        fontSize = 9.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
                                     }
 
                                     if (!isKasir) {

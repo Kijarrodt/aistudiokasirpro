@@ -47,6 +47,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
     val user by viewModel.currentUser.collectAsState()
     val isPremium = user?.isPremium ?: false
     val isDarkState by viewModel.isDarkMode.collectAsState()
+    val strictStockModeState by viewModel.strictStockMode.collectAsState()
     val langState by viewModel.language.collectAsState()
     val backupDateState by viewModel.lastBackupDate.collectAsState()
     val context = LocalContext.current
@@ -886,24 +887,19 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                         Text("Kasir: ${rx.kasirNama}", fontSize = 10.sp, color = Color.Black)
                                         Text("---------------------------------", color = Color.Black)
 
-                                        val itemsSplit = rx.itemsRaw.split(";").filter { it.isNotBlank() }
-                                        itemsSplit.forEach { line ->
-                                            val parts = line.split(":")
-                                            if (parts.size >= 4) {
-                                                val name = parts.getOrNull(1).orEmpty()
-                                                val qty = parts.getOrNull(2)?.toIntOrNull() ?: 1
-                                                val price = parts.getOrNull(3)?.toDoubleOrNull() ?: 0.0
-                                                val disc = parts.getOrNull(5)?.toDoubleOrNull() ?: 0.0
-                                                val sat = parts.getOrNull(6).orEmpty().takeIf { it.isNotBlank() } ?: "Pcs"
-                                                val itemSub = (price - disc) * qty
+                                        val items = com.kasirpro.app.util.TransactionItemCodec.decode(rx.itemsRaw)
+                                        items.forEach { item ->
+                                            val name = item.nama
+                                            val qty = item.jumlah
+                                            val sat = item.satuan
+                                            val itemSub = item.subtotal()
 
-                                                Row(
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                    horizontalArrangement = Arrangement.SpaceBetween
-                                                ) {
-                                                    Text("$name x$qty $sat", fontSize = 10.sp, color = Color.Black)
-                                                    Text(idrFormatter.format(itemSub), fontSize = 10.sp, color = Color.Black)
-                                                }
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Text("$name x$qty $sat", fontSize = 10.sp, color = Color.Black)
+                                                Text(idrFormatter.format(itemSub), fontSize = 10.sp, color = Color.Black)
                                             }
                                         }
 
@@ -1609,6 +1605,41 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             Switch(
                                 checked = isDarkState,
                                 onCheckedChange = { viewModel.setDarkMode(it) },
+                                colors = SwitchDefaults.colors(checkedThumbColor = OrangePrimary)
+                            )
+                        }
+                        HorizontalDivider()
+
+                        // Mode Stok Ketat Toggle Switch
+                        Row(
+                            modifier = Modifier
+                                .clickable { viewModel.setStrictStockMode(!strictStockModeState) }
+                                .padding(16.dp)
+                                .fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(imageVector = Icons.Default.Inventory, contentDescription = null, tint = OrangePrimary)
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text("Mode Stok Ketat", fontWeight = FontWeight.SemiBold)
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = if (strictStockModeState)
+                                        "Aktif: Kasir tidak bisa menjual barang yang stoknya habis."
+                                    else
+                                        "Nonaktif: Kasir tetap bisa menjual barang habis (dengan peringatan) dan stok akan tercatat minus.",
+                                    fontSize = 11.sp,
+                                    color = Color.Gray,
+                                    modifier = Modifier.padding(start = 36.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Switch(
+                                checked = strictStockModeState,
+                                onCheckedChange = { viewModel.setStrictStockMode(it) },
                                 colors = SwitchDefaults.colors(checkedThumbColor = OrangePrimary)
                             )
                         }

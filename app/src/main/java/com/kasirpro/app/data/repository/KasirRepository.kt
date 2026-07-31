@@ -3,6 +3,7 @@ package com.kasirpro.app.data.repository
 import android.content.Context
 import androidx.room.*
 import com.kasirpro.app.data.local.*
+import com.kasirpro.app.util.TransactionItemCodec
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.FirebaseAuthException
@@ -65,7 +66,9 @@ fun UserEntity.toMap(): Map<String, Any?> = mapOf(
     "subscriptionStartDate" to subscriptionStartDate,
     "subscriptionEndDate" to subscriptionEndDate,
     "createdAt" to createdAt,
-    "lastActiveAt" to lastActiveAt
+    "lastActiveAt" to lastActiveAt,
+    "freeTxPeriod" to freeTxPeriod,
+    "freeTxCount" to freeTxCount
 )
 
 fun BusinessEntity.toMap(): Map<String, Any?> = mapOf(
@@ -838,7 +841,9 @@ data class GoogleLoginResult(
                         subscriptionStartDate = doc.getLong("subscriptionStartDate"),
                         subscriptionEndDate = doc.getLong("subscriptionEndDate"),
                         createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis(),
-                        lastActiveAt = System.currentTimeMillis()
+                        lastActiveAt = System.currentTimeMillis(),
+                        freeTxPeriod = doc.getString("freeTxPeriod"),
+                        freeTxCount = doc.getLong("freeTxCount")?.toInt() ?: 0
                     )
                 } else {
                     // Check by Email query as a fallback (for preexisting email/password registrations)
@@ -877,7 +882,9 @@ data class GoogleLoginResult(
                             subscriptionStartDate = firstDoc.getLong("subscriptionStartDate"),
                             subscriptionEndDate = firstDoc.getLong("subscriptionEndDate"),
                             createdAt = firstDoc.getLong("createdAt") ?: System.currentTimeMillis(),
-                            lastActiveAt = System.currentTimeMillis()
+                            lastActiveAt = System.currentTimeMillis(),
+                            freeTxPeriod = firstDoc.getString("freeTxPeriod"),
+                            freeTxCount = firstDoc.getLong("freeTxCount")?.toInt() ?: 0
                         )
 
                         // If they have a business under the old UID, copy and associate it with the new Google UID
@@ -1086,7 +1093,9 @@ data class GoogleLoginResult(
                     subscriptionStartDate = doc.getLong("subscriptionStartDate"),
                     subscriptionEndDate = doc.getLong("subscriptionEndDate"),
                     createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis(),
-                    lastActiveAt = doc.getLong("lastActiveAt")
+                    lastActiveAt = doc.getLong("lastActiveAt"),
+                    freeTxPeriod = doc.getString("freeTxPeriod"),
+                    freeTxCount = doc.getLong("freeTxCount")?.toInt() ?: 0
                 )
             } else {
                 dao.getUserById(uid)
@@ -1324,9 +1333,7 @@ data class GoogleLoginResult(
         status: String, // "lunas" or "dp"
         pelangganId: String?
     ): TransactionEntity {
-        val itemsString = items.joinToString(";") {
-            "${it.id}:${it.nama}:${it.jumlah}:${it.harga}:${it.varianSelected ?: ""}:${it.diskon}:${it.satuan}"
-        }
+        val itemsString = TransactionItemCodec.encode(items)
 
         val currUser = currentUser.firstOrNull()
         var currentKasirId = "kasir-1"
@@ -1396,16 +1403,18 @@ data class GoogleLoginResult(
 
         // Update product inventory & record stock movement
         items.forEach { item ->
-            val product = getProductById(item.id)
+            val product = dao.getProductById(item.id)
             if (product != null) {
                 val stokSebelum = product.stok
-                val stokSesudah = (stokSebelum - item.jumlah).coerceAtLeast(0)
+                val stokSesudah = stokSebelum - item.jumlah
                 val updatedProduct = product.copy(stok = stokSesudah)
                 
-                // Asynchronously update product stock on firestore
+                // Asynchronously update product stock on firestore using FieldValue.increment
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
-                        firestore.collection("products").document(updatedProduct.id).set(updatedProduct.toMap(), SetOptions.merge()).await()
+                        firestore.collection("products").document(item.id)
+                            .update("stok", com.google.firebase.firestore.FieldValue.increment(-item.jumlah.toLong()))
+                            .await()
                     } catch (e: Exception) { e.printStackTrace() }
                 }
                 
@@ -2520,7 +2529,9 @@ data class GoogleLoginResult(
                                 subscriptionStartDate = userDoc.getLong("subscriptionStartDate"),
                                 subscriptionEndDate = userDoc.getLong("subscriptionEndDate"),
                                 createdAt = userDoc.getLong("createdAt") ?: System.currentTimeMillis(),
-                                lastActiveAt = userDoc.getLong("lastActiveAt")
+                                lastActiveAt = userDoc.getLong("lastActiveAt"),
+                                freeTxPeriod = userDoc.getString("freeTxPeriod"),
+                                freeTxCount = userDoc.getLong("freeTxCount")?.toInt() ?: 0
                             )
                             dao.insertUser(user)
                             saveUserSessionMetadata(user)
@@ -2933,57 +2944,15 @@ data class GoogleLoginResult(
         
         // 1. Revert old transaction stock (re-adds to stock)
         if (oldTx != null) {
-            val oldLines = oldTx.itemsRaw.split(";").filter { it.isNotBlank() }
-            oldLines.forEach { line ->
-                val parts = line.split(":")
-                if (parts.size >= 3) {
-                    val pId = parts[0]
-                    val qty = parts[2].toIntOrNull() ?: 0
-                    if (qty > 0) {
-                        val product = getProductById(pId)
-                        if (product != null) {
-                            val stokSebelum = product.stok
-                            val stokSesudah = stokSebelum + qty
-                            val updatedProduct = product.copy(stok = stokSesudah)
-                            
-                            try {
-                                firestore.collection("products").document(updatedProduct.id).set(updatedProduct.toMap(), SetOptions.merge()).await()
-                            } catch (e: Exception) { e.printStackTrace() }
-                            dao.insertProduct(updatedProduct)
-
-                            // Restock movement log
-                            val hs = StockHistoryEntity(
-                                id = java.util.UUID.randomUUID().toString(),
-                                productId = pId,
-                                businessId = product.businessId,
-                                tipe = "masuk",
-                                jumlah = qty,
-                                stokSebelum = stokSebelum,
-                                stokSesudah = stokSesudah,
-                                keterangan = "Restorasi koreksi transaksi ${correctedTx.id}"
-                            )
-                            try {
-                                firestore.collection("stock_history").document(hs.id).set(hs.toMap()).await()
-                            } catch (e: Exception) { e.printStackTrace() }
-                            dao.insertStockHistory(hs)
-                        }
-                    }
-                }
-            }
-        }
-
-        // 2. Apply new corrected transaction stock (deducts from stock)
-        val newLines = correctedTx.itemsRaw.split(";").filter { it.isNotBlank() }
-        newLines.forEach { line ->
-            val parts = line.split(":")
-            if (parts.size >= 3) {
-                val pId = parts[0]
-                val qty = parts[2].toIntOrNull() ?: 0
+            val oldItems = TransactionItemCodec.decode(oldTx.itemsRaw)
+            oldItems.forEach { item ->
+                val pId = item.id
+                val qty = item.jumlah
                 if (qty > 0) {
                     val product = getProductById(pId)
                     if (product != null) {
                         val stokSebelum = product.stok
-                        val stokSesudah = (stokSebelum - qty).coerceAtLeast(0)
+                        val stokSesudah = stokSebelum + qty
                         val updatedProduct = product.copy(stok = stokSesudah)
                         
                         try {
@@ -2991,22 +2960,58 @@ data class GoogleLoginResult(
                         } catch (e: Exception) { e.printStackTrace() }
                         dao.insertProduct(updatedProduct)
 
-                        // Deduct stock movement log
+                        // Restock movement log
                         val hs = StockHistoryEntity(
                             id = java.util.UUID.randomUUID().toString(),
                             productId = pId,
                             businessId = product.businessId,
-                            tipe = "keluar",
+                            tipe = "masuk",
                             jumlah = qty,
                             stokSebelum = stokSebelum,
                             stokSesudah = stokSesudah,
-                            keterangan = "Pengurangan koreksi transaksi ${correctedTx.id}"
+                            keterangan = "Restorasi koreksi transaksi ${correctedTx.id}"
                         )
                         try {
                             firestore.collection("stock_history").document(hs.id).set(hs.toMap()).await()
                         } catch (e: Exception) { e.printStackTrace() }
                         dao.insertStockHistory(hs)
                     }
+                }
+            }
+        }
+
+        // 2. Apply new corrected transaction stock (deducts from stock)
+        val newItems = TransactionItemCodec.decode(correctedTx.itemsRaw)
+        newItems.forEach { item ->
+            val pId = item.id
+            val qty = item.jumlah
+            if (qty > 0) {
+                val product = getProductById(pId)
+                if (product != null) {
+                    val stokSebelum = product.stok
+                    val stokSesudah = stokSebelum - qty
+                    val updatedProduct = product.copy(stok = stokSesudah)
+                    
+                    try {
+                        firestore.collection("products").document(updatedProduct.id).set(updatedProduct.toMap(), SetOptions.merge()).await()
+                    } catch (e: Exception) { e.printStackTrace() }
+                    dao.insertProduct(updatedProduct)
+
+                    // Deduct stock movement log
+                    val hs = StockHistoryEntity(
+                        id = java.util.UUID.randomUUID().toString(),
+                        productId = pId,
+                        businessId = product.businessId,
+                        tipe = "keluar",
+                        jumlah = qty,
+                        stokSebelum = stokSebelum,
+                        stokSesudah = stokSesudah,
+                        keterangan = "Pengurangan koreksi transaksi ${correctedTx.id}"
+                    )
+                    try {
+                        firestore.collection("stock_history").document(hs.id).set(hs.toMap()).await()
+                    } catch (e: Exception) { e.printStackTrace() }
+                    dao.insertStockHistory(hs)
                 }
             }
         }

@@ -1,6 +1,7 @@
 package com.kasirpro.app.ui.screens
 
 import com.kasirpro.app.util.Translator
+import com.kasirpro.app.util.TransactionItemCodec
 import android.content.Intent
 import com.kasirpro.app.util.Toast
 import androidx.compose.foundation.background
@@ -322,6 +323,10 @@ fun CashierScreen(viewModel: KasirViewModel) {
         },
         bottomBar = {
             if (cart.isNotEmpty()) {
+                val user = viewModel.currentUser.value
+                val isPremium = user?.isPremium ?: false
+                val remainingFreeTx = viewModel.getRemainingFreeTransactions()
+
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -329,13 +334,40 @@ fun CashierScreen(viewModel: KasirViewModel) {
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        if (!isPremium && remainingFreeTx <= 10) {
+                            Surface(
+                                color = Color(0xFFFFF7ED),
+                                contentColor = OrangePrimary,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Info,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = OrangePrimary
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Sisa kuota transaksi gratis bulan ini: $remainingFreeTx transaksi",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = OrangePrimary
+                                    )
+                                }
+                            }
+                        }
+                        Row(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                         Column {
                             Text("$totalItemsCount Item Terpilih", fontSize = 12.sp)
                             Text(idrFormatter.format(orderTotal), fontWeight = FontWeight.Bold, fontSize = 18.sp, color = OrangePrimary)
@@ -354,6 +386,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                 }
             }
         }
+    }
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -1062,9 +1095,9 @@ fun CashierScreen(viewModel: KasirViewModel) {
                         }
 
                         // Free limit transaction guard (50 transactions limit)
-                        if (!isPremium && viewModel.transactions.value.size >= 50) {
+                        if (viewModel.isFreeTransactionLimitReached()) {
                             showCheckoutDialog = false
-                            viewModel.showLimitPopup.value = Translator.t("Transaksi gratis bulanan mencapai batas 50 kali. Silakan upgrade ke premium!")
+                            viewModel.showLimitPopup.value = Translator.t("Batas ${com.kasirpro.app.ui.viewmodel.KasirViewModel.FREE_MONTHLY_TRANSACTION_LIMIT} transaksi untuk bulan berjalan sudah tercapai. Kuota transaksi gratis akan otomatis pulih pada tanggal 1 bulan depan. Silakan upgrade ke Paket Premium untuk transaksi tanpa batas!")
                             return@Button
                         }
 
@@ -1436,24 +1469,19 @@ fun CashierScreen(viewModel: KasirViewModel) {
                     Text("---------------------------------", color = Color.Black)
 
                     // Serialized items
-                    val itemsSplit = rx.itemsRaw.split(";").filter { it.isNotBlank() }
-                    itemsSplit.forEach { line ->
-                        val parts = line.split(":")
-                        if (parts.size >= 4) {
-                            val name = parts.getOrNull(1).orEmpty()
-                            val qty = parts.getOrNull(2)?.toIntOrNull() ?: 1
-                            val price = parts.getOrNull(3)?.toDoubleOrNull() ?: 0.0
-                            val disc = parts.getOrNull(5)?.toDoubleOrNull() ?: 0.0
-                            val sat = parts.getOrNull(6).orEmpty().takeIf { it.isNotBlank() } ?: "Pcs"
-                            val itemSub = (price - disc) * qty
+                    val items = TransactionItemCodec.decode(rx.itemsRaw)
+                    items.forEach { item ->
+                        val name = item.nama
+                        val qty = item.jumlah
+                        val sat = item.satuan
+                        val itemSub = item.subtotal()
 
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("$name x$qty $sat", fontSize = 11.sp, color = Color.Black)
-                                Text(idrFormatter.format(itemSub), fontSize = 11.sp, color = Color.Black)
-                            }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("$name x$qty $sat", fontSize = 11.sp, color = Color.Black)
+                            Text(idrFormatter.format(itemSub), fontSize = 11.sp, color = Color.Black)
                         }
                     }
 
@@ -1749,24 +1777,19 @@ fun CashierScreen(viewModel: KasirViewModel) {
                         Text("Kasir: ${rx.kasirNama}", fontSize = 10.sp, color = Color.Black)
                         Text("---------------------------------", color = Color.Black)
 
-                        val itemsSplit = rx.itemsRaw.split(";").filter { it.isNotBlank() }
-                        itemsSplit.forEach { line ->
-                            val parts = line.split(":")
-                            if (parts.size >= 4) {
-                                val name = parts.getOrNull(1).orEmpty()
-                                val qty = parts.getOrNull(2)?.toIntOrNull() ?: 1
-                                val price = parts.getOrNull(3)?.toDoubleOrNull() ?: 0.0
-                                val disc = parts.getOrNull(5)?.toDoubleOrNull() ?: 0.0
-                                val sat = parts.getOrNull(6).orEmpty().takeIf { it.isNotBlank() } ?: "Pcs"
-                                val itemSub = (price - disc) * qty
+                        val items = TransactionItemCodec.decode(rx.itemsRaw)
+                        items.forEach { item ->
+                            val name = item.nama
+                            val qty = item.jumlah
+                            val sat = item.satuan
+                            val itemSub = item.subtotal()
 
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text("$name x$qty $sat", fontSize = 10.sp, color = Color.Black)
-                                    Text(idrFormatter.format(itemSub), fontSize = 10.sp, color = Color.Black)
-                                }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("$name x$qty $sat", fontSize = 10.sp, color = Color.Black)
+                                Text(idrFormatter.format(itemSub), fontSize = 10.sp, color = Color.Black)
                             }
                         }
 
@@ -1879,18 +1902,16 @@ fun CashierScreen(viewModel: KasirViewModel) {
 
             // Parse items
             val parsedItems = remember(rx.id) {
-                rx.itemsRaw.split(";").filter { it.isNotBlank() }.mapNotNull { line ->
-                    val parts = line.split(":")
-                    if (parts.size >= 4) {
-                        val id = parts[0]
-                        val name = parts[1]
-                        val qty = parts[2].toIntOrNull() ?: 1
-                        val price = parts[3].toDoubleOrNull() ?: 0.0
-                        val vSelected = parts.getOrNull(4) ?: ""
-                        val disc = parts.getOrNull(5)?.toDoubleOrNull() ?: 0.0
-                        val sat = parts.getOrNull(6).orEmpty().takeIf { it.isNotBlank() } ?: "Pcs"
-                        CorrectionItemCashier(id, name, qty, price, vSelected, disc, sat)
-                    } else null
+                TransactionItemCodec.decode(rx.itemsRaw).map { item ->
+                    CorrectionItemCashier(
+                        id = item.id,
+                        nama = item.nama,
+                        jumlah = item.jumlah,
+                        harga = item.harga,
+                        varianSelected = item.varianSelected ?: "",
+                        diskon = item.diskon,
+                        satuan = item.satuan
+                    )
                 }.toMutableStateList()
             }
 
@@ -2065,9 +2086,19 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                 return@Button
                             }
 
-                            val updatedItemsString = parsedItems.joinToString(";") {
-                                "${it.id}:${it.nama}:${it.jumlah}:${it.harga}:${it.varianSelected}:${it.diskon}:${it.satuan}"
-                            }
+                            val updatedItemsString = TransactionItemCodec.encode(
+                                parsedItems.map { item ->
+                                    TransactionItem(
+                                        id = item.id,
+                                        nama = item.nama,
+                                        jumlah = item.jumlah,
+                                        harga = item.harga,
+                                        varianSelected = item.varianSelected.ifBlank { null },
+                                        diskon = item.diskon,
+                                        satuan = item.satuan
+                                    )
+                                }
+                            )
 
                             val updatedTx = rx.copy(
                                 itemsRaw = updatedItemsString,
