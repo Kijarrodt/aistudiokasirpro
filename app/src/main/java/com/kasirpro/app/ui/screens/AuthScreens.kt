@@ -179,7 +179,7 @@ fun LoginScreen(viewModel: KasirViewModel) {
 
             if (errorMessage != null) {
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEEEE)),
+                    colors = CardDefaults.cardColors(containerColor = DangerContainer),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 16.dp)
@@ -392,7 +392,7 @@ fun RegisterScreen(viewModel: KasirViewModel) {
 
             if (errorMessage != null) {
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEEEE)),
+                    colors = CardDefaults.cardColors(containerColor = DangerContainer),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 16.dp)

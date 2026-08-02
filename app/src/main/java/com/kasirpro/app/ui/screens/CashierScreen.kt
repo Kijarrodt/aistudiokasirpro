@@ -42,6 +42,7 @@ import com.kasirpro.app.data.repository.ProductVariant
 import com.kasirpro.app.data.repository.TransactionItem
 import com.kasirpro.app.ui.viewmodel.KasirViewModel
 import com.kasirpro.app.ui.theme.*
+import com.kasirpro.app.ui.components.ReceiptSheet
 import com.kasirpro.app.util.BarcodeScannerHelper
 import com.kasirpro.app.util.BluetoothPrinterHelper
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -339,7 +340,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         if (!isPremium && remainingFreeTx <= 10) {
                             Surface(
-                                color = Color(0xFFFFF7ED),
+                                color = OrangeSurface,
                                 contentColor = OrangePrimary,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
@@ -797,7 +798,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                     Text("Pelanggan: ${currentCustomer?.nama} (Stok: ${currentCustomer?.totalPoin} Poin, +${(orderTotal/10000).toInt()} Poin)", fontSize = 11.sp, color = OrangePrimary)
                                 }
                                 if (activePromo != null) {
-                                    Text("Kupon: ${activePromo?.kode} (-${idrFormatter.format(promoDiscountAmount)})", fontSize = 11.sp, color = Color(0xFF15803D))
+                                    Text("Kupon: ${activePromo?.kode} (-${idrFormatter.format(promoDiscountAmount)})", fontSize = 11.sp, color = OnSuccessContainer)
                                 }
                             }
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -852,7 +853,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                         text = "Potongan Harga: -${idrFormatter.format(pointsDiscountAmount)}",
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF15803D),
+                                        color = OnSuccessContainer,
                                         modifier = Modifier.padding(top = 4.dp)
                                     )
                                 }
@@ -1075,7 +1076,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                 Text(
                                     text = idrFormatter.format(Math.abs(diff)),
                                     fontWeight = FontWeight.Bold,
-                                    color = if (diff >= 0) Color(0xFF15803D) else Color.Red,
+                                    color = if (diff >= 0) OnSuccessContainer else Color.Red,
                                     fontSize = 14.sp
                                 )
                             }
@@ -1392,7 +1393,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                     }
                                 }
                                 val amountText = if (p.tipe == "diskon_persen") "${p.nilai.toInt()}%" else idrFormatter.format(p.nilai)
-                                Text(amountText, fontWeight = FontWeight.Bold, color = if (isValid) Color(0xFF15803D) else Color.Gray)
+                                Text(amountText, fontWeight = FontWeight.Bold, color = if (isValid) OnSuccessContainer else Color.Gray)
                             }
                         }
                     }
@@ -1431,88 +1432,13 @@ fun CashierScreen(viewModel: KasirViewModel) {
             onDismissRequest = { viewModel.activeReceipt.value = null },
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF22C55E), modifier = Modifier.size(24.dp))
+                    Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = SuccessGreenBright, modifier = Modifier.size(24.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(Translator.t("Transaksi Berhasil!"), fontWeight = FontWeight.Bold, color = Color(0xFF22C55E), fontSize = 18.sp)
+                    Text(Translator.t("Transaksi Berhasil!"), fontWeight = FontWeight.Bold, color = SuccessGreenBright, fontSize = 18.sp)
                 }
             },
             text = {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color.White)
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Dynamic Shop Logo
-                    if (!business?.logoBase64.isNullOrBlank()) {
-                        ShopLogoImage(
-                            logoBase64 = business?.logoBase64,
-                            contentDescription = business?.namaBisnis,
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clip(CircleShape)
-                                .padding(bottom = 6.dp)
-                        )
-                    }
-                    Text(business?.namaBisnis ?: Translator.t("KASIR PRO SHOP"), fontWeight = FontWeight.Bold, color = Color.Black, fontSize = 15.sp, textAlign = TextAlign.Center)
-                    if (!business?.alamat.isNullOrBlank()) {
-                        Text(business!!.alamat!!, fontSize = 11.sp, color = Color.DarkGray, textAlign = TextAlign.Center)
-                    } else {
-                        Text(Translator.t("Cabang Utama"), fontSize = 11.sp, color = Color.DarkGray, textAlign = TextAlign.Center)
-                    }
-                    if (!business?.noTelpon.isNullOrBlank()) {
-                        Text("Tel: ${business!!.noTelpon!!}", fontSize = 11.sp, color = Color.DarkGray, textAlign = TextAlign.Center)
-                    }
-                    Text("---------------------------------", color = Color.Black)
-                    Text("No TRX: ${rx.id}", fontSize = 11.sp, color = Color.Black)
-                    Text("Tanggal: ${java.text.SimpleDateFormat("dd-MM-yyyy HH:mm", java.util.Locale("id", "ID")).format(java.util.Date(rx.createdAt))}", fontSize = 11.sp, color = Color.Black)
-                    Text("Kasir: ${rx.kasirNama}", fontSize = 11.sp, color = Color.Black)
-                    Text("---------------------------------", color = Color.Black)
-
-                    // Serialized items
-                    val items = TransactionItemCodec.decode(rx.itemsRaw)
-                    items.forEach { item ->
-                        val name = item.nama
-                        val qty = item.jumlah
-                        val sat = item.satuan
-                        val itemSub = item.subtotal()
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text("$name x$qty $sat", fontSize = 11.sp, color = Color.Black)
-                            Text(idrFormatter.format(itemSub), fontSize = 11.sp, color = Color.Black)
-                        }
-                    }
-
-                    Text("---------------------------------", color = Color.Black)
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Subtotal", fontSize = 11.sp, color = Color.Black)
-                        Text(idrFormatter.format(rx.subtotal), fontSize = 11.sp, color = Color.Black)
-                    }
-                    if (rx.diskonTotal > 0) {
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Diskon Promo", fontSize = 11.sp, color = Color.Black)
-                            Text("-${idrFormatter.format(rx.diskonTotal)}", fontSize = 11.sp, color = Color.Black)
-                        }
-                    }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("TOTAL", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                        Text(idrFormatter.format(rx.total), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                    }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("DIBAYAR", fontSize = 11.sp, color = Color.Black)
-                        Text(idrFormatter.format(rx.bayarNominal), fontSize = 11.sp, color = Color.Black)
-                    }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(Translator.t("KEMBALI"), fontSize = 11.sp, color = Color.Black)
-                        Text(idrFormatter.format(rx.kembalian), fontSize = 11.sp, color = Color.Black)
-                    }
-                    Text("---------------------------------", color = Color.Black)
-                    Text("Terima kasih atas kunjungan Anda!", fontSize = 11.sp, textAlign = TextAlign.Center, color = Color.Black)
-                }
+                ReceiptSheet(rx = rx, business = business, idrFormatter = idrFormatter)
             },
             confirmButton = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -1526,7 +1452,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                 }
                                 context.startActivity(Intent.createChooser(shareIntent, Translator.t("Bagikan struk penjualan")))
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
+                            colors = ButtonDefaults.buttonColors(containerColor = WhatsAppGreen),
                             modifier = Modifier.weight(1f)
                         ) {
                             Icon(imageVector = Icons.Default.Share, contentDescription = null)
@@ -1652,7 +1578,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                 showBluetoothSimulation = false
                                 viewModel.activeReceipt.value = null
                             },
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF3F4F6)),
+                            colors = CardDefaults.cardColors(containerColor = Slate100),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
@@ -1728,13 +1654,13 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                             Box(
                                                 modifier = Modifier
                                                     .clip(RoundedCornerShape(4.dp))
-                                                    .background(if (tx.status.equals("lunas", ignoreCase = true)) Color(0xFFDCFCE7) else Color(0xFFFEE2E2))
+                                                    .background(if (tx.status.equals("lunas", ignoreCase = true)) SuccessContainer else DangerContainer)
                                                     .padding(horizontal = 4.dp, vertical = 2.dp)
                                             ) {
                                                 Text(
                                                     text = tx.status.uppercase(),
                                                     fontSize = 8.sp,
-                                                    color = if (tx.status.equals("lunas", ignoreCase = true)) Color(0xFF15803D) else Color(0xFFB91C1C),
+                                                    color = if (tx.status.equals("lunas", ignoreCase = true)) OnSuccessContainer else OnDangerContainer,
                                                     fontWeight = FontWeight.Bold
                                                 )
                                             }
@@ -1764,62 +1690,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                     }
                 },
                 text = {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color.White)
-                            .padding(10.dp)
-                            .verticalScroll(rememberScrollState()),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(viewModel.currentBusiness.value?.namaBisnis ?: Translator.t("KASIR PRO"), fontWeight = FontWeight.Bold, color = Color.Black, fontSize = 13.sp, textAlign = TextAlign.Center)
-                        Text("---------------------------------", color = Color.Black)
-                        Text("No TRX: ${rx.id}", fontSize = 10.sp, color = Color.Black)
-                        Text("Tanggal: ${java.text.SimpleDateFormat("dd-MM-yyyy HH:mm", java.util.Locale("id", "ID")).format(java.util.Date(rx.createdAt))}", fontSize = 10.sp, color = Color.Black)
-                        Text("Kasir: ${rx.kasirNama}", fontSize = 10.sp, color = Color.Black)
-                        Text("---------------------------------", color = Color.Black)
-
-                        val items = TransactionItemCodec.decode(rx.itemsRaw)
-                        items.forEach { item ->
-                            val name = item.nama
-                            val qty = item.jumlah
-                            val sat = item.satuan
-                            val itemSub = item.subtotal()
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("$name x$qty $sat", fontSize = 10.sp, color = Color.Black)
-                                Text(idrFormatter.format(itemSub), fontSize = 10.sp, color = Color.Black)
-                            }
-                        }
-
-                        Text("---------------------------------", color = Color.Black)
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Subtotal", fontSize = 10.sp, color = Color.Black)
-                            Text(idrFormatter.format(rx.subtotal), fontSize = 10.sp, color = Color.Black)
-                        }
-                        if (rx.diskonTotal > 0) {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("Diskon Promo", fontSize = 10.sp, color = Color.Black)
-                                Text("-${idrFormatter.format(rx.diskonTotal)}", fontSize = 10.sp, color = Color.Black)
-                            }
-                        }
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("TOTAL", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                            Text(idrFormatter.format(rx.total), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                        }
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("DIBAYAR", fontSize = 10.sp, color = Color.Black)
-                            Text(idrFormatter.format(rx.bayarNominal), fontSize = 10.sp, color = Color.Black)
-                        }
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(Translator.t("KEMBALI"), fontSize = 10.sp, color = Color.Black)
-                            Text(idrFormatter.format(rx.kembalian), fontSize = 10.sp, color = Color.Black)
-                        }
-                        Text("---------------------------------", color = Color.Black)
-                    }
+                    ReceiptSheet(rx = rx, business = business, idrFormatter = idrFormatter)
                 },
                 confirmButton = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -1828,7 +1699,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                 viewModel.activeReceipt.value = rx
                                 selectedTxForReceipt = null
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                            colors = ButtonDefaults.buttonColors(containerColor = SuccessEmerald),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(imageVector = Icons.Default.Print, contentDescription = null, modifier = Modifier.size(16.dp))

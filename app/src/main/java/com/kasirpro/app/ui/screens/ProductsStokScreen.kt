@@ -233,8 +233,8 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                             .testTag("expiry_warning_alert_banner"),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3CD)),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFFEBA2))
+                        colors = CardDefaults.cardColors(containerColor = WarningContainer),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, WarningAmber)
                     ) {
                         Row(
                             modifier = Modifier.padding(12.dp),
@@ -243,7 +243,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                             Icon(
                                 imageVector = Icons.Default.Warning,
                                 contentDescription = "Warning",
-                                tint = Color(0xFF856404),
+                                tint = OnWarningContainer,
                                 modifier = Modifier.size(24.dp)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
@@ -251,19 +251,19 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                 Text(
                                     Translator.t("Peringatan Kedaluwarsa Produk!"),
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF856404),
+                                    color = OnWarningContainer,
                                     fontSize = 14.sp
                                 )
                                 Text(
                                     "Ada $totalExpiryCount produk yang telah kedaluwarsa atau mendekati kedaluwarsa. Klik untuk melihat daftar.",
-                                    color = Color(0xFF856404),
+                                    color = OnWarningContainer,
                                     fontSize = 11.sp
                                 )
                             }
                             Icon(
                                 imageVector = Icons.Default.ChevronRight,
                                 contentDescription = "Lihat",
-                                tint = Color(0xFF856404)
+                                tint = OnWarningContainer
                              )
                         }
                     }
@@ -272,7 +272,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                 if (showExpiryWarningDialog) {
                     AlertDialog(
                         onDismissRequest = { showExpiryWarningDialog = false },
-                        icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFD32F2F)) },
+                        icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = DangerRed) },
                         title = { Text(Translator.t("Daftar Produk Kedaluwarsa"), fontWeight = FontWeight.Bold) },
                         text = {
                             LazyColumn(
@@ -281,13 +281,13 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                             ) {
                                 if (expiredList.isNotEmpty()) {
                                     item {
-                                        Text(Translator.t("Produk Telah Kedaluwarsa:"), fontWeight = FontWeight.Bold, color = Color(0xFFD32F2F), fontSize = 13.sp)
+                                        Text(Translator.t("Produk Telah Kedaluwarsa:"), fontWeight = FontWeight.Bold, color = DangerRed, fontSize = 13.sp)
                                     }
                                     items(expiredList) { prod ->
                                         val sdf = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
                                         val dateStr = prod.expiryDate?.let { sdf.format(java.util.Date(it)) } ?: ""
                                         Card(
-                                            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFCDD2)),
+                                            colors = CardDefaults.cardColors(containerColor = DangerContainer),
                                             modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
                                         ) {
                                             Row(
@@ -296,8 +296,8 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
                                                 Column {
-                                                    Text(prod.nama, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFFB71C1C))
-                                                    Text("Expired: $dateStr", fontSize = 11.sp, color = Color(0xFFB71C1C))
+                                                    Text(prod.nama, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = OnDangerContainer)
+                                                    Text("Expired: $dateStr", fontSize = 11.sp, color = OnDangerContainer)
                                                 }
                                             }
                                         }
@@ -307,13 +307,13 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                 if (nearExpiryList.isNotEmpty()) {
                                     item {
                                         Spacer(modifier = Modifier.height(8.dp))
-                                        Text(Translator.t("Produk Mendekati Kedaluwarsa:"), fontWeight = FontWeight.Bold, color = Color(0xFFE65100), fontSize = 13.sp)
+                                        Text(Translator.t("Produk Mendekati Kedaluwarsa:"), fontWeight = FontWeight.Bold, color = OrangeDark, fontSize = 13.sp)
                                     }
                                     items(nearExpiryList) { prod ->
                                         val sdf = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
                                         val dateStr = prod.expiryDate?.let { sdf.format(java.util.Date(it)) } ?: ""
                                         Card(
-                                            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF9C4)),
+                                            colors = CardDefaults.cardColors(containerColor = WarningContainer),
                                             modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
                                         ) {
                                             Row(
@@ -322,8 +322,8 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
                                                 Column {
-                                                    Text(prod.nama, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFFE65100))
-                                                    Text("Expired: $dateStr", fontSize = 11.sp, color = Color(0xFFE65100))
+                                                    Text(prod.nama, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = OrangeDark)
+                                                    Text("Expired: $dateStr", fontSize = 11.sp, color = OrangeDark)
                                                 }
                                             }
                                         }
@@ -572,7 +572,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                                         viewModel.showLimitPopup.value = Translator.t("Stok Opname fisik otomatis dengan sinkronisasi penyesuaian (Selisih Hitung) hanya tersedia untuk premium!")
                                                     }
                                                 },
-                                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF334155)),
+                                                colors = ButtonDefaults.buttonColors(containerColor = Slate700),
                                                 shape = RoundedCornerShape(8.dp)
                                             ) {
                                                 Text("OPNAME", fontSize = 11.sp)
@@ -582,7 +582,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                         Box(
                                             modifier = Modifier
                                                 .clip(RoundedCornerShape(6.dp))
-                                                .background(Color(0xFFF1F5F9))
+                                                .background(Slate100)
                                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                                         ) {
                                             Text(Translator.t("Lihat Stok Saja"), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
@@ -604,8 +604,8 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                             items(stockHistList) { log ->
                                 val matchedProd = productsList.find { it.id == log.productId }
                                 val colorLabel = when (log.tipe) {
-                                    Translator.t("masuk") -> Color(0xFF15803D)
-                                    Translator.t("keluar") -> Color(0xFFB91C1C)
+                                    Translator.t("masuk") -> OnSuccessContainer
+                                    Translator.t("keluar") -> OnDangerContainer
                                     else -> OrangePrimary
                                 }
                                 Card(
@@ -1767,21 +1767,21 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                 modifier = Modifier
                                     .weight(1f)
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(Color(0xFFE8F5E9))
+                                    .background(SuccessContainer)
                                     .padding(8.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text("Valid: $validCount", fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32), fontSize = 12.sp)
+                                Text("Valid: $validCount", fontWeight = FontWeight.Bold, color = OnSuccessContainer, fontSize = 12.sp)
                             }
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(Color(0xFFFFEAEE))
+                                    .background(DangerContainer)
                                     .padding(8.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text("Error: $invalidCount", fontWeight = FontWeight.Bold, color = Color(0xFFC62828), fontSize = 12.sp)
+                                Text("Error: $invalidCount", fontWeight = FontWeight.Bold, color = OnDangerContainer, fontSize = 12.sp)
                             }
                         }
 
@@ -1797,8 +1797,8 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                 .verticalScroll(rememberScrollState())
                         ) {
                             parsedProducts.forEach { item ->
-                                val bgColor = if (item.isValid) Color(0xFFE8F5E9) else Color(0xFFFFEAEE)
-                                val textColor = if (item.isValid) Color(0xFF1B5E20) else Color(0xFFB71C1C)
+                                val bgColor = if (item.isValid) SuccessContainer else DangerContainer
+                                val textColor = if (item.isValid) OnSuccessContainer else OnDangerContainer
                                 val statusLabel = if (item.isValid) "Baris ${item.rowNum}: OK" else "Baris ${item.rowNum}: ERROR"
 
                                 Card(

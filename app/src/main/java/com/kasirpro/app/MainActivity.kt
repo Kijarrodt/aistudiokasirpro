@@ -18,8 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.kasirpro.app.ui.theme.MyApplicationTheme
-import com.kasirpro.app.ui.theme.OrangePrimary
+import com.kasirpro.app.ui.theme.*
 import com.kasirpro.app.ui.viewmodel.KasirViewModel
 import com.kasirpro.app.ui.screens.*
 import com.kasirpro.app.util.t
@@ -192,7 +191,7 @@ class MainActivity : ComponentActivity() {
                                                 badge = {
                                                     if (expiryCount > 0) {
                                                         Badge(
-                                                            containerColor = Color(0xFFD32F2F),
+                                                            containerColor = DangerRed,
                                                             contentColor = Color.White
                                                         ) {
                                                             Text(expiryCount.toString(), modifier = Modifier.testTag("expiry_badge_count"))
@@ -267,10 +266,10 @@ class MainActivity : ComponentActivity() {
                                 val isCopy = lowerMsg.contains("salin") || lowerMsg.contains("copy") || lowerMsg.contains("clipboard")
 
                                 val accentColor = when {
-                                    isSuccess -> Color(0xFF10B981) // Emerald Green for success
-                                    isFailed -> Color(0xFFEF4444) // Crimson Red for failure
-                                    isWarning -> Color(0xFFF59E0B) // Amber for warnings
-                                    isCopy -> Color(0xFF3B82F6) // Dynamic Blue for copying properties
+                                    isSuccess -> SuccessEmerald // Emerald Green for success
+                                    isFailed -> DangerRedBright // Crimson Red for failure
+                                    isWarning -> WarningAmber // Amber for warnings
+                                    isCopy -> InfoBlue // Dynamic Blue for copying properties
                                     else -> OrangePrimary // Default brand orange
                                 }
 
@@ -291,7 +290,7 @@ class MainActivity : ComponentActivity() {
 
                                 Card(
                                     shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                                    colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)), // Deep Slate Dark 900
+                                    colors = CardDefaults.cardColors(containerColor = Slate900), // Deep Slate Dark 900
                                     border = androidx.compose.foundation.BorderStroke(1.5.dp, accentColor),
                                     elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
                                     modifier = Modifier

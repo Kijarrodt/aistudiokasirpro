@@ -554,11 +554,11 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                         }
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("Total Pengeluaran (Beban):", fontSize = 11.sp, color = Color.Gray)
-                            Text(idrFormatter.format(totalExpensesValue), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFB91C1C))
+                            Text(idrFormatter.format(totalExpensesValue), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = OnDangerContainer)
                         }
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(Translator.t("Laba Bersih Finansial:"), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
-                            Text(idrFormatter.format(finalFinancialNet), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (finalFinancialNet >= 0) Color(0xFF15803D) else Color(0xFFB91C1C))
+                            Text(idrFormatter.format(finalFinancialNet), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (finalFinancialNet >= 0) OnSuccessContainer else OnDangerContainer)
                         }
 
                         Spacer(modifier = Modifier.height(14.dp))
@@ -715,14 +715,14 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                                             Box(
                                                 modifier = Modifier
                                                     .clip(RoundedCornerShape(4.dp))
-                                                    .background(if (shift.status == "aktif") Color(0xFFFEF08A) else Color(0xFFDCFCE7))
+                                                    .background(if (shift.status == "aktif") WarningContainer else SuccessContainer)
                                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                                             ) {
                                                 Text(
                                                     shift.status.uppercase(),
                                                     fontSize = 9.sp,
                                                     fontWeight = FontWeight.Bold,
-                                                    color = if (shift.status == "aktif") Color(0xFF854D0E) else Color(0xFF15803D)
+                                                    color = if (shift.status == "aktif") OnWarningContainer else OnSuccessContainer
                                                 )
                                             }
                                         }
@@ -775,7 +775,7 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                                             }
 
                                             val selisihVal = shift.selisih
-                                            val selisihColor = if (selisihVal == 0.0) Color.DarkGray else if (selisihVal > 0.0) Color(0xFF16A34A) else Color(0xFFDC2626)
+                                            val selisihColor = if (selisihVal == 0.0) Color.DarkGray else if (selisihVal > 0.0) SuccessGreen else DangerRed
                                             val labelText = if (selisihVal == 0.0) {
                                                 "Sesuai (Rp 0)"
                                             } else if (selisihVal > 0.0) {
@@ -996,7 +996,7 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                         Toast.makeText(context, Translator.t("Gagal memproses dokumen PDF!"), Toast.LENGTH_SHORT).show()
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                colors = ButtonDefaults.buttonColors(containerColor = Slate800),
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             ) {
@@ -1093,12 +1093,12 @@ fun PremiumHutangTab(viewModel: KasirViewModel) {
     ) {
         item {
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFFEE2E2)),
+                colors = CardDefaults.cardColors(containerColor = DangerContainer),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("TOTAL PIUTANG HAMPIR JATUH TEMPO", fontSize = 11.sp, color = Color(0xFFB91C1C), fontWeight = FontWeight.Bold)
-                    Text(idrFormatter.format(unpaid.sumOf { it.jumlah }), fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFFB91C1C))
+                    Text("TOTAL PIUTANG HAMPIR JATUH TEMPO", fontSize = 11.sp, color = OnDangerContainer, fontWeight = FontWeight.Bold)
+                    Text(idrFormatter.format(unpaid.sumOf { it.jumlah }), fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = OnDangerContainer)
                 }
             }
         }
@@ -1146,11 +1146,11 @@ fun PremiumHutangTab(viewModel: KasirViewModel) {
                             Text("Ref Transaksi ID: ${debt.transaksiId}", fontSize = 11.sp, color = Color.Gray)
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            Text(idrFormatter.format(debt.jumlah), fontWeight = FontWeight.Bold, color = if (debt.status == "belum") Color.Red else Color(0xFF15803D))
+                            Text(idrFormatter.format(debt.jumlah), fontWeight = FontWeight.Bold, color = if (debt.status == "belum") Color.Red else OnSuccessContainer)
                             if (debt.status == "belum") {
                                 Button(
                                     onClick = { viewModel.settleDebt(debt.id) },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF15803D)),
+                                    colors = ButtonDefaults.buttonColors(containerColor = OnSuccessContainer),
                                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                                     shape = RoundedCornerShape(6.dp)
                                 ) {
@@ -1703,7 +1703,7 @@ fun PremiumPelangganTab(viewModel: KasirViewModel) {
                                         Toast.makeText(context, Translator.t("Link WA gagal dibuka. Teks pesan telah disalin ke Clipboard!"), Toast.LENGTH_LONG).show()
                                     }
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)), // WhatsApp Green
+                                colors = ButtonDefaults.buttonColors(containerColor = WhatsAppGreen), // WhatsApp Green
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -2324,10 +2324,10 @@ fun PremiumKasirTab(viewModel: KasirViewModel) {
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(4.dp))
-                                        .background(Color(0xFFDCFCE7))
+                                        .background(SuccessContainer)
                                         .padding(horizontal = 6.dp, vertical = 2.dp)
                                 ) {
-                                    Text(Translator.t("AKTIF"), fontSize = 9.sp, color = Color(0xFF15803D), fontWeight = FontWeight.Bold)
+                                    Text(Translator.t("AKTIF"), fontSize = 9.sp, color = OnSuccessContainer, fontWeight = FontWeight.Bold)
                                 }
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
@@ -2446,9 +2446,9 @@ fun PremiumKasirTab(viewModel: KasirViewModel) {
                             Text("Memeriksa ketersediaan...", fontSize = 11.sp, color = Color.Gray)
                         } else if (isAddUsernameAvailable != null) {
                             if (isAddUsernameAvailable == true) {
-                                Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF15803D), modifier = Modifier.size(12.dp))
+                                Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = OnSuccessContainer, modifier = Modifier.size(12.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text(Translator.t("Username tersedia & siap digunakan!"), fontSize = 11.sp, color = Color(0xFF15803D))
+                                Text(Translator.t("Username tersedia & siap digunakan!"), fontSize = 11.sp, color = OnSuccessContainer)
                             } else {
                                 Icon(imageVector = Icons.Default.Error, contentDescription = null, tint = Color.Red, modifier = Modifier.size(12.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
@@ -2579,9 +2579,9 @@ fun PremiumKasirTab(viewModel: KasirViewModel) {
                             Text("Memeriksa ketersediaan...", fontSize = 11.sp, color = Color.Gray)
                         } else if (isEditUsernameAvailable != null) {
                             if (isEditUsernameAvailable == true) {
-                                Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF15803D), modifier = Modifier.size(12.dp))
+                                Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = OnSuccessContainer, modifier = Modifier.size(12.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text(Translator.t("Username tersedia!"), fontSize = 11.sp, color = Color(0xFF15803D))
+                                Text(Translator.t("Username tersedia!"), fontSize = 11.sp, color = OnSuccessContainer)
                             } else {
                                 Icon(imageVector = Icons.Default.Error, contentDescription = null, tint = Color.Red, modifier = Modifier.size(12.dp))
                                 Spacer(modifier = Modifier.width(6.dp))

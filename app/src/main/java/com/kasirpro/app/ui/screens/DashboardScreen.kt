@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import com.kasirpro.app.ui.viewmodel.KasirViewModel
 import com.kasirpro.app.data.local.*
 import com.kasirpro.app.ui.theme.*
+import com.kasirpro.app.ui.components.ReceiptSheet
 import java.text.NumberFormat
 import java.util.Locale
 import com.kasirpro.app.util.Toast
@@ -340,17 +341,17 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                         Card(
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFFDCFCE7))
+                            colors = CardDefaults.cardColors(containerColor = SuccessContainer)
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {
-                                Icon(Icons.Default.MonetizationOn, contentDescription = null, tint = Color(0xFF15803D))
+                                Icon(Icons.Default.MonetizationOn, contentDescription = null, tint = OnSuccessContainer)
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Text("Margin Profit (Est)", fontSize = 11.sp, color = Color(0xFF15803D), fontWeight = FontWeight.SemiBold)
+                                Text("Margin Profit (Est)", fontSize = 11.sp, color = OnSuccessContainer, fontWeight = FontWeight.SemiBold)
                                 Text(
                                     text = idrFormatter.format(totalProfit),
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF15803D),
+                                    color = OnSuccessContainer,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
@@ -383,14 +384,14 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {
-                                Icon(Icons.Default.PendingActions, contentDescription = null, tint = Color(0xFFE11D48))
+                                Icon(Icons.Default.PendingActions, contentDescription = null, tint = DangerRed)
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(Translator.t("Hutang Aktif"), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), fontWeight = FontWeight.SemiBold)
                                 Text(
                                     text = idrFormatter.format(activeDebts),
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFFE11D48),
+                                    color = DangerRed,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
@@ -434,7 +435,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                             modifier = Modifier.padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF22C55E))
+                            Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = SuccessGreenBright)
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(Translator.t("Hebat! Persediaan stok semua produk aman."), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(0.7f))
                         }
@@ -539,13 +540,13 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(4.dp))
-                                        .background(if (tx.status.equals("lunas", ignoreCase = true)) Color(0xFFDCFCE7) else Color(0xFFFEE2E2))
+                                        .background(if (tx.status.equals("lunas", ignoreCase = true)) SuccessContainer else DangerContainer)
                                         .padding(horizontal = 6.dp, vertical = 2.dp)
                                 ) {
                                     Text(
                                         text = tx.status.uppercase(),
                                         fontSize = 9.sp,
-                                        color = if (tx.status.equals("lunas", ignoreCase = true)) Color(0xFF15803D) else Color(0xFFB91C1C),
+                                        color = if (tx.status.equals("lunas", ignoreCase = true)) OnSuccessContainer else OnDangerContainer,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
@@ -574,82 +575,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                 }
             },
             text = {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color.White)
-                        .padding(12.dp)
-                        .verticalScroll(rememberScrollState()),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Dynamic Logo
-                    if (!business?.logoBase64.isNullOrBlank()) {
-                        ShopLogoImage(
-                            logoBase64 = business?.logoBase64,
-                            contentDescription = business?.namaBisnis,
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(CircleShape)
-                                .padding(bottom = 6.dp)
-                        )
-                    }
-                    Text(business?.namaBisnis ?: Translator.t("KASIR PRO SHOP"), fontWeight = FontWeight.Bold, color = Color.Black, fontSize = 14.sp, textAlign = TextAlign.Center)
-                    if (!business?.alamat.isNullOrBlank()) {
-                        Text(business!!.alamat!!, fontSize = 11.sp, color = Color.DarkGray, textAlign = TextAlign.Center)
-                    } else {
-                        Text(Translator.t("Cabang Utama"), fontSize = 11.sp, color = Color.DarkGray, textAlign = TextAlign.Center)
-                    }
-                    if (!business?.noTelpon.isNullOrBlank()) {
-                        Text("Tel: ${business!!.noTelpon!!}", fontSize = 11.sp, color = Color.DarkGray, textAlign = TextAlign.Center)
-                    }
-                    Text("---------------------------------", color = Color.Black)
-                    Text("No TRX: ${rx.id}", fontSize = 11.sp, color = Color.Black)
-                    Text("Tanggal: ${java.text.SimpleDateFormat("dd-MM-yyyy HH:mm", java.util.Locale("id", "ID")).format(java.util.Date(rx.createdAt))}", fontSize = 11.sp, color = Color.Black)
-                    Text("Kasir: ${rx.kasirNama}", fontSize = 11.sp, color = Color.Black)
-                    Text("---------------------------------", color = Color.Black)
-
-                    // Serialized items
-                    val items = TransactionItemCodec.decode(rx.itemsRaw)
-                    items.forEach { item ->
-                        val name = item.nama
-                        val qty = item.jumlah
-                        val sat = item.satuan
-                        val itemSub = item.subtotal()
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text("$name x$qty $sat", fontSize = 11.sp, color = Color.Black)
-                            Text(idrFormatter.format(itemSub), fontSize = 11.sp, color = Color.Black)
-                        }
-                    }
-
-                    Text("---------------------------------", color = Color.Black)
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Subtotal", fontSize = 11.sp, color = Color.Black)
-                        Text(idrFormatter.format(rx.subtotal), fontSize = 11.sp, color = Color.Black)
-                    }
-                    if (rx.diskonTotal > 0) {
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Diskon Promo", fontSize = 11.sp, color = Color.Black)
-                            Text("-${idrFormatter.format(rx.diskonTotal)}", fontSize = 11.sp, color = Color.Black)
-                        }
-                    }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("TOTAL", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                        Text(idrFormatter.format(rx.total), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                    }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("DIBAYAR", fontSize = 11.sp, color = Color.Black)
-                        Text(idrFormatter.format(rx.bayarNominal), fontSize = 11.sp, color = Color.Black)
-                    }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(Translator.t("KEMBALI"), fontSize = 11.sp, color = Color.Black)
-                        Text(idrFormatter.format(rx.kembalian), fontSize = 11.sp, color = Color.Black)
-                    }
-                    Text("---------------------------------", color = Color.Black)
-                }
+                ReceiptSheet(rx = rx, business = business, idrFormatter = idrFormatter)
             },
             confirmButton = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -658,7 +584,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                             Toast.makeText(context, "Menghubungkan ke printer RPP02N...", Toast.LENGTH_SHORT).show()
                             Toast.makeText(context, "Mencetak ulang struk No TRX: ${rx.id} - Selesai!", Toast.LENGTH_LONG).show()
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                        colors = ButtonDefaults.buttonColors(containerColor = SuccessEmerald),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(imageVector = Icons.Default.Print, contentDescription = null, modifier = Modifier.size(16.dp))

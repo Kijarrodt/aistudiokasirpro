@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import com.kasirpro.app.data.local.*
 import com.kasirpro.app.ui.viewmodel.KasirViewModel
 import com.kasirpro.app.ui.theme.*
+import com.kasirpro.app.ui.components.ReceiptSheet
 import com.kasirpro.app.util.ImageHelper
 import com.kasirpro.app.util.ShopLogoImage
 import com.kasirpro.app.util.t
@@ -676,7 +677,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
 
                                     },
                                     modifier = Modifier.fillMaxWidth().testTag("end_shift_btn"),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
+                                    colors = ButtonDefaults.buttonColors(containerColor = DangerRed),
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
                                     Icon(imageVector = Icons.Default.Stop, contentDescription = null, tint = Color.White)
@@ -780,7 +781,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                                 val sdf = java.text.SimpleDateFormat("HH:mm", java.util.Locale("id", "ID"))
                                                 Text("${sdf.format(java.util.Date(tx.createdAt))} • ${tx.metodeBayar}", fontSize = 10.sp, color = Color.Gray)
                                             }
-                                            Text(idrFormatter.format(tx.total), fontWeight = FontWeight.Bold, fontSize = 12.sp, color = if (tx.status.equals("lunas", ignoreCase = true)) Color(0xFF16A34A) else Color(0xFFEAB308))
+                                            Text(idrFormatter.format(tx.total), fontWeight = FontWeight.Bold, fontSize = 12.sp, color = if (tx.status.equals("lunas", ignoreCase = true)) SuccessGreen else WarningYellow)
                                         }
                                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                                     }
@@ -872,63 +873,12 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                     }
                                 },
                                 text = {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .background(Color.White)
-                                            .padding(10.dp)
-                                            .verticalScroll(rememberScrollState()),
-                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ReceiptSheet(
+                                        rx = rx,
+                                        business = business,
+                                        idrFormatter = idrFormatter
                                     ) {
-                                        Text(viewModel.currentBusiness.value?.namaBisnis ?: Translator.t("KASIR PRO"), fontWeight = FontWeight.Bold, color = Color.Black, fontSize = 13.sp, textAlign = TextAlign.Center)
-                                        Text("---------------------------------", color = Color.Black)
-                                        Text("No TRX: ${rx.id}", fontSize = 10.sp, color = Color.Black)
-                                        Text("Tanggal: ${java.text.SimpleDateFormat("dd-MM-yyyy HH:mm", java.util.Locale("id", "ID")).format(java.util.Date(rx.createdAt))}", fontSize = 10.sp, color = Color.Black)
-                                        Text("Kasir: ${rx.kasirNama}", fontSize = 10.sp, color = Color.Black)
-                                        Text("---------------------------------", color = Color.Black)
-
-                                        val items = com.kasirpro.app.util.TransactionItemCodec.decode(rx.itemsRaw)
-                                        items.forEach { item ->
-                                            val name = item.nama
-                                            val qty = item.jumlah
-                                            val sat = item.satuan
-                                            val itemSub = item.subtotal()
-
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween
-                                            ) {
-                                                Text("$name x$qty $sat", fontSize = 10.sp, color = Color.Black)
-                                                Text(idrFormatter.format(itemSub), fontSize = 10.sp, color = Color.Black)
-                                            }
-                                        }
-
-                                        Text("---------------------------------", color = Color.Black)
-                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                            Text("Subtotal", fontSize = 10.sp, color = Color.Black)
-                                            Text(idrFormatter.format(rx.subtotal), fontSize = 10.sp, color = Color.Black)
-                                        }
-                                        if (rx.diskonTotal > 0) {
-                                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                                Text("Diskon Promo", fontSize = 10.sp, color = Color.Black)
-                                                Text("-${idrFormatter.format(rx.diskonTotal)}", fontSize = 10.sp, color = Color.Black)
-                                            }
-                                        }
-                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                            Text("TOTAL", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                                            Text(idrFormatter.format(rx.total), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                                        }
-                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                            Text("DIBAYAR", fontSize = 10.sp, color = Color.Black)
-                                            Text(idrFormatter.format(rx.bayarNominal), fontSize = 10.sp, color = Color.Black)
-                                        }
-                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                            Text(Translator.t("KEMBALI"), fontSize = 10.sp, color = Color.Black)
-                                            Text(idrFormatter.format(rx.kembalian), fontSize = 10.sp, color = Color.Black)
-                                        }
-                                        Text("---------------------------------", color = Color.Black)
                                         Spacer(modifier = Modifier.height(12.dp))
-                                        
                                         Box(
                                             modifier = Modifier
                                                 .fillMaxWidth()
@@ -955,7 +905,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                                 Toast.makeText(context, "Menghubungkan ke printer RPP02N...", Toast.LENGTH_SHORT).show()
                                                 Toast.makeText(context, "Mencetak ulang struk No TRX: ${rx.id} - Selesai!", Toast.LENGTH_LONG).show()
                                             },
-                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))
+                                            colors = ButtonDefaults.buttonColors(containerColor = SuccessEmerald)
                                         ) {
                                             Icon(imageVector = Icons.Default.Print, contentDescription = null, modifier = Modifier.size(16.dp))
                                             Spacer(modifier = Modifier.width(4.dp))
@@ -1033,7 +983,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                     idrFormatter.format(expectedCash),
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 16.sp,
-                                    color = Color(0xFF16A34A)
+                                    color = SuccessGreen
                                 )
 
                                 OutlinedTextField(
@@ -1067,9 +1017,9 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                     val selisihColor = if (selisih == 0.0) {
                                         Color.DarkGray
                                     } else if (selisih > 0.0) {
-                                        Color(0xFF16A34A)
+                                        SuccessGreen
                                     } else {
-                                        Color(0xFFDC2626)
+                                        DangerRed
                                     }
                                     Text(selisihText, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = selisihColor)
                                 }
@@ -1088,7 +1038,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                         manualCashValue = ""
                                     }
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
+                                colors = ButtonDefaults.buttonColors(containerColor = DangerRed),
                                 modifier = Modifier.testTag("confirm_end_shift_btn")
                             ) {
                                 Text("Akhiri Shift & Simpan")
@@ -1189,7 +1139,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                 }
 
                                 val selisihVal = showShiftReportDialog.selisih
-                                val selisihColor = if (selisihVal == 0.0) Color.DarkGray else if (selisihVal > 0.0) Color(0xFF16A34A) else Color(0xFFDC2626)
+                                val selisihColor = if (selisihVal == 0.0) Color.DarkGray else if (selisihVal > 0.0) SuccessGreen else DangerRed
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                     Text(Translator.t("Selisih Uang Laci:"), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                     val labelText = if (selisihVal == 0.0) {
@@ -1254,12 +1204,12 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                 val isExpired = user != null && user!!.subscriptionEndDate != null && user!!.subscriptionEndDate!! <= System.currentTimeMillis() && subStatus != "free"
 
                 val (badgeText, badgeBg, badgeTextClr) = when {
-                    isExpired || subStatus == "free" -> Triple("GRATIS", Color(0xFFF1F5F9), Color.DarkGray)
-                    subStatus == "dasar" -> Triple("PAKET DASAR", Color(0xFFEFF6FF), Color(0xFF1D4ED8))
-                    subStatus == "profesional" -> Triple("PAKET PROFESIONAL", Color(0xFFFFF7ED), Color(0xFFC2410C))
-                    subStatus == "bisnis" -> Triple("PAKET BISNIS", Color(0xFFFAF5FF), Color(0xFF7E22CE))
-                    subStatus == "premium" -> Triple("PAKET PROFESIONAL", Color(0xFFFFF7ED), Color(0xFFC2410C))
-                    else -> Triple("GRATIS", Color(0xFFF1F5F9), Color.DarkGray)
+                    isExpired || subStatus == "free" -> Triple("GRATIS", Slate100, Color.DarkGray)
+                    subStatus == "dasar" -> Triple("PAKET DASAR", InfoContainer, InfoBlueDark)
+                    subStatus == "profesional" -> Triple("PAKET PROFESIONAL", OrangeSurface, OrangeDark)
+                    subStatus == "bisnis" -> Triple("PAKET BISNIS", PlanPurpleContainer, OnPlanPurpleContainer)
+                    subStatus == "premium" -> Triple("PAKET PROFESIONAL", OrangeSurface, OrangeDark)
+                    else -> Triple("GRATIS", Slate100, Color.DarkGray)
                 }
 
                 Card(modifier = Modifier.fillMaxWidth()) {
@@ -1324,8 +1274,8 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                 // Subscription Controller Info Cards
                 if (isExpired) {
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFEF2F2)),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF87171)),
+                        colors = CardDefaults.cardColors(containerColor = DangerContainer),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, DangerRedBright),
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { viewModel.activeScreen.value = "premium_pricing" }
@@ -1334,12 +1284,12 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             modifier = Modifier.padding(14.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(imageVector = Icons.Default.Cancel, contentDescription = null, tint = Color(0xFFDC2626))
+                            Icon(imageVector = Icons.Default.Cancel, contentDescription = null, tint = DangerRed)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = Translator.t("Langganan Anda telah berakhir. Perpanjang sekarang"),
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF991B1B),
+                                color = OnDangerContainer,
                                 fontSize = 13.sp
                             )
                         }
@@ -1434,7 +1384,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             }
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 if (!isPremium) {
-                                    Icon(imageVector = Icons.Default.Lock, contentDescription = "Locked", tint = Color(0xFFEAB308), modifier = Modifier.size(16.dp))
+                                    Icon(imageVector = Icons.Default.Lock, contentDescription = "Locked", tint = WarningYellow, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
                                 }
                                 Icon(imageVector = Icons.Default.ArrowForward, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
@@ -1458,7 +1408,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             }
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 if (!isPremium) {
-                                    Icon(imageVector = Icons.Default.Lock, contentDescription = "Locked", tint = Color(0xFFEAB308), modifier = Modifier.size(16.dp))
+                                    Icon(imageVector = Icons.Default.Lock, contentDescription = "Locked", tint = WarningYellow, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
                                 }
                                 Icon(imageVector = Icons.Default.ArrowForward, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
@@ -1482,7 +1432,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             }
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 if (!isPremium) {
-                                    Icon(imageVector = Icons.Default.Lock, contentDescription = "Locked", tint = Color(0xFFEAB308), modifier = Modifier.size(16.dp))
+                                    Icon(imageVector = Icons.Default.Lock, contentDescription = "Locked", tint = WarningYellow, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
                                 }
                                 Icon(imageVector = Icons.Default.ArrowForward, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
@@ -1506,7 +1456,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             }
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 if (!isPremium) {
-                                    Icon(imageVector = Icons.Default.Lock, contentDescription = "Locked", tint = Color(0xFFEAB308), modifier = Modifier.size(16.dp))
+                                    Icon(imageVector = Icons.Default.Lock, contentDescription = "Locked", tint = WarningYellow, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
                                 }
                                 Icon(imageVector = Icons.Default.ArrowForward, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
@@ -1580,7 +1530,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                             }
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 if (!isPremium) {
-                                    Icon(imageVector = Icons.Default.Lock, contentDescription = "Locked", tint = Color(0xFFEAB308), modifier = Modifier.size(16.dp))
+                                    Icon(imageVector = Icons.Default.Lock, contentDescription = "Locked", tint = WarningYellow, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
                                 }
                                 Icon(imageVector = Icons.Default.ArrowForward, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
@@ -1723,7 +1673,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                     }
                                 },
                                 modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF334155))
+                                colors = ButtonDefaults.buttonColors(containerColor = Slate700)
                             ) {
                                 Icon(imageVector = Icons.Default.History, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
