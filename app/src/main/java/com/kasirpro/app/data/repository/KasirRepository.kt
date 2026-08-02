@@ -404,9 +404,25 @@ class KasirRepository(val context: Context) {
     val lastBackupDate: StateFlow<String?> = _lastBackupDate.asStateFlow()
 
     // Observable Flows from local Room database, ensuring robust offline-first operation and preventing Firestore-based startup crashes.
-    val currentUser: Flow<UserEntity?> = dao.getCurrentUser().distinctUntilChanged()
+    // The users table can hold more than one row (e.g. the owner plus every cashier pulled down by the
+    // Firestore sync), so the session must be resolved by the logged in uid instead of an arbitrary
+    // "LIMIT 1" row. The unscoped query is only used as a fallback while the uid is still unknown.
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val currentUser: Flow<UserEntity?> = _loggedInUid.flatMapLatest { uid ->
+        if (uid.isNullOrBlank()) {
+            dao.getCurrentUser()
+        } else {
+            combine(dao.getUserByIdFlow(uid), dao.getCurrentUser()) { byUid, fallback -> byUid ?: fallback }
+        }
+    }.distinctUntilChanged()
 
-    suspend fun getCurrentUserRaw(): UserEntity? = dao.getCurrentUserRaw()
+    suspend fun getCurrentUserRaw(): UserEntity? {
+        val uid = _loggedInUid.value
+        if (!uid.isNullOrBlank()) {
+            dao.getUserById(uid)?.let { return it }
+        }
+        return dao.getCurrentUserRaw()
+    }
 
     suspend fun getCurrentBusinessRaw(): BusinessEntity? = dao.getCurrentBusinessRaw()
 
@@ -1475,6 +1491,8 @@ data class GoogleLoginResult(
 
     // PERSISTENCE SYNC FOR OFFLINE MODE
     suspend fun synchronizeOfflineData(): Int {
+        if (_loggedInUid.value.isNullOrBlank()) return 0
+
         var syncCount = 0
 
         // 1. Sync pending transactions
@@ -1488,6 +1506,11 @@ data class GoogleLoginResult(
                 } catch (e: Exception) { e.printStackTrace() }
             }
         } catch (e: Exception) { e.printStackTrace() }
+
+        // Products, customers, promos and debts are already pushed to Firestore at every mutation
+        // site, so re-uploading the whole catalogue is only needed to repair a session that produced
+        // offline transactions. Doing it unconditionally re-wrote every row on every poll.
+        if (syncCount == 0) return 0
 
         // 2. Sync products
         try {
@@ -2623,6 +2646,10 @@ data class GoogleLoginResult(
                             val username = doc.getString("username") ?: doc.id.substringBefore("_")
                             val nama = doc.getString("cashierName") ?: doc.getString("nama") ?: "Kasir"
                             val branchId = doc.getString("branchId") ?: ""
+                            // Keep whatever subscription the row already carries. The logged in cashier
+                            // inherits the owner's plan in step 1 and overwriting it with "free" here would
+                            // silently strip every premium feature (wholesale pricing, shifts, promos, ...).
+                            val existing = dao.getUserById(cUid)
                             val c = UserEntity(
                                 uid = cUid,
                                 nama = nama,
@@ -2630,9 +2657,10 @@ data class GoogleLoginResult(
                                 role = "kasir",
                                 ownerId = targetOwnerId,
                                 assignedBranchId = branchId,
-                                subscriptionStatus = "free",
-                                subscriptionStartDate = null,
-                                subscriptionEndDate = null,
+                                subscriptionStatus = existing?.subscriptionStatus ?: "free",
+                                subscriptionType = existing?.subscriptionType,
+                                subscriptionStartDate = existing?.subscriptionStartDate,
+                                subscriptionEndDate = existing?.subscriptionEndDate,
                                 createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis(),
                                 lastActiveAt = doc.getLong("lastActiveAt")
                             )
@@ -2722,6 +2750,7 @@ data class GoogleLoginResult(
                                 nomorHp = doc.getString("nomorHp") ?: "",
                                 totalPoin = doc.getLong("totalPoin")?.toInt() ?: 0,
                                 totalTransaksi = doc.getLong("totalTransaksi")?.toInt() ?: 0,
+                                alamat = doc.getString("alamat"),
                                 createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
                             )
                             dao.insertCustomer(c)

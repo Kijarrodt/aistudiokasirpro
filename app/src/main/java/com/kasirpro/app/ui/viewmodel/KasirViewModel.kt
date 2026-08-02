@@ -95,8 +95,9 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope, SharingStarted.Eagerly, emptyList()
     )
 
-    val expiredProducts = products.map { list ->
-        val user = currentUser.value
+    // Combined with currentUser so the warnings appear/disappear the moment the plan changes,
+    // instead of waiting for the next emission of the product list.
+    val expiredProducts = combine(products, currentUser) { list, user ->
         val isAtLeastProfesional = user?.isAtLeastProfesional ?: false
         if (!isAtLeastProfesional) {
             emptyList<ProductEntity>()
@@ -108,8 +109,7 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    val nearExpiryProducts = products.map { list ->
-        val user = currentUser.value
+    val nearExpiryProducts = combine(products, currentUser) { list, user ->
         val isAtLeastProfesional = user?.isAtLeastProfesional ?: false
         if (!isAtLeastProfesional) {
             emptyList<ProductEntity>()
@@ -123,8 +123,7 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    val totalExpiryWarningsCount = products.map { list ->
-        val user = currentUser.value
+    val totalExpiryWarningsCount = combine(products, currentUser) { list, user ->
         val isAtLeastProfesional = user?.isAtLeastProfesional ?: false
         if (!isAtLeastProfesional) {
             0

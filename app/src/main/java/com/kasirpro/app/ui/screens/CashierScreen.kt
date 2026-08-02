@@ -119,7 +119,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
     var modalInputVal by remember { mutableStateOf("") }
 
     var searchQuery by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf(Translator.t("Semua")) }
+    var selectedCategory by remember { mutableStateOf("Semua") }
     
     // Bottom Sheet Checkout States
     var showCheckoutDialog by remember { mutableStateOf(false) }
@@ -152,14 +152,16 @@ fun CashierScreen(viewModel: KasirViewModel) {
     }
     
     val context = LocalContext.current
-    val categories = listOf(Translator.t("Semua")) + productsList.map { it.kategori }.filter { !it.isNullOrBlank() }.distinct()
+    // Keep the raw category key in state (the Text wrapper localises it on screen). Storing the
+    // translated label instead would strand the selection on the old language after a language switch.
+    val categories = listOf("Semua") + productsList.map { it.kategori }.filter { !it.isNullOrBlank() }.distinct()
 
     val filteredProducts = productsList.filter {
-        (selectedCategory == Translator.t("Semua") || it.kategori == selectedCategory) &&
+        (selectedCategory == "Semua" || it.kategori == selectedCategory) &&
         (it.nama.contains(searchQuery, ignoreCase = true) || (it.barcode ?: "").contains(searchQuery))
     }
 
-    val prefs = remember(context) { context.getSharedPreferences("kasir_pro_prefs", android.content.Context.MODE_PRIVATE) }
+    val prefs = remember(context) { context.getSharedPreferences("kasir_prefs", android.content.Context.MODE_PRIVATE) }
     val isLoyaltyEnabled = remember(prefs) { prefs.getBoolean("is_loyalty_enabled", true) }
     val pointRateValue = remember(prefs) { prefs.getFloat("point_rate", 100f) }
 
@@ -438,7 +440,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                             modifier = Modifier.padding(horizontal = 16.dp)
                         ) {
                             Icon(
-                                imageVector = if (cat == Translator.t("Semua")) Icons.Default.GridView else Icons.Default.Folder,
+                                imageVector = if (cat == "Semua") Icons.Default.GridView else Icons.Default.Folder,
                                 contentDescription = null,
                                 tint = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(16.dp)
@@ -864,7 +866,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                             Text(Translator.t("Metode Status Piutang"), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    RadioButton(selected = statusTrx == Translator.t(Translator.t("lunas")), onClick = { viewModel.transactionStatus.value = "lunas" })
+                                    RadioButton(selected = statusTrx == "lunas", onClick = { viewModel.transactionStatus.value = "lunas" })
                                     Text(Translator.t("LUNAS"), fontSize = 12.sp)
                                 }
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1726,13 +1728,13 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                             Box(
                                                 modifier = Modifier
                                                     .clip(RoundedCornerShape(4.dp))
-                                                    .background(if (tx.status == Translator.t("lunas")) Color(0xFFDCFCE7) else Color(0xFFFEE2E2))
+                                                    .background(if (tx.status.equals("lunas", ignoreCase = true)) Color(0xFFDCFCE7) else Color(0xFFFEE2E2))
                                                     .padding(horizontal = 4.dp, vertical = 2.dp)
                                             ) {
                                                 Text(
                                                     text = tx.status.uppercase(),
                                                     fontSize = 8.sp,
-                                                    color = if (tx.status == Translator.t("lunas")) Color(0xFF15803D) else Color(0xFFB91C1C),
+                                                    color = if (tx.status.equals("lunas", ignoreCase = true)) Color(0xFF15803D) else Color(0xFFB91C1C),
                                                     fontWeight = FontWeight.Bold
                                                 )
                                             }
@@ -2054,7 +2056,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
 
                         Text(Translator.t("Status Pembayaran"), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
-                            listOf(Translator.t("lunas"), "dp").forEach { s ->
+                            listOf("lunas", "dp").forEach { s ->
                                 Card(
                                     onClick = { editStatus = s },
                                     colors = CardDefaults.cardColors(
@@ -2063,7 +2065,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Box(modifier = Modifier.padding(6.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                        Text(s.uppercase(), fontSize = 9.sp, color = if (editStatus == s) Color.White else Color.Black, fontWeight = FontWeight.Bold)
+                                        Text(Translator.t(s).uppercase(), fontSize = 9.sp, color = if (editStatus == s) Color.White else Color.Black, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
@@ -2077,7 +2079,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                             val bayarVal = editBayarStr.toDoubleOrNull() ?: rx.bayarNominal
                             val diskonVal = editDiskonStr.toDoubleOrNull() ?: calculatedDisc
 
-                            if (bayarVal < totalVal && editStatus == Translator.t("lunas")) {
+                            if (bayarVal < totalVal && editStatus.equals("lunas", ignoreCase = true)) {
                                 Toast.makeText(context, Translator.t("Nominal bayar kurang dari total untuk status lunas!"), Toast.LENGTH_SHORT).show()
                                 return@Button
                             }

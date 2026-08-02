@@ -72,16 +72,16 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
     var activeTab by remember { mutableStateOf("PRODUK") } // "PRODUK", Translator.t("STOK"), Translator.t("RIWAYAT")
 
     var searchQueryProduct by remember { mutableStateOf("") }
-    var selectedCategoryFilter by remember { mutableStateOf(Translator.t("Semua")) }
+    var selectedCategoryFilter by remember { mutableStateOf("Semua") }
 
     val categories = remember(productsList) {
-        listOf(Translator.t("Semua")) + productsList.map { it.kategori }.filter { it.isNotBlank() }.distinct()
+        listOf("Semua") + productsList.map { it.kategori }.filter { it.isNotBlank() }.distinct()
     }
 
     val filteredProducts = remember(productsList, searchQueryProduct, selectedCategoryFilter) {
         productsList.filter { prod ->
             val matchName = prod.nama.contains(searchQueryProduct, ignoreCase = true)
-            val matchCat = selectedCategoryFilter == Translator.t("Semua") || prod.kategori.equals(selectedCategoryFilter, ignoreCase = true)
+            val matchCat = selectedCategoryFilter == "Semua" || prod.kategori.equals(selectedCategoryFilter, ignoreCase = true)
             matchName && matchCat
         }
     }

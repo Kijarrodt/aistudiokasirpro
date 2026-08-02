@@ -86,7 +86,7 @@ fun SplashScreen(viewModel: KasirViewModel) {
                     uid = savedUid,
                     nama = savedName,
                     email = savedEmail,
-                    role = if (isKasirSaved) Translator.t("kasir") else "owner",
+                    role = if (isKasirSaved) "kasir" else "owner",
                     ownerId = savedOwnerId,
                     assignedBranchId = null,
                     subscriptionStatus = if (isAtLeastProfesional) "profesional" else "free",

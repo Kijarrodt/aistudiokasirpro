@@ -192,12 +192,12 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
 
     var selectedBranchId by remember { mutableStateOf("all") }
     var selectedCashierId by remember { mutableStateOf("all") }
-    var reportInterval by remember { mutableStateOf(if (user?.isAtLeastProfesional == true) Translator.t("BULANAN") else Translator.t("HARIAN")) } // HARIAN, MINGGUAN, BULANAN
+    var reportInterval by remember { mutableStateOf(if (user?.isAtLeastProfesional == true) "BULANAN" else "HARIAN") } // HARIAN, MINGGUAN, BULANAN
     var isShiftsExpanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(isAtLeastProfesional, user) {
-        if (!isAtLeastProfesional && reportInterval == Translator.t("BULANAN")) {
-            reportInterval = Translator.t("HARIAN")
+        if (!isAtLeastProfesional && reportInterval == "BULANAN") {
+            reportInterval = "HARIAN"
         }
     }
 
@@ -323,9 +323,9 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
         val matchCashier = (selectedCashierId == "all" || tx.kasirId == selectedCashierId)
         
         val matchInterval = when (reportInterval) {
-            Translator.t("HARIAN") -> tx.createdAt >= todayStart
-            Translator.t("MINGGUAN") -> tx.createdAt >= sevenDaysAgoStart
-            Translator.t("BULANAN") -> tx.createdAt >= monthStart
+            "HARIAN" -> tx.createdAt >= todayStart
+            "MINGGUAN" -> tx.createdAt >= sevenDaysAgoStart
+            "BULANAN" -> tx.createdAt >= monthStart
             else -> true
         }
         matchBranch && matchCashier && matchInterval
@@ -359,9 +359,9 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
     // Filter historical expenses based on interval
     val filteredExpenses = mergedExpenses.filter { exp ->
         when (reportInterval) {
-            Translator.t("HARIAN") -> exp.createdAt >= todayStart
-            Translator.t("MINGGUAN") -> exp.createdAt >= sevenDaysAgoStart
-            Translator.t("BULANAN") -> exp.createdAt >= monthStart
+            "HARIAN" -> exp.createdAt >= todayStart
+            "MINGGUAN" -> exp.createdAt >= sevenDaysAgoStart
+            "BULANAN" -> exp.createdAt >= monthStart
             else -> true
         }
     }
@@ -510,13 +510,13 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
         // Interval toggles
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(Translator.t("HARIAN"), Translator.t("MINGGUAN"), Translator.t("BULANAN")).forEach { mode ->
+                listOf("HARIAN", "MINGGUAN", "BULANAN").forEach { mode ->
                     val sel = reportInterval == mode
                     Card(
                         modifier = Modifier
                             .weight(1f)
                             .clickable {
-                                if (mode == Translator.t("BULANAN") && !isAtLeastProfesional) {
+                                if (mode == "BULANAN" && !isAtLeastProfesional) {
                                     viewModel.triggerUpgradePopup("Paket Profesional")
                                 } else {
                                     reportInterval = mode
@@ -963,7 +963,7 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                 onClick = {
                     val pdfFile = generateLaporanKeuanganPdf(
                         context = context,
-                        interval = reportInterval,
+                        interval = Translator.t(reportInterval),
                         storeName = user?.nama ?: Translator.t("Toko Utama"),
                         omset = finalIncome,
                         hpp = calculatedCapital,
