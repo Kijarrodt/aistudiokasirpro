@@ -70,17 +70,35 @@ fun DashboardScreen(viewModel: KasirViewModel) {
     var authCodeInput by remember { mutableStateOf("") }
 
     // Analytics calculations (Today's metrics)
-    val today = System.currentTimeMillis()
-    val startOfDay = today - (today % (24 * 60 * 60 * 1000))
+    // Midnight must be resolved in the device time zone. Truncating the epoch by 24h lands on UTC
+    // midnight, which in WIB (UTC+7) drops every sale made between 00:00 and 07:00 local time.
+    val startOfDay = remember(transactionsList) {
+        java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }.timeInMillis
+    }
     val todayTransactions = transactionsList.filter { it.createdAt >= startOfDay }
 
+    val productsList by viewModel.products.collectAsState()
+    val productCostMap = remember(productsList) { productsList.associate { it.id to it.hargaModal } }
+
     val totalIncome = todayTransactions.sumOf { it.actualIncome }
+    // Real gross profit: revenue minus the cost of goods actually sold. Products that are no longer in
+    // the catalogue fall back to an estimated 55% cost ratio, matching the laporan on the report screen.
     val totalProfit = todayTransactions.sumOf { tx ->
-        // Profit calculation helper
-        tx.actualIncome * 0.45 // Estimated margin simulator based on user parameters
+        val items = TransactionItemCodec.decode(tx.itemsRaw)
+        var hpp = items.sumOf { item ->
+            val cost = productCostMap[item.id] ?: ((item.harga - item.diskon) * 0.55)
+            cost * item.jumlah
+        }
+        if (hpp == 0.0 && tx.total > 0.0) hpp = tx.total * 0.55
+        tx.actualIncome - hpp
     }
     val trxCount = todayTransactions.size
-    val activeDebts = debtsList.filter { it.status == Translator.t("belum") }.sumOf { it.jumlah }
+    val activeDebts = debtsList.filter { it.status.equals("belum", ignoreCase = true) }.sumOf { it.jumlah }
 
     // Last 7 days real revenue aggregation for the interactive financial graph
     val last7DaysData = remember(transactionsList) {
@@ -521,13 +539,13 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(4.dp))
-                                        .background(if (tx.status == Translator.t("lunas")) Color(0xFFDCFCE7) else Color(0xFFFEE2E2))
+                                        .background(if (tx.status.equals("lunas", ignoreCase = true)) Color(0xFFDCFCE7) else Color(0xFFFEE2E2))
                                         .padding(horizontal = 6.dp, vertical = 2.dp)
                                 ) {
                                     Text(
                                         text = tx.status.uppercase(),
                                         fontSize = 9.sp,
-                                        color = if (tx.status == Translator.t("lunas")) Color(0xFF15803D) else Color(0xFFB91C1C),
+                                        color = if (tx.status.equals("lunas", ignoreCase = true)) Color(0xFF15803D) else Color(0xFFB91C1C),
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
@@ -899,7 +917,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                     Column {
                         Text(Translator.t("Status Pembayaran"), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
-                            listOf(Translator.t("lunas"), "dp").forEach { s ->
+                            listOf("lunas", "dp").forEach { s ->
                                 Card(
                                     onClick = { editStatus = s },
                                     colors = CardDefaults.cardColors(
@@ -908,7 +926,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Box(modifier = Modifier.padding(8.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                        Text(s.uppercase(), fontSize = 10.sp, color = if (editStatus == s) Color.White else Color.Black, fontWeight = FontWeight.Bold)
+                                        Text(Translator.t(s).uppercase(), fontSize = 10.sp, color = if (editStatus == s) Color.White else Color.Black, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
@@ -923,7 +941,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                         val bayarVal = editBayarStr.toDoubleOrNull() ?: rx.bayarNominal
                         val diskonVal = editDiskonStr.toDoubleOrNull() ?: calculatedDiskon
 
-                        if (bayarVal < totalVal && editStatus == Translator.t("lunas")) {
+                        if (bayarVal < totalVal && editStatus.equals("lunas", ignoreCase = true)) {
                             Toast.makeText(context, Translator.t("Nominal bayar kurang dari total untuk status lunas!"), Toast.LENGTH_SHORT).show()
                             return@Button
                         }

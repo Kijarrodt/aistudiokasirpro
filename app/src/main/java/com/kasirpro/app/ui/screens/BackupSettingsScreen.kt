@@ -780,7 +780,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
                                                 val sdf = java.text.SimpleDateFormat("HH:mm", java.util.Locale("id", "ID"))
                                                 Text("${sdf.format(java.util.Date(tx.createdAt))} • ${tx.metodeBayar}", fontSize = 10.sp, color = Color.Gray)
                                             }
-                                            Text(idrFormatter.format(tx.total), fontWeight = FontWeight.Bold, fontSize = 12.sp, color = if (tx.status == Translator.t("lunas")) Color(0xFF16A34A) else Color(0xFFEAB308))
+                                            Text(idrFormatter.format(tx.total), fontWeight = FontWeight.Bold, fontSize = 12.sp, color = if (tx.status.equals("lunas", ignoreCase = true)) Color(0xFF16A34A) else Color(0xFFEAB308))
                                         }
                                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                                     }
@@ -2742,7 +2742,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
-                                        listOf(Translator.t("bulanan"), "tahunan").forEach { cycle ->
+                                        listOf("bulanan", "tahunan").forEach { cycle ->
                                             val isSel = selectedBillingCycle == cycle
                                             Card(
                                                 onClick = { selectedBillingCycle = cycle },
@@ -2757,7 +2757,7 @@ fun AdminPanelScreen(viewModel: KasirViewModel, onBack: () -> Unit) {
                                                     contentAlignment = Alignment.Center
                                                 ) {
                                                     Text(
-                                                        text = if (cycle == Translator.t("bulanan")) Translator.t("BULANAN (30 h)") else "TAHUNAN (365 h)",
+                                                        text = if (cycle == "bulanan") Translator.t("BULANAN (30 h)") else "TAHUNAN (365 h)",
                                                         color = if (isSel) Slate900 else Color.White,
                                                         fontSize = 10.sp,
                                                         fontWeight = FontWeight.Bold
