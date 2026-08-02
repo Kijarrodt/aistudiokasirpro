@@ -924,7 +924,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                 } else {
                                     Translator.t("Pilih Tanggal Kedaluwarsa")
                                 },
-                                color = if (addExpiryDate != null) Color.Black else Color.Gray,
+                                color = if (addExpiryDate != null) MaterialTheme.colorScheme.onSurface else Color.Gray,
                                 modifier = Modifier.weight(1f)
                             )
                             if (addExpiryDate != null) {
@@ -1474,7 +1474,7 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
                                 } else {
                                     Translator.t("Pilih Tanggal Kedaluwarsa")
                                 },
-                                color = if (eExpiryDate != null) Color.Black else Color.Gray,
+                                color = if (eExpiryDate != null) MaterialTheme.colorScheme.onSurface else Color.Gray,
                                 modifier = Modifier.weight(1f)
                             )
                             if (eExpiryDate != null) {

@@ -906,7 +906,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Box(modifier = Modifier.padding(8.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                        Text(m, fontSize = 10.sp, color = if (editMetodeBayar == m) Color.White else Color.Black, fontWeight = FontWeight.Bold)
+                                        Text(m, fontSize = 10.sp, color = if (editMetodeBayar == m) Color.White else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
@@ -926,7 +926,7 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Box(modifier = Modifier.padding(8.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                        Text(Translator.t(s).uppercase(), fontSize = 10.sp, color = if (editStatus == s) Color.White else Color.Black, fontWeight = FontWeight.Bold)
+                                        Text(Translator.t(s).uppercase(), fontSize = 10.sp, color = if (editStatus == s) Color.White else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }

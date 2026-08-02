@@ -1336,6 +1336,15 @@ data class GoogleLoginResult(
         dao.insertStockHistory(hist)
     }
 
+    /**
+     * Receipt numbers stay sortable by time but carry a random suffix so concurrent checkouts on
+     * different devices can never produce the same primary key.
+     */
+    private fun newTransactionId(prefix: String = "TRX"): String {
+        val suffix = UUID.randomUUID().toString().replace("-", "").take(6).uppercase()
+        return "$prefix-${System.currentTimeMillis()}-$suffix"
+    }
+
     // TRANSACTION ACTIONS (Checkout)
     suspend fun checkout(
         items: List<TransactionItem>,
@@ -1374,7 +1383,9 @@ data class GoogleLoginResult(
         val currentBizId = getResolvedBusinessId()
 
         val tx = TransactionEntity(
-            id = "TRX-${System.currentTimeMillis()}",
+            // A millisecond timestamp alone is not unique: two cashiers checking out at the same
+            // instant produce the same id and Room/Firestore silently REPLACE one sale with the other.
+            id = newTransactionId(),
             businessId = currentBizId,
             branchId = currentBranchId,
             kasirId = currentKasirId,
@@ -1458,19 +1469,18 @@ data class GoogleLoginResult(
             }
         }
 
-        if (status == "dp" && pelangganId != null) {
+        // A DP/piutang sale must always leave a debt record behind. Guarding on pelangganId here used
+        // to drop the outstanding amount without any trace whenever no customer had been picked.
+        if (status.equals("dp", ignoreCase = true)) {
             val sisaHutang = total - bayarNominal
             if (sisaHutang > 0) {
-                var pelangganNama = "Pelanggan Setia"
-                val customer = dao.getAllCustomersRaw().find { it.id == pelangganId }
-                if (customer != null) {
-                    pelangganNama = customer.nama
-                }
+                val customer = pelangganId?.let { id -> dao.getAllCustomersRaw().find { it.id == id } }
+                val pelangganNama = customer?.nama ?: "Pelanggan Umum"
                 val d = DebtEntity(
                     id = UUID.randomUUID().toString(),
                     businessId = tx.businessId,
                     branchId = tx.branchId,
-                    pelangganId = pelangganId,
+                    pelangganId = pelangganId ?: "",
                     pelangganNama = pelangganNama,
                     jumlah = sisaHutang,
                     transaksiId = tx.id,
@@ -1797,7 +1807,7 @@ data class GoogleLoginResult(
             val kasirNama = curUser?.nama ?: "Sistem Kasir"
 
             val px = TransactionEntity(
-                id = "TRX-LUNAS-${System.currentTimeMillis()}",
+                id = newTransactionId("TRX-LUNAS"),
                 businessId = debt.businessId,
                 branchId = debt.branchId,
                 kasirId = kasirId,

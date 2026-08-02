@@ -1204,7 +1204,7 @@ fun BackupSettingsScreen(viewModel: KasirViewModel) {
 
                                 HorizontalDivider()
 
-                                Text(Translator.t("Log Transaksi Shift ini:"), fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color.Black)
+                                Text(Translator.t("Log Transaksi Shift ini:"), fontWeight = FontWeight.Bold, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface)
                                 if (shiftReportTransactions.isEmpty()) {
                                     Text(Translator.t("Tidak ada transaksi selama shift ini."), fontSize = 11.sp, color = Color.Gray)
                                 } else {

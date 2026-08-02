@@ -774,7 +774,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                     text = idrFormatter.format(ci.subtotal()),
                                     fontWeight = FontWeight.ExtraBold,
                                     fontSize = 13.sp,
-                                    color = Color.Black,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.padding(start = 8.dp)
                                 )
                             }
@@ -979,7 +979,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                         idrFormatter.format(orderTotal),
                                         fontWeight = FontWeight.ExtraBold,
                                         fontSize = 18.sp,
-                                        color = Color.Black,
+                                        color = MaterialTheme.colorScheme.onSurface,
                                         textAlign = TextAlign.Center
                                     )
                                 } else {
@@ -2048,7 +2048,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Box(modifier = Modifier.padding(6.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                        Text(m, fontSize = 9.sp, color = if (editMetodeBayar == m) Color.White else Color.Black, fontWeight = FontWeight.Bold)
+                                        Text(m, fontSize = 9.sp, color = if (editMetodeBayar == m) Color.White else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
@@ -2065,7 +2065,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Box(modifier = Modifier.padding(6.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                        Text(Translator.t(s).uppercase(), fontSize = 9.sp, color = if (editStatus == s) Color.White else Color.Black, fontWeight = FontWeight.Bold)
+                                        Text(Translator.t(s).uppercase(), fontSize = 9.sp, color = if (editStatus == s) Color.White else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }

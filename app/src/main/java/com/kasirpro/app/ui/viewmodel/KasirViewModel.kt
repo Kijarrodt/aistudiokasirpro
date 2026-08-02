@@ -548,6 +548,13 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         val user = currentUser.value
         val isPremium = user?.isPremium ?: false
 
+        // A piutang without a customer cannot be collected later, so refuse it here as well and not
+        // only in the checkout dialog.
+        if (transactionStatus.value.equals("dp", ignoreCase = true) && selectedCustomer.value == null) {
+            showToast("Peringatan: Transaksi hutang (DP/Piutang) wajib memilih pelanggan terlebih dahulu!")
+            return
+        }
+
         // Rule limit validation for Free Tier (Max 50 transactions per month)
         if (isFreeTransactionLimitReached()) {
             showLimitPopup.value = "Batas $FREE_MONTHLY_TRANSACTION_LIMIT transaksi untuk bulan berjalan sudah tercapai. Kuota transaksi gratis akan otomatis pulih pada tanggal 1 bulan depan. Silakan upgrade ke Paket Premium untuk transaksi tanpa batas!"
