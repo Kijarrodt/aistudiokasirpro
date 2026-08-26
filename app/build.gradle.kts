@@ -15,8 +15,8 @@ android {
     applicationId = "com.kasirpro.pospintar.app"
     minSdk = 24
     targetSdk = 36
-    versionCode = 17
-    versionName = "1.0.1.6"
+    versionCode = 18
+    versionName = "1.0.1.7"
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 

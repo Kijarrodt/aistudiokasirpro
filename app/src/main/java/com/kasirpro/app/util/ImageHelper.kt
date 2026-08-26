@@ -86,7 +86,17 @@ object ImageHelper {
         var inputStream: InputStream? = null
         try {
             inputStream = context.contentResolver.openInputStream(uri)
-            val bitmap = BitmapFactory.decodeStream(inputStream) ?: return null
+            val options = BitmapFactory.Options()
+            options.inJustDecodeBounds = true
+            BitmapFactory.decodeStream(inputStream, null, options)
+            inputStream?.close()
+
+            options.inSampleSize = calculateInSampleSize(options, 400, 400)
+            options.inJustDecodeBounds = false
+            options.inPreferredConfig = Bitmap.Config.RGB_565
+
+            inputStream = context.contentResolver.openInputStream(uri)
+            val bitmap = BitmapFactory.decodeStream(inputStream, null, options) ?: return null
             inputStream?.close()
 
             val base64 = processBitmapToBase64(bitmap)
@@ -105,13 +115,36 @@ object ImageHelper {
      */
     fun processAndConvertBytesToBase64(bytes: ByteArray): String? {
         try {
-            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return null
+            val options = BitmapFactory.Options()
+            options.inJustDecodeBounds = true
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+
+            options.inSampleSize = calculateInSampleSize(options, 400, 400)
+            options.inJustDecodeBounds = false
+            options.inPreferredConfig = Bitmap.Config.RGB_565
+
+            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options) ?: return null
             val base64 = processBitmapToBase64(bitmap)
             return base64
         } catch (e: Exception) {
             e.printStackTrace()
             return null
         }
+    }
+
+    private fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
+        val height = options.outHeight
+        val width = options.outWidth
+        var inSampleSize = 1
+
+        if (height > reqHeight || width > reqWidth) {
+            val halfHeight = height / 2
+            val halfWidth = width / 2
+            while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth) {
+                inSampleSize *= 2
+            }
+        }
+        return inSampleSize
     }
 
     /**
