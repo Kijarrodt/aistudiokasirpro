@@ -18,6 +18,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import com.kasirpro.app.data.local.isPremium
 import com.kasirpro.app.ui.theme.MyApplicationTheme
 import com.kasirpro.app.ui.theme.OrangePrimary
 import com.kasirpro.app.ui.viewmodel.KasirViewModel
@@ -116,6 +118,38 @@ class MainActivity : ComponentActivity() {
                     val activeScreenState by viewModel.activeScreen.collectAsState()
                     val currUser by viewModel.currentUser.collectAsState()
                     val isKasir = currUser?.role == "kasir"
+                    
+                    var showTrialOfferDialog by remember { mutableStateOf(false) }
+                    var trialOfferProduct by remember { mutableStateOf<com.android.billingclient.api.ProductDetails?>(null) }
+                    var trialOfferToken by remember { mutableStateOf("") }
+                    
+                    LaunchedEffect(currUser, activeScreenState) {
+                        val user = currUser
+                        val excludedScreens = listOf(
+                            "language_select", "splash", "login", "onboarding",
+                            "register", "forgot_password", "setup_toko"
+                        )
+                        if (user != null && activeScreenState !in excludedScreens) {
+                            val isPremiumActive = user.isPremium
+                            if (!isPremiumActive) {
+                                val prefs = viewModel.repository.prefs
+                                val todayStr = java.text.SimpleDateFormat(
+                                    "yyyy-MM-dd", java.util.Locale.getDefault()
+                                ).format(java.util.Date())
+                                val lastShown = prefs.getString("trial_offer_last_shown_date", "")
+                                if (lastShown != todayStr) {
+                                    kotlinx.coroutines.delay(1500)
+                                    val trialOffer = viewModel.billingManager.getProfesionalTrialOffer()
+                                    if (trialOffer != null) {
+                                        trialOfferProduct = trialOffer.first
+                                        trialOfferToken = trialOffer.second
+                                        showTrialOfferDialog = true
+                                        prefs.edit().putString("trial_offer_last_shown_date", todayStr).apply()
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     // Intercept back-button clicks to handle in-app screen stacks
                     val enabledBack = activeScreenState !in listOf("splash", "login", "onboarding") &&
@@ -453,6 +487,74 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         )
+                    }
+
+                    if (showTrialOfferDialog && trialOfferProduct != null) {
+                        Dialog(onDismissRequest = { showTrialOfferDialog = false }) {
+                            Card(
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Box(modifier = Modifier.fillMaxWidth()) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(24.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Stars,
+                                            contentDescription = null,
+                                            tint = OrangePrimary,
+                                            modifier = Modifier.size(56.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Text(
+                                            "Coba Gratis 3 Hari Paket Profesional!",
+                                            fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
+                                            fontSize = 18.sp,
+                                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            "Nikmati semua fitur Profesional gratis selama 3 hari. Setelah masa coba berakhir, langganan diperpanjang otomatis sesuai harga paket kecuali dibatalkan sebelumnya.",
+                                            fontSize = 12.sp,
+                                            color = Color.Gray,
+                                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                        )
+                                        Spacer(modifier = Modifier.height(20.dp))
+                                        Button(
+                                            onClick = {
+                                                val activity = context as? android.app.Activity
+                                                val product = trialOfferProduct
+                                                if (activity != null && product != null) {
+                                                    viewModel.billingManager.launchPurchaseFlow(
+                                                        activity, product, trialOfferToken, "bulanan"
+                                                    )
+                                                }
+                                                showTrialOfferDialog = false
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+                                            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(48.dp)
+                                        ) {
+                                            Text("Coba Gratis Sekarang", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                        }
+                                    }
+                                    IconButton(
+                                        onClick = { showTrialOfferDialog = false },
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(4.dp)
+                                    ) {
+                                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.Gray)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

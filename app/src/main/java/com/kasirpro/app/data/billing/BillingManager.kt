@@ -60,6 +60,8 @@ class BillingManager(
                         queryAvailableSubscriptions()
                         queryAndValidateActivePurchases()
                     }
+                } else if (billingResult.responseCode == BillingClient.BillingResponseCode.BILLING_UNAVAILABLE) {
+                    Log.w("BillingManager", "Billing service unavailable on device.")
                 } else {
                     Log.e("BillingManager", "BillingClient setup failed: ${billingResult.debugMessage}")
                 }
@@ -271,5 +273,19 @@ class BillingManager(
 
         val billingResult = client.launchBillingFlow(activity, billingFlowParams)
         Log.d("BillingManager", "Billing flow launch response code: ${billingResult.responseCode}")
+    }
+
+    fun getProfesionalTrialOffer(): Pair<ProductDetails, String>? {
+        val product = availableProducts.find { 
+            it.productId == "paket_profesional_100k" 
+        } ?: return null
+        val offers = product.subscriptionOfferDetails ?: return null
+        for (offer in offers) {
+            val firstPhase = offer.pricingPhases.pricingPhaseList.firstOrNull()
+            if (firstPhase != null && firstPhase.priceAmountMicros == 0L) {
+                return Pair(product, offer.offerToken)
+            }
+        }
+        return null
     }
 }
