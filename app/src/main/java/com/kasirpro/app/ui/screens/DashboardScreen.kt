@@ -80,25 +80,29 @@ fun DashboardScreen(viewModel: KasirViewModel) {
             set(java.util.Calendar.MILLISECOND, 0)
         }.timeInMillis
     }
-    val todayTransactions = transactionsList.filter { it.createdAt >= startOfDay }
+    val todayTransactions = remember(transactionsList, startOfDay) {
+        transactionsList.filter { it.createdAt >= startOfDay }
+    }
 
     val productsList by viewModel.products.collectAsState()
     val productCostMap = remember(productsList) { productsList.associate { it.id to it.hargaModal } }
 
-    val totalIncome = todayTransactions.sumOf { it.actualIncome }
+    val totalIncome = remember(todayTransactions) { todayTransactions.sumOf { it.actualIncome } }
     // Real gross profit: revenue minus the cost of goods actually sold. Products that are no longer in
     // the catalogue fall back to an estimated 55% cost ratio, matching the laporan on the report screen.
-    val totalProfit = todayTransactions.sumOf { tx ->
-        val items = TransactionItemCodec.decode(tx.itemsRaw)
-        var hpp = items.sumOf { item ->
-            val cost = productCostMap[item.id] ?: ((item.harga - item.diskon) * 0.55)
-            cost * item.jumlah
+    val totalProfit = remember(todayTransactions, productCostMap) {
+        todayTransactions.sumOf { tx ->
+            val items = TransactionItemCodec.decode(tx.itemsRaw)
+            var hpp = items.sumOf { item ->
+                val cost = productCostMap[item.id] ?: ((item.harga - item.diskon) * 0.55)
+                cost * item.jumlah
+            }
+            if (hpp == 0.0 && tx.total > 0.0) hpp = tx.total * 0.55
+            tx.actualIncome - hpp
         }
-        if (hpp == 0.0 && tx.total > 0.0) hpp = tx.total * 0.55
-        tx.actualIncome - hpp
     }
     val trxCount = todayTransactions.size
-    val activeDebts = debtsList.filter { it.status.equals("belum", ignoreCase = true) }.sumOf { it.jumlah }
+    val activeDebts = remember(debtsList) { debtsList.filter { it.status.equals("belum", ignoreCase = true) }.sumOf { it.jumlah } }
 
     // Last 7 days real revenue aggregation for the interactive financial graph
     val last7DaysData = remember(transactionsList) {

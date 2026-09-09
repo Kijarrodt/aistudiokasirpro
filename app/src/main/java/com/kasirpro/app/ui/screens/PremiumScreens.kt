@@ -318,56 +318,63 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
     val monthStart = monthCalendar.timeInMillis
 
     // Filter transaction lists based on intervals and selectors
-    val filtered = txs.filter { tx ->
-        val matchBranch = (selectedBranchId == "all" || tx.branchId == selectedBranchId)
-        val matchCashier = (selectedCashierId == "all" || tx.kasirId == selectedCashierId)
-        
-        val matchInterval = when (reportInterval) {
-            "HARIAN" -> tx.createdAt >= todayStart
-            "MINGGUAN" -> tx.createdAt >= sevenDaysAgoStart
-            "BULANAN" -> tx.createdAt >= monthStart
-            else -> true
+    val filtered = remember(txs, selectedBranchId, selectedCashierId, reportInterval, todayStart, sevenDaysAgoStart, monthStart) {
+        txs.filter { tx ->
+            val matchBranch = (selectedBranchId == "all" || tx.branchId == selectedBranchId)
+            val matchCashier = (selectedCashierId == "all" || tx.kasirId == selectedCashierId)
+            
+            val matchInterval = when (reportInterval) {
+                "HARIAN" -> tx.createdAt >= todayStart
+                "MINGGUAN" -> tx.createdAt >= sevenDaysAgoStart
+                "BULANAN" -> tx.createdAt >= monthStart
+                else -> true
+            }
+            matchBranch && matchCashier && matchInterval
         }
-        matchBranch && matchCashier && matchInterval
     }
 
     // Calculate Pendapatan, HPP, and Keuntungan from products in transactions
-    val finalIncome = filtered.sumOf { it.actualIncome }
+    val finalIncome = remember(filtered) { filtered.sumOf { it.actualIncome } }
     
-    var calculatedCapital = 0.0
-    filtered.forEach { tx ->
-        var txHpp = 0.0
-        val items = com.kasirpro.app.util.TransactionItemCodec.decode(tx.itemsRaw)
-        items.forEach { item ->
-            val pId = item.id
-            val qty = item.jumlah
-            val sellPrice = item.harga
-            val diskon = item.diskon
-            val finalItemPrice = sellPrice - diskon
-            
-            val itemCost = productCostMap[pId] ?: (finalItemPrice * 0.55)
-            txHpp += itemCost * qty
+    val calculatedCapital = remember(filtered, productCostMap) {
+        var tempCapital = 0.0
+        filtered.forEach { tx ->
+            var txHpp = 0.0
+            val items = com.kasirpro.app.util.TransactionItemCodec.decode(tx.itemsRaw)
+            items.forEach { item ->
+                val pId = item.id
+                val qty = item.jumlah
+                val sellPrice = item.harga
+                val diskon = item.diskon
+                val finalItemPrice = sellPrice - diskon
+                
+                val itemCost = productCostMap[pId] ?: (finalItemPrice * 0.55)
+                txHpp += itemCost * qty
+            }
+            if (txHpp == 0.0 && tx.total > 0.0) {
+                txHpp = tx.total * 0.55
+            }
+            tempCapital += txHpp
         }
-        if (txHpp == 0.0 && tx.total > 0.0) {
-            txHpp = tx.total * 0.55
-        }
-        calculatedCapital += txHpp
+        tempCapital
     }
 
     val calculatedNetProfit = finalIncome - calculatedCapital
 
     // Filter historical expenses based on interval
-    val filteredExpenses = mergedExpenses.filter { exp ->
-        when (reportInterval) {
-            "HARIAN" -> exp.createdAt >= todayStart
-            "MINGGUAN" -> exp.createdAt >= sevenDaysAgoStart
-            "BULANAN" -> exp.createdAt >= monthStart
-            else -> true
+    val filteredExpenses = remember(mergedExpenses, reportInterval, todayStart, sevenDaysAgoStart, monthStart) {
+        mergedExpenses.filter { exp ->
+            when (reportInterval) {
+                "HARIAN" -> exp.createdAt >= todayStart
+                "MINGGUAN" -> exp.createdAt >= sevenDaysAgoStart
+                "BULANAN" -> exp.createdAt >= monthStart
+                else -> true
+            }
         }
     }
-    val totalExpensesValue = filteredExpenses.sumOf { it.amount }
-    val finalFinancialNet = calculatedNetProfit - totalExpensesValue
 
+    val totalExpensesValue = remember(filteredExpenses) { filteredExpenses.sumOf { it.amount } }
+    val finalFinancialNet = calculatedNetProfit - totalExpensesValue
     val countTx = filtered.size
     val averageBasket = if (countTx > 0) finalIncome / countTx else 0.0
 

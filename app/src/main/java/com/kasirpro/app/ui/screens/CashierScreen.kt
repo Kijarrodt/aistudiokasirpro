@@ -154,11 +154,15 @@ fun CashierScreen(viewModel: KasirViewModel) {
     val context = LocalContext.current
     // Keep the raw category key in state (the Text wrapper localises it on screen). Storing the
     // translated label instead would strand the selection on the old language after a language switch.
-    val categories = listOf("Semua") + productsList.map { it.kategori }.filter { !it.isNullOrBlank() }.distinct()
+    val categories = remember(productsList) {
+        listOf("Semua") + productsList.map { it.kategori }.filter { !it.isNullOrBlank() }.distinct()
+    }
 
-    val filteredProducts = productsList.filter {
-        (selectedCategory == "Semua" || it.kategori == selectedCategory) &&
-        (it.nama.contains(searchQuery, ignoreCase = true) || (it.barcode ?: "").contains(searchQuery))
+    val filteredProducts = remember(productsList, selectedCategory, searchQuery) {
+        productsList.filter {
+            (selectedCategory == "Semua" || it.kategori == selectedCategory) &&
+            (it.nama.contains(searchQuery, ignoreCase = true) || (it.barcode ?: "").contains(searchQuery))
+        }
     }
 
     val prefs = remember(context) { context.getSharedPreferences("kasir_prefs", android.content.Context.MODE_PRIVATE) }
