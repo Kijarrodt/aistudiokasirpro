@@ -217,7 +217,7 @@ class MainActivity : ComponentActivity() {
                                     // Docked Bottom Banner Ad: Highly visible, never obscures UI, excluded on cashier
                                     if (!isPremium && activeScreenState != "cashier") {
                                         com.kasirpro.app.ads.BannerAdView(
-                                            adUnitId = com.kasirpro.app.ads.AdMobManager.BANNER_1_ID,
+                                            adUnitId = com.kasirpro.app.ads.AdMobManager.BANNER_ID,
                                             isPremium = false,
                                             modifier = Modifier
                                                 .fillMaxWidth()
@@ -316,7 +316,7 @@ class MainActivity : ComponentActivity() {
                                 "forgot_password", "setup_toko", "cashier"
                             )) {
                             com.kasirpro.app.ads.BannerAdView(
-                                adUnitId = com.kasirpro.app.ads.AdMobManager.BANNER_2_ID,
+                                adUnitId = com.kasirpro.app.ads.AdMobManager.BANNER_ID,
                                 isPremium = false,
                                 modifier = Modifier
                                     .fillMaxWidth()

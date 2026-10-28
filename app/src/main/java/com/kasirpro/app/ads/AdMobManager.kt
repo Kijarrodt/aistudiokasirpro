@@ -18,15 +18,11 @@ object AdMobManager {
     private const val TAG = "AdMobManager"
 
     const val APP_ID = "ca-app-pub-9991336658531273~6760228236"
-    const val BANNER_1_ID = "ca-app-pub-9991336658531273/2807208224"
-    const val BANNER_2_ID = "ca-app-pub-9991336658531273/3911125078"
+    const val BANNER_ID = "ca-app-pub-9991336658531273/3911125078"
+    const val BANNER_1_ID = BANNER_ID
+    const val BANNER_2_ID = BANNER_ID
     const val INTERSTITIAL_ID = "ca-app-pub-9991336658531273/3005237510"
     const val REWARDED_ID = "ca-app-pub-9991336658531273/1883727536"
-
-    // Official Google Test Ad Unit IDs for development, emulator testing, and fallback
-    const val TEST_BANNER_ID = "ca-app-pub-3940256099942544/6300978111"
-    const val TEST_INTERSTITIAL_ID = "ca-app-pub-3940256099942544/1033173712"
-    const val TEST_REWARDED_ID = "ca-app-pub-3940256099942544/5224354917"
 
     private var interstitialAd: InterstitialAd? = null
     private var isInterstitialLoading = false
@@ -39,12 +35,6 @@ object AdMobManager {
     fun initialize(context: Context) {
         if (isInitialized) return
         try {
-            // Enable emulator test device support
-            val configuration = RequestConfiguration.Builder()
-                .setTestDeviceIds(listOf(AdRequest.DEVICE_ID_EMULATOR))
-                .build()
-            MobileAds.setRequestConfiguration(configuration)
-
             MobileAds.initialize(context) { status ->
                 Log.d(TAG, "AdMob Initialized: ${status.adapterStatusMap}")
                 isInitialized = true
@@ -60,31 +50,26 @@ object AdMobManager {
         loadRewarded(context)
     }
 
-    fun loadInterstitial(context: Context, useTestAd: Boolean = false) {
+    fun loadInterstitial(context: Context) {
         if (interstitialAd != null || isInterstitialLoading) return
         isInterstitialLoading = true
 
-        val adUnit = if (useTestAd) TEST_INTERSTITIAL_ID else INTERSTITIAL_ID
         val adRequest = AdRequest.Builder().build()
         InterstitialAd.load(
             context,
-            adUnit,
+            INTERSTITIAL_ID,
             adRequest,
             object : InterstitialAdLoadCallback() {
                 override fun onAdLoaded(ad: InterstitialAd) {
                     interstitialAd = ad
                     isInterstitialLoading = false
-                    Log.d(TAG, "Interstitial Ad Loaded successfully ($adUnit)")
+                    Log.d(TAG, "Interstitial Ad Loaded successfully ($INTERSTITIAL_ID)")
                 }
 
                 override fun onAdFailedToLoad(loadAdError: LoadAdError) {
                     interstitialAd = null
                     isInterstitialLoading = false
-                    Log.w(TAG, "Interstitial Ad failed to load ($adUnit): ${loadAdError.message}")
-                    if (!useTestAd) {
-                        // Fallback to test unit so interstitial works during testing/no fill
-                        loadInterstitial(context, useTestAd = true)
-                    }
+                    Log.w(TAG, "Interstitial Ad failed to load ($INTERSTITIAL_ID): ${loadAdError.message}")
                 }
             }
         )
@@ -233,30 +218,26 @@ object AdMobManager {
         )
     }
 
-    fun loadRewarded(context: Context, useTestAd: Boolean = false) {
+    fun loadRewarded(context: Context) {
         if (rewardedAd != null || isRewardedLoading) return
         isRewardedLoading = true
 
-        val adUnit = if (useTestAd) TEST_REWARDED_ID else REWARDED_ID
         val adRequest = AdRequest.Builder().build()
         RewardedAd.load(
             context,
-            adUnit,
+            REWARDED_ID,
             adRequest,
             object : RewardedAdLoadCallback() {
                 override fun onAdLoaded(ad: RewardedAd) {
                     rewardedAd = ad
                     isRewardedLoading = false
-                    Log.d(TAG, "Rewarded Ad Loaded successfully ($adUnit)")
+                    Log.d(TAG, "Rewarded Ad Loaded successfully ($REWARDED_ID)")
                 }
 
                 override fun onAdFailedToLoad(loadAdError: LoadAdError) {
                     rewardedAd = null
                     isRewardedLoading = false
-                    Log.w(TAG, "Rewarded Ad failed to load ($adUnit): ${loadAdError.message}")
-                    if (!useTestAd) {
-                        loadRewarded(context, useTestAd = true)
-                    }
+                    Log.w(TAG, "Rewarded Ad failed to load ($REWARDED_ID): ${loadAdError.message}")
                 }
             }
         )

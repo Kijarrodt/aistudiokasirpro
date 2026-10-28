@@ -28,57 +28,44 @@ fun BannerAdView(
         return
     }
 
-    val testBannerId = "ca-app-pub-3940256099942544/6300978111"
-    var activeAdUnitId by remember(adUnitId) { mutableStateOf(adUnitId) }
-
     Box(
         modifier = modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = 50.dp),
         contentAlignment = Alignment.Center
     ) {
-        key(activeAdUnitId) {
-            AndroidView(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                factory = { context ->
-                    AdView(context).apply {
-                        layoutParams = ViewGroup.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.WRAP_CONTENT
-                        )
-                        setAdSize(AdSize.BANNER)
-                        this.adUnitId = activeAdUnitId
-                        adListener = object : AdListener() {
-                            override fun onAdLoaded() {
-                                Log.d("BannerAdView", "Banner ad loaded successfully ($activeAdUnitId)")
-                            }
-
-                            override fun onAdFailedToLoad(error: LoadAdError) {
-                                Log.w(
-                                    "BannerAdView",
-                                    "Banner failed to load ($activeAdUnitId): ${error.message} (code ${error.code})"
-                                )
-                                // If the primary unit ID fails (e.g. no fill or unverified on test device),
-                                // fall back to official Google test unit so the banner is guaranteed visible
-                                if (activeAdUnitId != testBannerId) {
-                                    activeAdUnitId = testBannerId
-                                }
-                            }
+        AndroidView(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+            factory = { context ->
+                AdView(context).apply {
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                    )
+                    setAdSize(AdSize.BANNER)
+                    this.adUnitId = adUnitId
+                    adListener = object : AdListener() {
+                        override fun onAdLoaded() {
+                            Log.d("BannerAdView", "Banner ad loaded successfully ($adUnitId)")
                         }
 
-                        try {
-                            loadAd(AdRequest.Builder().build())
-                        } catch (e: Exception) {
-                            Log.e("BannerAdView", "Failed loadAd: ${e.message}")
-                            if (activeAdUnitId != testBannerId) {
-                                activeAdUnitId = testBannerId
-                            }
+                        override fun onAdFailedToLoad(error: LoadAdError) {
+                            Log.w(
+                                "BannerAdView",
+                                "Banner failed to load ($adUnitId): ${error.message} (code ${error.code})"
+                            )
                         }
                     }
+
+                    try {
+                        loadAd(AdRequest.Builder().build())
+                    } catch (e: Exception) {
+                        Log.e("BannerAdView", "Failed loadAd: ${e.message}")
+                    }
                 }
-            )
-        }
+            }
+        )
     }
 }
