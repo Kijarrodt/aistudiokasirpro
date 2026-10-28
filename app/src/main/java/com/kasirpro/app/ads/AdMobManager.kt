@@ -8,6 +8,7 @@ import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.FullScreenContentCallback
 import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.MobileAds
+import com.google.android.gms.ads.RequestConfiguration
 import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import com.google.android.gms.ads.rewarded.RewardedAd
@@ -22,6 +23,11 @@ object AdMobManager {
     const val INTERSTITIAL_ID = "ca-app-pub-9991336658531273/3005237510"
     const val REWARDED_ID = "ca-app-pub-9991336658531273/1883727536"
 
+    // Official Google Test Ad Unit IDs for development, emulator testing, and fallback
+    const val TEST_BANNER_ID = "ca-app-pub-3940256099942544/6300978111"
+    const val TEST_INTERSTITIAL_ID = "ca-app-pub-3940256099942544/1033173712"
+    const val TEST_REWARDED_ID = "ca-app-pub-3940256099942544/5224354917"
+
     private var interstitialAd: InterstitialAd? = null
     private var isInterstitialLoading = false
 
@@ -33,6 +39,12 @@ object AdMobManager {
     fun initialize(context: Context) {
         if (isInitialized) return
         try {
+            // Enable emulator test device support
+            val configuration = RequestConfiguration.Builder()
+                .setTestDeviceIds(listOf(AdRequest.DEVICE_ID_EMULATOR))
+                .build()
+            MobileAds.setRequestConfiguration(configuration)
+
             MobileAds.initialize(context) { status ->
                 Log.d(TAG, "AdMob Initialized: ${status.adapterStatusMap}")
                 isInitialized = true
@@ -48,39 +60,50 @@ object AdMobManager {
         loadRewarded(context)
     }
 
-    fun loadInterstitial(context: Context) {
+    fun loadInterstitial(context: Context, useTestAd: Boolean = false) {
         if (interstitialAd != null || isInterstitialLoading) return
         isInterstitialLoading = true
 
+        val adUnit = if (useTestAd) TEST_INTERSTITIAL_ID else INTERSTITIAL_ID
         val adRequest = AdRequest.Builder().build()
         InterstitialAd.load(
             context,
-            INTERSTITIAL_ID,
+            adUnit,
             adRequest,
             object : InterstitialAdLoadCallback() {
                 override fun onAdLoaded(ad: InterstitialAd) {
                     interstitialAd = ad
                     isInterstitialLoading = false
-                    Log.d(TAG, "Interstitial Ad Loaded successfully")
+                    Log.d(TAG, "Interstitial Ad Loaded successfully ($adUnit)")
                 }
 
                 override fun onAdFailedToLoad(loadAdError: LoadAdError) {
                     interstitialAd = null
                     isInterstitialLoading = false
-                    Log.e(TAG, "Interstitial Ad failed to load: ${loadAdError.message}")
+                    Log.w(TAG, "Interstitial Ad failed to load ($adUnit): ${loadAdError.message}")
+                    if (!useTestAd) {
+                        // Fallback to test unit so interstitial works during testing/no fill
+                        loadInterstitial(context, useTestAd = true)
+                    }
                 }
             }
         )
     }
 
     private var lastInterstitialTime = 0L
-    private const val MIN_INTERSTITIAL_INTERVAL_MS = 20_000L // Min 20s between interstitial screen transitions
+    private const val MIN_INTERSTITIAL_INTERVAL_MS = 20_000L // Min 20s between interstitial transitions
     private var hasShownEntryAd = false
 
+    /**
+     * Show interstitial ad.
+     * @param onAdActuallyDismissed Callback invoked ONLY after the user has watched and closed the full-screen interstitial ad.
+     * @param onDismissed General completion callback invoked whether the ad was watched or skipped/failed.
+     */
     fun showInterstitialAd(
         activity: Activity,
         isPremium: Boolean,
-        onDismissed: () -> Unit
+        onAdActuallyDismissed: (() -> Unit)? = null,
+        onDismissed: () -> Unit = {}
     ) {
         if (isPremium) {
             // Premium users never see ads
@@ -94,6 +117,8 @@ object AdMobManager {
                 override fun onAdDismissedFullScreenContent() {
                     interstitialAd = null
                     loadInterstitial(activity)
+                    // The interstitial ad was actually shown and dismissed by the user:
+                    onAdActuallyDismissed?.invoke()
                     onDismissed()
                 }
 
@@ -105,7 +130,7 @@ object AdMobManager {
             }
             ad.show(activity)
         } else {
-            // Not ready yet, reload and proceed immediately so checkout is not blocked
+            // Not ready yet, reload and proceed immediately so UI navigation is not blocked
             loadInterstitial(activity)
             onDismissed()
         }
@@ -119,7 +144,8 @@ object AdMobManager {
         fromScreen: String,
         toScreen: String,
         isPremium: Boolean,
-        onDismissed: () -> Unit
+        onAdActuallyDismissed: (() -> Unit)? = null,
+        onDismissed: () -> Unit = {}
     ) {
         if (isPremium) {
             onDismissed()
@@ -155,16 +181,22 @@ object AdMobManager {
         }
 
         lastInterstitialTime = now
-        showInterstitialAd(activity, isPremium = false, onDismissed = onDismissed)
+        showInterstitialAd(
+            activity = activity,
+            isPremium = false,
+            onAdActuallyDismissed = onAdActuallyDismissed,
+            onDismissed = onDismissed
+        )
     }
 
     /**
      * Show interstitial ad when newly entering the app (dashboard after login/splash).
+     * Note: Does NOT trigger the subscription upsell popup at app entry.
      */
     fun showAppEntryInterstitial(
         activity: Activity,
         isPremium: Boolean,
-        onDismissed: () -> Unit
+        onDismissed: () -> Unit = {}
     ) {
         if (isPremium || hasShownEntryAd) {
             onDismissed()
@@ -172,7 +204,13 @@ object AdMobManager {
         }
         hasShownEntryAd = true
         lastInterstitialTime = System.currentTimeMillis()
-        showInterstitialAd(activity, isPremium = false, onDismissed = onDismissed)
+        // onAdActuallyDismissed is null because subscription offer must NOT appear at app startup
+        showInterstitialAd(
+            activity = activity,
+            isPremium = false,
+            onAdActuallyDismissed = null,
+            onDismissed = onDismissed
+        )
     }
 
     /**
@@ -181,35 +219,44 @@ object AdMobManager {
     fun showAppExitInterstitial(
         activity: Activity,
         isPremium: Boolean,
-        onExit: () -> Unit
+        onExit: () -> Unit = {}
     ) {
         if (isPremium) {
             onExit()
             return
         }
-        showInterstitialAd(activity, isPremium = false, onDismissed = onExit)
+        showInterstitialAd(
+            activity = activity,
+            isPremium = false,
+            onAdActuallyDismissed = null,
+            onDismissed = onExit
+        )
     }
 
-    fun loadRewarded(context: Context) {
+    fun loadRewarded(context: Context, useTestAd: Boolean = false) {
         if (rewardedAd != null || isRewardedLoading) return
         isRewardedLoading = true
 
+        val adUnit = if (useTestAd) TEST_REWARDED_ID else REWARDED_ID
         val adRequest = AdRequest.Builder().build()
         RewardedAd.load(
             context,
-            REWARDED_ID,
+            adUnit,
             adRequest,
             object : RewardedAdLoadCallback() {
                 override fun onAdLoaded(ad: RewardedAd) {
                     rewardedAd = ad
                     isRewardedLoading = false
-                    Log.d(TAG, "Rewarded Ad Loaded successfully")
+                    Log.d(TAG, "Rewarded Ad Loaded successfully ($adUnit)")
                 }
 
                 override fun onAdFailedToLoad(loadAdError: LoadAdError) {
                     rewardedAd = null
                     isRewardedLoading = false
-                    Log.e(TAG, "Rewarded Ad failed to load: ${loadAdError.message}")
+                    Log.w(TAG, "Rewarded Ad failed to load ($adUnit): ${loadAdError.message}")
+                    if (!useTestAd) {
+                        loadRewarded(context, useTestAd = true)
+                    }
                 }
             }
         )
@@ -219,7 +266,7 @@ object AdMobManager {
         activity: Activity,
         isPremium: Boolean,
         onUserEarnedReward: () -> Unit,
-        onDismissed: () -> Unit
+        onDismissed: () -> Unit = {}
     ) {
         if (isPremium) {
             // Premium user gets reward directly

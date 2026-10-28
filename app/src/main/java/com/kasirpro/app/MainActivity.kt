@@ -123,38 +123,6 @@ class MainActivity : ComponentActivity() {
                     val currUser by viewModel.currentUser.collectAsState()
                     val isKasir = currUser?.role == "kasir"
                     
-                    var showTrialOfferDialog by remember { mutableStateOf(false) }
-                    var trialOfferProduct by remember { mutableStateOf<com.android.billingclient.api.ProductDetails?>(null) }
-                    var trialOfferToken by remember { mutableStateOf("") }
-                    
-                    LaunchedEffect(currUser, activeScreenState) {
-                        val user = currUser
-                        val excludedScreens = listOf(
-                            "language_select", "splash", "login", "onboarding",
-                            "register", "forgot_password", "setup_toko"
-                        )
-                        if (user != null && activeScreenState !in excludedScreens) {
-                            val isPremiumActive = user.isPremium
-                            if (!isPremiumActive) {
-                                val prefs = viewModel.repository.prefs
-                                val todayStr = java.text.SimpleDateFormat(
-                                    "yyyy-MM-dd", java.util.Locale.getDefault()
-                                ).format(java.util.Date())
-                                val lastShown = prefs.getString("trial_offer_last_shown_date", "")
-                                if (lastShown != todayStr) {
-                                    kotlinx.coroutines.delay(1500)
-                                    val trialOffer = viewModel.billingManager.getProfesionalTrialOffer()
-                                    if (trialOffer != null) {
-                                        trialOfferProduct = trialOffer.first
-                                        trialOfferToken = trialOffer.second
-                                        showTrialOfferDialog = true
-                                        prefs.edit().putString("trial_offer_last_shown_date", todayStr).apply()
-                                    }
-                                }
-                            }
-                        }
-                    }
-
                     // Interstitial ad triggers on App Entry & Screen Transitions (excluding cashier/transactions)
                     var previousScreenState by remember { mutableStateOf<String?>(null) }
                     LaunchedEffect(activeScreenState) {
@@ -166,25 +134,25 @@ class MainActivity : ComponentActivity() {
                         if (prev == null) {
                             previousScreenState = current
                             if (current == "home" && !isPremium) {
-                                com.kasirpro.app.ads.AdMobManager.showAppEntryInterstitial(activity, isPremium = false) {
-                                    viewModel.showSubscriptionUpsell.value = true
-                                }
+                                // On initial app entry: show entry interstitial if applicable, but NEVER show subscription popup at app start
+                                com.kasirpro.app.ads.AdMobManager.showAppEntryInterstitial(activity, isPremium = false)
                             }
                         } else if (prev != current) {
                             previousScreenState = current
                             if (prev in listOf("splash", "login", "onboarding") && current == "home") {
-                                com.kasirpro.app.ads.AdMobManager.showAppEntryInterstitial(activity, isPremium) {
-                                    viewModel.showSubscriptionUpsell.value = true
-                                }
+                                // On transition into home from auth/splash: show entry ad, NO subscription popup at app start
+                                com.kasirpro.app.ads.AdMobManager.showAppEntryInterstitial(activity, isPremium)
                             } else {
+                                // On screen transition: show interstitial and ONLY after ad is actually closed, show subscription upsell
                                 com.kasirpro.app.ads.AdMobManager.showScreenTransitionInterstitial(
                                     activity = activity,
                                     fromScreen = prev,
                                     toScreen = current,
-                                    isPremium = isPremium
-                                ) {
-                                    viewModel.showSubscriptionUpsell.value = true
-                                }
+                                    isPremium = isPremium,
+                                    onAdActuallyDismissed = {
+                                        viewModel.showSubscriptionUpsell.value = true
+                                    }
+                                )
                             }
                         }
                     }
@@ -343,7 +311,10 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                             }
-                        } else if (!isPremium && activeScreenState in listOf("premium_pricing", "user_notifications")) {
+                        } else if (!isPremium && activeScreenState !in listOf(
+                                "splash", "login", "onboarding", "register",
+                                "forgot_password", "setup_toko", "cashier"
+                            )) {
                             com.kasirpro.app.ads.BannerAdView(
                                 adUnitId = com.kasirpro.app.ads.AdMobManager.BANNER_2_ID,
                                 isPremium = false,
@@ -571,73 +542,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    if (showTrialOfferDialog && trialOfferProduct != null) {
-                        Dialog(onDismissRequest = { showTrialOfferDialog = false }) {
-                            Card(
-                                shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Box(modifier = Modifier.fillMaxWidth()) {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(24.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Stars,
-                                            contentDescription = null,
-                                            tint = OrangePrimary,
-                                            modifier = Modifier.size(56.dp)
-                                        )
-                                        Spacer(modifier = Modifier.height(12.dp))
-                                        Text(
-                                            "Coba Gratis 3 Hari Paket Profesional!",
-                                            fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
-                                            fontSize = 18.sp,
-                                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            "Nikmati semua fitur Profesional gratis selama 3 hari. Setelah masa coba berakhir, langganan diperpanjang otomatis sesuai harga paket kecuali dibatalkan sebelumnya.",
-                                            fontSize = 12.sp,
-                                            color = Color.Gray,
-                                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                                        )
-                                        Spacer(modifier = Modifier.height(20.dp))
-                                        Button(
-                                            onClick = {
-                                                val activity = context as? android.app.Activity
-                                                val product = trialOfferProduct
-                                                if (activity != null && product != null) {
-                                                    viewModel.billingManager.launchPurchaseFlow(
-                                                        activity, product, trialOfferToken, "bulanan"
-                                                    )
-                                                }
-                                                showTrialOfferDialog = false
-                                            },
-                                            colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
-                                            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(48.dp)
-                                        ) {
-                                            Text("Coba Gratis Sekarang", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                                        }
-                                    }
-                                    IconButton(
-                                        onClick = { showTrialOfferDialog = false },
-                                        modifier = Modifier
-                                            .align(Alignment.TopEnd)
-                                            .padding(4.dp)
-                                    ) {
-                                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.Gray)
-                                    }
-                                }
-                            }
-                        }
-                    }
+
 
                     // Google Play Store In-App Review Dialog
                     if (showReviewDialog) {
