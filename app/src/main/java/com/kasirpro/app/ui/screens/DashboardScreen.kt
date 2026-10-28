@@ -479,17 +479,6 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                 }
             }
 
-            // AdMob Banner Ad 2 for Free Users
-            if (!isPremium) {
-                item {
-                    com.kasirpro.app.ads.BannerAdView(
-                        adUnitId = com.kasirpro.app.ads.AdMobManager.BANNER_2_ID,
-                        isPremium = false,
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    )
-                }
-            }
-
             // Recent transactions tracking list
             item {
                 Row(

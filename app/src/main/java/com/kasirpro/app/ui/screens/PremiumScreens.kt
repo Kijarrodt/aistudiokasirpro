@@ -1036,16 +1036,6 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
                 )
             }
         }
-
-        if (!isPremium) {
-            item {
-                com.kasirpro.app.ads.BannerAdView(
-                    adUnitId = com.kasirpro.app.ads.AdMobManager.BANNER_2_ID,
-                    isPremium = false,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-            }
-        }
     }
 
     if (showAddExpenseDialog) {

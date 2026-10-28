@@ -73,6 +73,10 @@ object AdMobManager {
         )
     }
 
+    private var lastInterstitialTime = 0L
+    private const val MIN_INTERSTITIAL_INTERVAL_MS = 20_000L // Min 20s between interstitial screen transitions
+    private var hasShownEntryAd = false
+
     fun showInterstitialAd(
         activity: Activity,
         isPremium: Boolean,
@@ -105,6 +109,85 @@ object AdMobManager {
             loadInterstitial(activity)
             onDismissed()
         }
+    }
+
+    /**
+     * Show interstitial ad on screen changes EXCEPT when navigating to or from cashier/transactions.
+     */
+    fun showScreenTransitionInterstitial(
+        activity: Activity,
+        fromScreen: String,
+        toScreen: String,
+        isPremium: Boolean,
+        onDismissed: () -> Unit
+    ) {
+        if (isPremium) {
+            onDismissed()
+            return
+        }
+
+        // Strictly exclude cashier and transaction areas
+        if (fromScreen == "cashier" || toScreen == "cashier") {
+            onDismissed()
+            return
+        }
+
+        // Exclude startup / auth screens
+        val excludedScreens = setOf(
+            "splash", "onboarding", "login", "register",
+            "forgot_password", "setup_toko"
+        )
+        if (fromScreen in excludedScreens || toScreen in excludedScreens) {
+            onDismissed()
+            return
+        }
+
+        if (fromScreen == toScreen) {
+            onDismissed()
+            return
+        }
+
+        val now = System.currentTimeMillis()
+        if (now - lastInterstitialTime < MIN_INTERSTITIAL_INTERVAL_MS) {
+            // Rate-limited to preserve pleasant user experience
+            onDismissed()
+            return
+        }
+
+        lastInterstitialTime = now
+        showInterstitialAd(activity, isPremium = false, onDismissed = onDismissed)
+    }
+
+    /**
+     * Show interstitial ad when newly entering the app (dashboard after login/splash).
+     */
+    fun showAppEntryInterstitial(
+        activity: Activity,
+        isPremium: Boolean,
+        onDismissed: () -> Unit
+    ) {
+        if (isPremium || hasShownEntryAd) {
+            onDismissed()
+            return
+        }
+        hasShownEntryAd = true
+        lastInterstitialTime = System.currentTimeMillis()
+        showInterstitialAd(activity, isPremium = false, onDismissed = onDismissed)
+    }
+
+    /**
+     * Show interstitial ad when exiting the app.
+     */
+    fun showAppExitInterstitial(
+        activity: Activity,
+        isPremium: Boolean,
+        onExit: () -> Unit
+    ) {
+        if (isPremium) {
+            onExit()
+            return
+        }
+        showInterstitialAd(activity, isPremium = false, onDismissed = onExit)
     }
 
     fun loadRewarded(context: Context) {

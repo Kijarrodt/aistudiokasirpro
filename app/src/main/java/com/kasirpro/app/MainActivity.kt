@@ -155,6 +155,40 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    // Interstitial ad triggers on App Entry & Screen Transitions (excluding cashier/transactions)
+                    var previousScreenState by remember { mutableStateOf<String?>(null) }
+                    LaunchedEffect(activeScreenState) {
+                        val current = activeScreenState
+                        val prev = previousScreenState
+                        val isPremium = currUser?.isPremium == true
+                        val activity = this@MainActivity
+
+                        if (prev == null) {
+                            previousScreenState = current
+                            if (current == "home" && !isPremium) {
+                                com.kasirpro.app.ads.AdMobManager.showAppEntryInterstitial(activity, isPremium = false) {
+                                    viewModel.showSubscriptionUpsell.value = true
+                                }
+                            }
+                        } else if (prev != current) {
+                            previousScreenState = current
+                            if (prev in listOf("splash", "login", "onboarding") && current == "home") {
+                                com.kasirpro.app.ads.AdMobManager.showAppEntryInterstitial(activity, isPremium) {
+                                    viewModel.showSubscriptionUpsell.value = true
+                                }
+                            } else {
+                                com.kasirpro.app.ads.AdMobManager.showScreenTransitionInterstitial(
+                                    activity = activity,
+                                    fromScreen = prev,
+                                    toScreen = current,
+                                    isPremium = isPremium
+                                ) {
+                                    viewModel.showSubscriptionUpsell.value = true
+                                }
+                            }
+                        }
+                    }
+
                     // Intercept back-button clicks to handle in-app screen stacks
                     val enabledBack = activeScreenState !in listOf("splash", "login", "onboarding") &&
                             !(isKasir && activeScreenState == "cashier") &&
@@ -178,6 +212,19 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    // App exit handler on root screen: show exit interstitial ad for free users before exiting
+                    val isAtRootHomeScreen = (!isKasir && activeScreenState == "home")
+                    androidx.activity.compose.BackHandler(enabled = isAtRootHomeScreen) {
+                        val isPremium = currUser?.isPremium == true
+                        if (!isPremium) {
+                            com.kasirpro.app.ads.AdMobManager.showAppExitInterstitial(this@MainActivity, isPremium = false) {
+                                finish()
+                            }
+                        } else {
+                            finish()
+                        }
+                    }
+
                     val customNotificationText by viewModel.customNotification.collectAsState()
 
                     Scaffold(
@@ -185,6 +232,7 @@ class MainActivity : ComponentActivity() {
                         bottomBar = {
                             val currUser by viewModel.currentUser.collectAsState()
                             val isKasir = currUser?.role == "kasir"
+                            val isPremium = currUser?.isPremium == true
                             val allowedScreens = if (isKasir) {
                                 listOf("cashier", "manage", "settings")
                             } else {
@@ -192,17 +240,36 @@ class MainActivity : ComponentActivity() {
                             }
 
                             if (activeScreenState in allowedScreens) {
-                                NavigationBar(
-                                    containerColor = MaterialTheme.colorScheme.surface
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(MaterialTheme.colorScheme.surface),
+                                    horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
-                                    if (!isKasir) {
-                                        NavigationBarItem(
-                                            selected = activeScreenState == "home",
-                                            onClick = { viewModel.activeScreen.value = "home" },
-                                            icon = { Icon(Icons.Default.Home, contentDescription = t("Beranda")) },
-                                            label = { Text(t("Beranda")) },
-                                            colors = NavigationBarItemDefaults.colors(
-                                                selectedIconColor = OrangePrimary,
+                                    // Docked Bottom Banner Ad: Highly visible, never obscures UI, excluded on cashier
+                                    if (!isPremium && activeScreenState != "cashier") {
+                                        com.kasirpro.app.ads.BannerAdView(
+                                            adUnitId = com.kasirpro.app.ads.AdMobManager.BANNER_1_ID,
+                                            isPremium = false,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                                                .padding(vertical = 2.dp)
+                                                .testTag("persistent_bottom_banner_ad")
+                                        )
+                                    }
+
+                                    NavigationBar(
+                                        containerColor = MaterialTheme.colorScheme.surface
+                                    ) {
+                                        if (!isKasir) {
+                                            NavigationBarItem(
+                                                selected = activeScreenState == "home",
+                                                onClick = { viewModel.activeScreen.value = "home" },
+                                                icon = { Icon(Icons.Default.Home, contentDescription = t("Beranda")) },
+                                                label = { Text(t("Beranda")) },
+                                                colors = NavigationBarItemDefaults.colors(
+                                                    selectedIconColor = OrangePrimary,
                                                 selectedTextColor = OrangePrimary,
                                                 indicatorColor = MaterialTheme.colorScheme.primaryContainer
                                             )
@@ -276,7 +343,18 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                             }
+                        } else if (!isPremium && activeScreenState in listOf("premium_pricing", "user_notifications")) {
+                            com.kasirpro.app.ads.BannerAdView(
+                                adUnitId = com.kasirpro.app.ads.AdMobManager.BANNER_2_ID,
+                                isPremium = false,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                                    .padding(vertical = 4.dp)
+                                    .testTag("persistent_subscreen_bottom_banner_ad")
+                            )
                         }
+                    }
                     ) { pad ->
                         Box(modifier = Modifier.fillMaxSize().padding(pad)) {
                             // Current screen logic
@@ -559,23 +637,23 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         }
+                    }
 
-                        // Google Play Store In-App Review Dialog
-                        if (showReviewDialog) {
-                            com.kasirpro.app.review.PlayReviewDialog(
-                                onDismiss = { viewModel.showPlayReviewDialog.value = false }
-                            )
-                        }
+                    // Google Play Store In-App Review Dialog
+                    if (showReviewDialog) {
+                        com.kasirpro.app.review.PlayReviewDialog(
+                            onDismiss = { viewModel.showPlayReviewDialog.value = false }
+                        )
+                    }
 
-                        // Post-Ad Subscription Upsell Popup
-                        if (showSubscriptionUpsell) {
-                            com.kasirpro.app.ui.components.SubscriptionUpsellDialog(
-                                onUpgradeClick = {
-                                    viewModel.activeScreen.value = "premium_pricing"
-                                },
-                                onDismiss = { viewModel.showSubscriptionUpsell.value = false }
-                            )
-                        }
+                    // Post-Ad Subscription Upsell Popup
+                    if (showSubscriptionUpsell) {
+                        com.kasirpro.app.ui.components.SubscriptionUpsellDialog(
+                            onUpgradeClick = {
+                                viewModel.activeScreen.value = "premium_pricing"
+                            },
+                            onDismiss = { viewModel.showSubscriptionUpsell.value = false }
+                        )
                     }
                 }
             }

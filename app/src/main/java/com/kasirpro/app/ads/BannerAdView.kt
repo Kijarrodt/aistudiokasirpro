@@ -1,8 +1,10 @@
 package com.kasirpro.app.ads
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
@@ -48,12 +50,12 @@ fun BannerAdView(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .defaultMinSize(minHeight = 50.dp),
         contentAlignment = Alignment.Center
     ) {
         AndroidView(
             factory = { adView },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.wrapContentSize(Alignment.Center)
         )
     }
 }
