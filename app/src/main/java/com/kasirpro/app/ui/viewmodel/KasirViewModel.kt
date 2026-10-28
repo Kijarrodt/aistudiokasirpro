@@ -200,6 +200,32 @@ class KasirViewModel(application: Application) : AndroidViewModel(application) {
         showUpgradePopup.value = true
     }
 
+    val showSubscriptionUpsell = MutableStateFlow(false)
+    val showPlayReviewDialog = MutableStateFlow(false)
+
+    private var completedTransactionsCount = 0
+
+    fun onTransactionFinished(activity: android.app.Activity?) {
+        completedTransactionsCount++
+        val user = currentUser.value
+        val isPremium = user?.isPremium ?: false
+        if (!isPremium && completedTransactionsCount % 3 == 0) {
+            if (activity != null) {
+                com.kasirpro.app.ads.AdMobManager.showInterstitialAd(activity, isPremium) {
+                    showSubscriptionUpsell.value = true
+                }
+            } else {
+                showSubscriptionUpsell.value = true
+            }
+        }
+    }
+
+    fun triggerPlayReviewIfEligible() {
+        if (com.kasirpro.app.review.PlayReviewManager.shouldPromptReview(getApplication())) {
+            showPlayReviewDialog.value = true
+        }
+    }
+
     fun showToast(message: String) {
         viewModelScope.launch {
             customNotification.value = message

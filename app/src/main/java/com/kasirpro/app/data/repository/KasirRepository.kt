@@ -340,12 +340,14 @@ class KasirRepository(val context: Context) {
             editor.putBoolean("is_kasir_saved", user.role == "kasir" || user.role == "kasir_invited")
             editor.putString("saved_owner_id", user.ownerId)
             editor.putBoolean("is_at_least_profesional", user.isAtLeastProfesional)
+            editor.putBoolean("is_premium", user.isPremium)
         } else {
             editor.remove("saved_user_email")
             editor.remove("saved_user_name")
             editor.remove("is_kasir_saved")
             editor.remove("saved_owner_id")
             editor.remove("is_at_least_profesional")
+            editor.remove("is_premium")
         }
         editor.commit()
     }
@@ -378,6 +380,11 @@ class KasirRepository(val context: Context) {
                         syncFromFirestore()
                     } catch (sf: Exception) {
                         sf.printStackTrace()
+                    }
+                    try {
+                        checkAndEnforceSubscriptionExpiry()
+                    } catch (ex: Exception) {
+                        ex.printStackTrace()
                     }
                 } else {
                     withContext(Dispatchers.Main) {
@@ -663,11 +670,22 @@ class KasirRepository(val context: Context) {
                 val branchId = cashierDoc.getString("branchId") ?: "branch-1-biz-$ownerId"
                 var subscriptionStatus = "free"
                 var subscriptionType: String? = null
+                var subscriptionStartDate: Long? = null
+                var subscriptionEndDate: Long? = null
                 try {
                     val ownerDoc = firestore.collection("users").document(ownerId).get().await()
                     if (ownerDoc.exists()) {
-                        subscriptionStatus = ownerDoc.getString("subscriptionStatus") ?: "free"
-                        subscriptionType = ownerDoc.getString("subscriptionType")
+                        val oStatus = ownerDoc.getString("subscriptionStatus") ?: "free"
+                        val oEndDate = ownerDoc.getLong("subscriptionEndDate")
+                        val now = System.currentTimeMillis()
+                        val isOwnerExpired = oStatus.lowercase() in listOf("dasar", "profesional", "bisnis", "premium") &&
+                                (oEndDate == null || oEndDate <= now)
+                        if (!isOwnerExpired) {
+                            subscriptionStatus = oStatus
+                            subscriptionType = ownerDoc.getString("subscriptionType")
+                            subscriptionStartDate = ownerDoc.getLong("subscriptionStartDate")
+                            subscriptionEndDate = oEndDate
+                        }
                     }
                 } catch (ex: Exception) {
                     android.util.Log.e("KASIR_LOGIN", "Error fetching owner state in loginUser: ${ex.message}")
@@ -682,8 +700,8 @@ class KasirRepository(val context: Context) {
                     assignedBranchId = branchId,
                     subscriptionStatus = subscriptionStatus,
                     subscriptionType = subscriptionType,
-                    subscriptionStartDate = null,
-                    subscriptionEndDate = null,
+                    subscriptionStartDate = subscriptionStartDate,
+                    subscriptionEndDate = subscriptionEndDate,
                     createdAt = cashierDoc.getLong("createdAt") ?: System.currentTimeMillis(),
                     lastActiveAt = System.currentTimeMillis()
                 )
@@ -1966,8 +1984,93 @@ data class GoogleLoginResult(
             }
             // Save to local Room database
             dao.insertUser(updated)
+            saveUserSessionMetadata(updated)
             android.util.Log.d("PLAY_BILLING", "User $uid successfully demoted to free")
+
+            // If user is owner, also lock/demote cashiers in Firestore
+            if (user.role != "kasir") {
+                try {
+                    withTimeoutOrNull(6000L) {
+                        val cashiersSnap = firestore.collection("cashiers")
+                            .whereEqualTo("ownerId", uid)
+                            .get()
+                            .await()
+                        for (cdoc in cashiersSnap.documents) {
+                            firestore.collection("cashiers").document(cdoc.id).update(
+                                mapOf(
+                                    "subscriptionStatus" to "free",
+                                    "subscriptionType" to "bulanan",
+                                    "subscriptionEndDate" to null,
+                                    "subscriptionStartDate" to null
+                                )
+                            ).await()
+                        }
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
             true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+    suspend fun checkAndEnforceSubscriptionExpiry(): Boolean {
+        val uid = _loggedInUid.value ?: auth.currentUser?.uid ?: return false
+        return try {
+            val user = dao.getUserById(uid) ?: dao.getCurrentUserRaw() ?: return false
+            val now = System.currentTimeMillis()
+
+            if (user.role == "kasir" || user.role == "kasir_invited") {
+                val ownerId = user.ownerId
+                if (!ownerId.isNullOrBlank()) {
+                    val ownerDoc = withTimeoutOrNull(6000L) {
+                        firestore.collection("users").document(ownerId).get().await()
+                    }
+                    if (ownerDoc != null && ownerDoc.exists()) {
+                        val ownerStatus = ownerDoc.getString("subscriptionStatus") ?: "free"
+                        val ownerEndDate = ownerDoc.getLong("subscriptionEndDate")
+                        val isOwnerActive = ownerStatus.lowercase() in listOf("dasar", "profesional", "bisnis", "premium") &&
+                                ownerEndDate != null && ownerEndDate > now
+
+                        if (!isOwnerActive && user.subscriptionStatus != "free") {
+                            val updated = user.copy(
+                                subscriptionStatus = "free",
+                                subscriptionType = "bulanan",
+                                subscriptionStartDate = null,
+                                subscriptionEndDate = null
+                            )
+                            dao.insertUser(updated)
+                            saveUserSessionMetadata(updated)
+                            android.util.Log.w("SUBSCRIPTION", "Cashier $uid locked: owner $ownerId subscription expired.")
+                            return true
+                        } else if (isOwnerActive && (user.subscriptionStatus != ownerStatus || user.subscriptionEndDate != ownerEndDate)) {
+                            val updated = user.copy(
+                                subscriptionStatus = ownerStatus,
+                                subscriptionType = ownerDoc.getString("subscriptionType"),
+                                subscriptionStartDate = ownerDoc.getLong("subscriptionStartDate"),
+                                subscriptionEndDate = ownerEndDate
+                            )
+                            dao.insertUser(updated)
+                            saveUserSessionMetadata(updated)
+                        }
+                    }
+                }
+            } else {
+                // Owner
+                val status = user.subscriptionStatus.lowercase()
+                if (status in listOf("dasar", "profesional", "bisnis", "premium")) {
+                    val endDate = user.subscriptionEndDate
+                    if (endDate == null || endDate <= now) {
+                        android.util.Log.w("SUBSCRIPTION", "Owner $uid subscription expired (end=$endDate, now=$now). Demoting and locking.")
+                        demoteUserToFree(uid)
+                        return true
+                    }
+                }
+            }
+            false
         } catch (e: Exception) {
             e.printStackTrace()
             false
@@ -2540,6 +2643,16 @@ data class GoogleLoginResult(
                         val userDoc = firestore.collection("users").document(uid).get().await()
                         if (userDoc.exists()) {
                             android.util.Log.d("SYNC", "User document found in Firestore: ${userDoc.data}")
+                            val rawStatus = userDoc.getString("subscriptionStatus") ?: "free"
+                            val rawEndDate = userDoc.getLong("subscriptionEndDate")
+                            val now = System.currentTimeMillis()
+                            val isExpired = rawStatus.lowercase() in listOf("dasar", "profesional", "bisnis", "premium") &&
+                                    (rawEndDate == null || rawEndDate <= now)
+
+                            val finalStatus = if (isExpired) "free" else rawStatus
+                            val finalEndDate = if (isExpired) null else rawEndDate
+                            val finalStartDate = if (isExpired) null else userDoc.getLong("subscriptionStartDate")
+
                             val user = UserEntity(
                                 uid = uid,
                                 nama = userDoc.getString("nama") ?: "User",
@@ -2547,10 +2660,10 @@ data class GoogleLoginResult(
                                 role = userDoc.getString("role") ?: "owner",
                                 ownerId = userDoc.getString("ownerId"),
                                 assignedBranchId = userDoc.getString("assignedBranchId"),
-                                subscriptionStatus = userDoc.getString("subscriptionStatus") ?: "free",
-                                subscriptionType = userDoc.getString("subscriptionType"),
-                                subscriptionStartDate = userDoc.getLong("subscriptionStartDate"),
-                                subscriptionEndDate = userDoc.getLong("subscriptionEndDate"),
+                                subscriptionStatus = finalStatus,
+                                subscriptionType = if (isExpired) "bulanan" else userDoc.getString("subscriptionType"),
+                                subscriptionStartDate = finalStartDate,
+                                subscriptionEndDate = finalEndDate,
                                 createdAt = userDoc.getLong("createdAt") ?: System.currentTimeMillis(),
                                 lastActiveAt = userDoc.getLong("lastActiveAt"),
                                 freeTxPeriod = userDoc.getString("freeTxPeriod"),
@@ -2559,6 +2672,23 @@ data class GoogleLoginResult(
                             dao.insertUser(user)
                             saveUserSessionMetadata(user)
                             android.util.Log.d("SYNC", "Successfully synced user: ${user.nama} with status: ${user.subscriptionStatus}")
+
+                            if (isExpired && rawStatus != "free") {
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    try {
+                                        firestore.collection("users").document(uid).update(
+                                            mapOf(
+                                                "subscriptionStatus" to "free",
+                                                "subscriptionStartDate" to null,
+                                                "subscriptionEndDate" to null,
+                                                "subscriptionType" to "bulanan"
+                                            )
+                                        ).await()
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                    }
+                                }
+                            }
                             
                             if ((user.role == "kasir" || user.role == "kasir_invited") && !user.ownerId.isNullOrEmpty()) {
                                 targetOwnerId = user.ownerId
@@ -2573,11 +2703,22 @@ data class GoogleLoginResult(
                                 val branchId = cashierDoc.getString("branchId") ?: "branch-1-biz-$ownerId"
                                 var subscriptionStatus = "free"
                                 var subscriptionType: String? = null
+                                var subscriptionStartDate: Long? = null
+                                var subscriptionEndDate: Long? = null
                                 try {
                                     val ownerDoc = firestore.collection("users").document(ownerId).get().await()
                                     if (ownerDoc.exists()) {
-                                        subscriptionStatus = ownerDoc.getString("subscriptionStatus") ?: "free"
-                                        subscriptionType = ownerDoc.getString("subscriptionType")
+                                        val oStatus = ownerDoc.getString("subscriptionStatus") ?: "free"
+                                        val oEndDate = ownerDoc.getLong("subscriptionEndDate")
+                                        val now = System.currentTimeMillis()
+                                        val isOwnerExpired = oStatus.lowercase() in listOf("dasar", "profesional", "bisnis", "premium") &&
+                                                (oEndDate == null || oEndDate <= now)
+                                        if (!isOwnerExpired) {
+                                            subscriptionStatus = oStatus
+                                            subscriptionType = ownerDoc.getString("subscriptionType")
+                                            subscriptionStartDate = ownerDoc.getLong("subscriptionStartDate")
+                                            subscriptionEndDate = oEndDate
+                                        }
                                     }
                                 } catch (ex: Exception) {
                                     android.util.Log.e("SYNC", "Error fetching owner state for cashier: ${ex.message}")
@@ -2591,8 +2732,8 @@ data class GoogleLoginResult(
                                     assignedBranchId = branchId,
                                     subscriptionStatus = subscriptionStatus,
                                     subscriptionType = subscriptionType,
-                                    subscriptionStartDate = null,
-                                    subscriptionEndDate = null,
+                                    subscriptionStartDate = subscriptionStartDate,
+                                    subscriptionEndDate = subscriptionEndDate,
                                     createdAt = cashierDoc.getLong("createdAt") ?: System.currentTimeMillis(),
                                     lastActiveAt = cashierDoc.getLong("lastActiveAt") ?: System.currentTimeMillis()
                                 )

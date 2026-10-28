@@ -90,3 +90,14 @@
     public static **[] values();
     public static ** valueOf(java.lang.String);
 }
+
+# --- Google Mobile Ads (AdMob) ---
+-keep class com.google.android.gms.ads.** { *; }
+-dontwarn com.google.android.gms.ads.**
+-keep class com.google.ads.mediation.** { *; }
+-dontwarn com.google.ads.mediation.**
+
+# --- Google Play In-App Review ---
+-keep class com.google.android.play.core.review.** { *; }
+-dontwarn com.google.android.play.core.review.**
+

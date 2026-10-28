@@ -124,6 +124,12 @@ fun ProductsStokScreen(viewModel: KasirViewModel) {
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        bottomBar = {
+            com.kasirpro.app.ads.BannerAdView(
+                adUnitId = com.kasirpro.app.ads.AdMobManager.BANNER_1_ID,
+                isPremium = isPremiumState
+            )
+        },
         topBar = {
             TopAppBar(
                 title = { Text(Translator.t("Kelola Produk & Stok"), fontWeight = FontWeight.Bold) },

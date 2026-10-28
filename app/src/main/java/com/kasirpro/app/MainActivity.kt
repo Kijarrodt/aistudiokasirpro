@@ -69,9 +69,13 @@ class MainActivity : ComponentActivity() {
             viewModel.activeScreen.value = screenToOpen
         }
 
+        com.kasirpro.app.ads.AdMobManager.initialize(this)
+
         enableEdgeToEdge()
         setContent {
             val isDarkTheme by viewModel.isDarkMode.collectAsState()
+            val showReviewDialog by viewModel.showPlayReviewDialog.collectAsState()
+            val showSubscriptionUpsell by viewModel.showSubscriptionUpsell.collectAsState()
             
             val context = androidx.compose.ui.platform.LocalContext.current
             var showUpdateDialog by remember { mutableStateOf(false) }
@@ -554,6 +558,23 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             }
+                        }
+
+                        // Google Play Store In-App Review Dialog
+                        if (showReviewDialog) {
+                            com.kasirpro.app.review.PlayReviewDialog(
+                                onDismiss = { viewModel.showPlayReviewDialog.value = false }
+                            )
+                        }
+
+                        // Post-Ad Subscription Upsell Popup
+                        if (showSubscriptionUpsell) {
+                            com.kasirpro.app.ui.components.SubscriptionUpsellDialog(
+                                onUpgradeClick = {
+                                    viewModel.activeScreen.value = "premium_pricing"
+                                },
+                                onDismiss = { viewModel.showSubscriptionUpsell.value = false }
+                            )
                         }
                     }
                 }

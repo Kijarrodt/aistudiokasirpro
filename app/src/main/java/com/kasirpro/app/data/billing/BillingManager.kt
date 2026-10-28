@@ -159,24 +159,35 @@ class BillingManager(
             if (doc != null && doc.exists()) {
                 val purchaseToken = doc.getString("playBillingPurchaseToken") ?: ""
                 val currentStatus = doc.getString("subscriptionStatus") ?: "free"
+                val subscriptionEndDate = doc.getLong("subscriptionEndDate")
+                val now = System.currentTimeMillis()
 
-                if (purchaseToken.isNotBlank() && currentStatus != "free") {
-                    // Check if it's a simulated token. We do not demote simulated/mock packages to prevent developer testing breaking.
-                    if (purchaseToken.startsWith("simulated_")) {
-                        Log.d("BillingManager", "Subscription is simulated ($purchaseToken), skipping verification.")
+                if (currentStatus != "free") {
+                    // Check if subscription end date has passed
+                    if (subscriptionEndDate != null && subscriptionEndDate <= now) {
+                        Log.w("BillingManager", "Subscription reached end date $subscriptionEndDate <= $now. Demoting to free.")
+                        kasirRepository.demoteUserToFree(uid)
                         return
                     }
 
-                    // For real Play Store Billing, the active purchase token must be in the list of currently active purchases
-                    val isActive = purchasesList.any { purchase ->
-                        purchase.purchaseToken == purchaseToken && purchase.purchaseState == Purchase.PurchaseState.PURCHASED
-                    }
+                    if (purchaseToken.isNotBlank()) {
+                        // Check if it's a simulated token. We do not demote simulated/mock packages to prevent developer testing breaking.
+                        if (purchaseToken.startsWith("simulated_")) {
+                            Log.d("BillingManager", "Subscription is simulated ($purchaseToken), skipping verification.")
+                            return
+                        }
 
-                    if (!isActive) {
-                        Log.w("BillingManager", "Subscription with token $purchaseToken is no longer active (cancelled/refunded). Downgrading to free.")
-                        kasirRepository.demoteUserToFree(uid)
-                    } else {
-                        Log.d("BillingManager", "Subscription is verified and active.")
+                        // For real Play Store Billing, the active purchase token must be in the list of currently active purchases
+                        val isActive = purchasesList.any { purchase ->
+                            purchase.purchaseToken == purchaseToken && purchase.purchaseState == Purchase.PurchaseState.PURCHASED
+                        }
+
+                        if (!isActive) {
+                            Log.w("BillingManager", "Subscription with token $purchaseToken is no longer active (cancelled/refunded). Downgrading to free.")
+                            kasirRepository.demoteUserToFree(uid)
+                        } else {
+                            Log.d("BillingManager", "Subscription is verified and active.")
+                        }
                     }
                 }
             }

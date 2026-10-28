@@ -187,6 +187,7 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
     val idrFormatter = NumberFormat.getCurrencyInstance(Locale("id", "ID"))
     idrFormatter.maximumFractionDigits = 0
 
+    val isPremium = user?.isPremium ?: false
     val isAtLeastProfesional = user?.isAtLeastProfesional ?: false
     val isAtLeastBisnis = user?.isAtLeastBisnis ?: false
 
@@ -966,41 +967,59 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
 
         // Export PDF Actions triggers
         item {
+            val doExportPdf = {
+                val pdfFile = generateLaporanKeuanganPdf(
+                    context = context,
+                    interval = Translator.t(reportInterval),
+                    storeName = user?.nama ?: Translator.t("Toko Utama"),
+                    omset = finalIncome,
+                    hpp = calculatedCapital,
+                    pengeluaran = totalExpensesValue,
+                    labaBersih = finalFinancialNet,
+                    transactionsCount = countTx,
+                    topProducts = topProducts,
+                    idrFormatter = idrFormatter
+                )
+                
+                if (pdfFile != null && pdfFile.exists()) {
+                    try {
+                        val uri = FileProvider.getUriForFile(
+                            context,
+                            "com.kasirpro.pospintar.app.fileprovider",
+                            pdfFile
+                        )
+                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "application/pdf"
+                            putExtra(Intent.EXTRA_STREAM, uri)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        context.startActivity(Intent.createChooser(shareIntent, Translator.t("Export PDF Laporan Keuangan")))
+                        Toast.makeText(context, Translator.t("Dokumen PDF Laporan berhasil dibuat!"), Toast.LENGTH_SHORT).show()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        Toast.makeText(context, "Error sharing PDF: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                    }
+                } else {
+                    Toast.makeText(context, Translator.t("Gagal memproses dokumen PDF!"), Toast.LENGTH_SHORT).show()
+                }
+            }
+
             Button(
                 onClick = {
-                    val pdfFile = generateLaporanKeuanganPdf(
-                        context = context,
-                        interval = Translator.t(reportInterval),
-                        storeName = user?.nama ?: Translator.t("Toko Utama"),
-                        omset = finalIncome,
-                        hpp = calculatedCapital,
-                        pengeluaran = totalExpensesValue,
-                        labaBersih = finalFinancialNet,
-                        transactionsCount = countTx,
-                        topProducts = topProducts,
-                        idrFormatter = idrFormatter
-                    )
-                    
-                    if (pdfFile != null && pdfFile.exists()) {
-                        try {
-                            val uri = FileProvider.getUriForFile(
-                                context,
-                                "com.kasirpro.pospintar.app.fileprovider",
-                                pdfFile
-                            )
-                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                type = "application/pdf"
-                                putExtra(Intent.EXTRA_STREAM, uri)
-                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            }
-                            context.startActivity(Intent.createChooser(shareIntent, Translator.t("Export PDF Laporan Keuangan")))
-                            Toast.makeText(context, Translator.t("Dokumen PDF Laporan berhasil dibuat!"), Toast.LENGTH_SHORT).show()
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                            Toast.makeText(context, "Error sharing PDF: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
-                        }
+                    val activity = context as? android.app.Activity
+                    if (isPremium) {
+                        doExportPdf()
                     } else {
-                        Toast.makeText(context, Translator.t("Gagal memproses dokumen PDF!"), Toast.LENGTH_SHORT).show()
+                        if (activity != null) {
+                            com.kasirpro.app.ads.AdMobManager.showRewardedAd(
+                                activity = activity,
+                                isPremium = false,
+                                onUserEarnedReward = { doExportPdf() },
+                                onDismissed = { viewModel.showSubscriptionUpsell.value = true }
+                            )
+                        } else {
+                            doExportPdf()
+                        }
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
@@ -1009,7 +1028,22 @@ fun PremiumLaporanTab(viewModel: KasirViewModel) {
             ) {
                 Icon(imageVector = Icons.Default.PictureAsPdf, contentDescription = null, tint = Color.White)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(Translator.t("Export PDF Laporan Kasir"), fontWeight = FontWeight.Bold, color = Color.White)
+                Text(
+                    if (isPremium) Translator.t("Export PDF Laporan Kasir") 
+                    else Translator.t("Export PDF (Tonton Iklan Singkat)"), 
+                    fontWeight = FontWeight.Bold, 
+                    color = Color.White
+                )
+            }
+        }
+
+        if (!isPremium) {
+            item {
+                com.kasirpro.app.ads.BannerAdView(
+                    adUnitId = com.kasirpro.app.ads.AdMobManager.BANNER_2_ID,
+                    isPremium = false,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
             }
         }
     }

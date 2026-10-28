@@ -15,8 +15,8 @@ android {
     applicationId = "com.kasirpro.pospintar.app"
     minSdk = 24
     targetSdk = 36
-    versionCode = 20
-    versionName = "1.0.1.9"
+    versionCode = 22
+    versionName = "1.0.2.1"
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
@@ -139,6 +139,8 @@ dependencies {
   "ksp"(libs.androidx.room.compiler)
   "ksp"(libs.moshi.kotlin.codegen)
   implementation("com.android.billingclient:billing-ktx:8.0.0")
+  implementation(libs.play.services.ads)
+  implementation(libs.play.review.ktx)
 }
 
 tasks.register("copyBundleToArtifacts") {

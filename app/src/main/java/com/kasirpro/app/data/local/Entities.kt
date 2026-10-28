@@ -22,7 +22,7 @@ data class UserEntity(
 
 val UserEntity.isPremium: Boolean 
     get() = subscriptionStatus.lowercase() in listOf("dasar", "profesional", "bisnis", "premium") && 
-            (subscriptionEndDate == null || subscriptionEndDate > System.currentTimeMillis())
+            subscriptionEndDate != null && subscriptionEndDate > System.currentTimeMillis()
 
 val UserEntity.isAtLeastDasar: Boolean 
     get() = isPremium
@@ -32,6 +32,14 @@ val UserEntity.isAtLeastProfesional: Boolean
 
 val UserEntity.isAtLeastBisnis: Boolean 
     get() = isPremium && subscriptionStatus.lowercase() in listOf("bisnis", "premium")
+
+val UserEntity.effectiveSubscriptionStatus: String
+    get() = if (isPremium) subscriptionStatus.lowercase() else "free"
+
+val UserEntity.isSubscriptionExpired: Boolean
+    get() = subscriptionStatus.lowercase() in listOf("dasar", "profesional", "bisnis", "premium") &&
+            (subscriptionEndDate == null || subscriptionEndDate <= System.currentTimeMillis())
+
 
 @Entity(tableName = "businesses")
 data class BusinessEntity(

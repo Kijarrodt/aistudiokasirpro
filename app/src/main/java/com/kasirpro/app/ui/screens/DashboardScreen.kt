@@ -131,6 +131,11 @@ fun DashboardScreen(viewModel: KasirViewModel) {
     val idrFormatter = NumberFormat.getCurrencyInstance(Locale("id", "ID"))
     idrFormatter.maximumFractionDigits = 0
 
+    val isPremium = user?.isPremium ?: false
+    LaunchedEffect(Unit) {
+        viewModel.triggerPlayReviewIfEligible()
+    }
+
     val posInteractionSource = remember { MutableInteractionSource() }
     val isPosPressed by posInteractionSource.collectIsPressedAsState()
     val posScale by animateFloatAsState(
@@ -471,6 +476,17 @@ fun DashboardScreen(viewModel: KasirViewModel) {
                             }
                         }
                     }
+                }
+            }
+
+            // AdMob Banner Ad 2 for Free Users
+            if (!isPremium) {
+                item {
+                    com.kasirpro.app.ads.BannerAdView(
+                        adUnitId = com.kasirpro.app.ads.AdMobManager.BANNER_2_ID,
+                        isPremium = false,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
                 }
             }
 

@@ -1413,6 +1413,11 @@ fun CashierScreen(viewModel: KasirViewModel) {
     if (activeReceiptState != null) {
         val rx = activeReceiptState!!
         val context = LocalContext.current
+        val activity = context as? android.app.Activity
+        val dismissReceiptWithAd = {
+            viewModel.activeReceipt.value = null
+            viewModel.onTransactionFinished(activity)
+        }
         val coroutineScope = rememberCoroutineScope()
         var showBluetoothSimulation by remember { mutableStateOf(false) }
         var pairedPrinters by remember { mutableStateOf<List<android.bluetooth.BluetoothDevice>>(emptyList()) }
@@ -1432,7 +1437,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
 
         // Thermal Struk Dialog
         AlertDialog(
-            onDismissRequest = { viewModel.activeReceipt.value = null },
+            onDismissRequest = { dismissReceiptWithAd() },
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF22C55E), modifier = Modifier.size(24.dp))
@@ -1556,7 +1561,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                         }
                     }
                     TextButton(
-                        onClick = { viewModel.activeReceipt.value = null },
+                        onClick = { dismissReceiptWithAd() },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Selesai")
@@ -1623,7 +1628,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                                                 if (success) {
                                                     Toast.makeText(context, "Berhasil mencetak ke printer: ${getSafeDeviceName(device)}", Toast.LENGTH_SHORT).show()
                                                     showBluetoothSimulation = false
-                                                    viewModel.activeReceipt.value = null
+                                                    dismissReceiptWithAd()
                                                 } else {
                                                     Toast.makeText(context, Translator.t("Gagal mencetak. Harap sambungkan kembali printer Bluetooth Anda."), Toast.LENGTH_LONG).show()
                                                 }
@@ -1654,7 +1659,7 @@ fun CashierScreen(viewModel: KasirViewModel) {
                             onClick = {
                                 Toast.makeText(context, Translator.t("Simulasi Cetak Struk ke printer RPP02N - Selesai!"), Toast.LENGTH_LONG).show()
                                 showBluetoothSimulation = false
-                                viewModel.activeReceipt.value = null
+                                dismissReceiptWithAd()
                             },
                             colors = CardDefaults.cardColors(containerColor = Color(0xFFF3F4F6)),
                             modifier = Modifier.fillMaxWidth()
